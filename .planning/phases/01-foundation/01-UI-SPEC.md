@@ -1,7 +1,7 @@
 ---
 phase: 1
 slug: foundation
-status: draft
+status: approved
 shadcn_initialized: false
 preset: none
 created: 2026-05-23
@@ -63,10 +63,11 @@ Four sizes, two weights only. Optimized for data density and Turkish string leng
 
 | Role | Size | Weight | Line Height | Usage |
 |------|------|--------|-------------|-------|
-| Body | 14px | 400 (Regular) | 1.5 | Table cell content, form helper text, metadata |
-| Label | 14px | 500 (Medium) | 1.4 | Form labels, table column headers, button text |
+| Body | 14px | 400 (Regular) | 1.5 | Table cell content, form helper text, metadata, form labels, table column headers, button text |
 | Heading | 20px | 600 (Semibold) | 1.3 | Page title, section headings (BOQ, Rota, Personel) |
 | Display | 28px | 600 (Semibold) | 1.2 | Sign-in page welcome copy only |
+
+**Weight rule:** Exactly two weights — 400 (Regular) for all body-level text, 600 (Semibold) for all headings and display. The former Medium (500) weight is not used; shadcn button text and form labels render at 400.
 
 **Number formatting (Turkish locale):**
 - Use `Intl.NumberFormat('tr-TR')` for quantities and balances displayed in Turkish mode
@@ -88,16 +89,16 @@ shadcn/ui neutral CSS-variable palette. All color references use CSS variables, 
 |------|-------------|----------------|-------|
 | Dominant (60%) | `--background` | `bg-background` | Page background, main content area |
 | Secondary (30%) | `--card` / `--muted` | `bg-card` / `bg-muted` | Cards, sidebar nav, table zebra rows, section containers |
-| Accent (10%) | `--primary` | `bg-primary` / `text-primary` | Reserved for: primary CTA buttons (Create Project, Add BOQ Item, Save), active nav indicator, file upload drop zone border |
+| Accent (10%) | `--primary` | `bg-primary` / `text-primary` | Reserved for: primary CTA buttons (Create Project, Add BOQ Item, Save Changes), active nav indicator, file upload drop zone border |
 | Destructive | `--destructive` | `bg-destructive` | Delete project, remove BOQ line item, revoke assignment — confirmation dialog trigger only |
 | Success | `--` (custom: `hsl(142 76% 36%)`) | Use inline `text-[hsl(142_76%_36%)]` | Pending-approval "Approved/Onaylandi" status badge text; BOQ remaining balance > 0 |
 | Warning | `--` (custom: `hsl(38 92% 50%)`) | Use inline `text-[hsl(38_92%_50%)]` | Pending people queue count badge; BOQ remaining balance approaching zero (< 10% remaining) |
 
 **Accent reserved for (explicit list):**
-1. Primary CTA buttons: "Proje Oluştur / Create Project", "BOQ Kalemi Ekle / Add BOQ Item", "Kaydet / Save", "Onayla / Confirm Import"
+1. Primary CTA buttons: "Proje Oluştur / Create Project", "BOQ Kalemi Ekle / Add BOQ Item", "Değişiklikleri Kaydet / Save Changes", "Onayla ve İçe Aktar / Confirm & Import"
 2. Active nav/tab indicator (left border or underline on the active project section tab)
 3. File upload drop zone border-color on hover/drag-over state
-4. "Onayla / Approve" button in the pending people queue (promotes a worker/auditor to active)
+4. "Personeli Onayla / Approve Person" button in the pending people queue (promotes a worker/auditor to active)
 
 **Destructive reserved for:**
 1. "Projeyi Sil / Delete Project" — confirmation dialog required (see Copywriting)
@@ -135,6 +136,8 @@ All components added via `npx shadcn@latest add {component}`. No third-party reg
 
 ### 1. Sign-In Screen (`/auth/signin`)
 
+**Focal point:** The email input and "Giriş Bağlantısı Gönder / Send Sign-In Link" CTA button — vertically centered, full-width within the card.
+
 **Layout:** Centered card on full-height background. Single column. No sidebar.
 
 **Elements:**
@@ -160,6 +163,8 @@ All components added via `npx shadcn@latest add {component}`. No third-party reg
 
 ### 2. Project List (`/dashboard/projects`)
 
+**Focal point:** The "Proje Oluştur / Create Project" CTA at top-right and the project card list below the page heading.
+
 **Layout:** Top nav + main content area. Responsive single-column list on narrow viewports.
 
 **Top nav elements:**
@@ -169,7 +174,7 @@ All components added via `npx shadcn@latest add {component}`. No third-party reg
 **Main content:**
 - Page heading: "Projeler / Projects" (heading, semibold)
 - Primary CTA: "Proje Oluştur / Create Project" button (top-right, primary variant)
-- Project cards in vertical list: each card shows project name (label/medium), creation date (body/regular), BOQ item count, People count
+- Project cards in vertical list: each card shows project name (body/regular, bold via semibold weight), creation date (body/regular), BOQ item count, People count
 - Each card has a row action dropdown: "Düzenle / Edit" + "Sil / Delete" (destructive, with confirmation dialog)
 - Empty state: see Copywriting
 
@@ -183,13 +188,15 @@ All components added via `npx shadcn@latest add {component}`. No third-party reg
 
 ### 3. Project Create/Edit Form (`/dashboard/projects/new` and `/dashboard/projects/[id]/edit`)
 
+**Focal point:** The Project Name field (auto-focused on mount) and the primary CTA button at the bottom of the form.
+
 **Layout:** Full-page form, no sidebar. Back link to project list.
 
 **Fields:**
 - Project Name (required): text input, label "Proje Adı / Project Name"
 - Description (optional): textarea, label "Açıklama / Description", max 500 chars, char count shown
-- Primary CTA: "Oluştur / Create" (on new) or "Kaydet / Save" (on edit)
-- Secondary: "İptal / Cancel" (ghost button, navigates back)
+- Primary CTA: "Proje Oluştur / Create Project" (on new) or "Değişiklikleri Kaydet / Save Changes" (on edit)
+- Secondary: "Projeye Dön / Back to Project" (ghost button, navigates back — on edit) or "Projelere Dön / Back to Projects" (ghost button — on new)
 
 **Validation:**
 - Project name required: inline error below field "Proje adı zorunludur. / Project name is required."
@@ -198,6 +205,8 @@ All components added via `npx shadcn@latest add {component}`. No third-party reg
 ---
 
 ### 4. Project Detail (`/dashboard/projects/[id]`)
+
+**Focal point:** The tab strip (BOQ / Route / Personel) and the active section's primary table or CTA. On initial load, the BOQ tab is active and the BOQ table with its "Kalem Ekle / Add Item" CTA is the focal point.
 
 **Layout:** Top nav (same as project list) + page heading with project name + tab strip.
 
@@ -235,7 +244,7 @@ Each tab is a full-width content panel below the tab strip with 48px top padding
 1. User clicks "Excel'den İçe Aktar / Import from Excel"
 2. Dialog opens: file input (.xlsx only, accept=".xlsx"), "Şablon İndir / Download Template" link (downloads a pre-populated .xlsx with correct column headers)
 3. After file selection: show preview table (same columns as BOQ table, all rows from file, read-only) inside the dialog
-4. Below preview: "X kalem içe aktarılacak / X items will be imported" count + "Onayla ve İçe Aktar / Confirm Import" (primary) + "İptal / Cancel" (ghost)
+4. Below preview: "X kalem içe aktarılacak / X items will be imported" count + "Onayla ve İçe Aktar / Confirm & Import" (primary) + "Projeye Dön / Back to Project" (ghost)
 5. On confirm: close dialog, show toast success, BOQ table refreshes
 6. On parse error: show Alert (destructive) inside dialog with row-level errors: "Satır 3: Miktar sayısal olmalı / Row 3: Quantity must be numeric"
 
@@ -243,12 +252,14 @@ Each tab is a full-width content panel below the tab strip with 48px top padding
 
 #### 4b. Route (GeoJSON) Tab
 
+**Focal point:** The upload drop zone (when no route exists) or the route metadata card with "Rotayı Değiştir / Replace Route" button (when a route is already saved).
+
 **Section heading:** "Proje Rotası / Project Route" (heading/semibold)
 
 **Upload area:**
 - If no route uploaded: drag-and-drop zone (dotted border in `--primary` color on hover, neutral otherwise, `lg` border-radius, `2xl` height minimum 160px)
   - Icon: lucide `Upload` at 32px, centered
-  - Label: "GeoJSON rotasını yükleyin / Upload GeoJSON route" (label/medium, centered)
+  - Label: "GeoJSON rotasını yükleyin / Upload GeoJSON route" (body/regular, centered)
   - Sub-label: ".geojson formatı · Tek LineString · WGS84 koordinatları" (body/regular, muted color, centered)
   - Hidden file input triggers on click or drag
 - "Dosya Seç / Choose File" button (outline variant, below sub-label)
@@ -267,11 +278,13 @@ Each tab is a full-width content panel below the tab strip with 48px top padding
 
 #### 4c. People (Personel) Tab
 
+**Focal point:** The "Bekleyen Onaylar / Pending Approvals" sub-section when pending count > 0 (requires immediate action); otherwise the "Aktif Personel / Active People" table and "Manuel Personel Ekle / Add Person Manually" CTA.
+
 **Two sub-sections within the tab:**
 
 **Sub-section 1: Bekleyen Onaylar / Pending Approvals**
 - Shown only when `pending_people.length > 0`; otherwise hidden (not even a heading)
-- Sub-heading: "Bekleyen Onaylar / Pending Approvals" (label/medium, warning text color) + count badge (warning)
+- Sub-heading: "Bekleyen Onaylar / Pending Approvals" (body/regular semibold via 600 weight, warning text color) + count badge (warning)
 - Table columns:
   | Column | Notes |
   |--------|-------|
@@ -281,13 +294,13 @@ Each tab is a full-width content panel below the tab strip with 48px top padding
   | Ad / Name | Editable text input inline — office sets display name |
   | Rol / Role | Select: İşçi (Worker) / Denetçi (Auditor) |
   | Proje Ataması / Project | Select: list of active projects |
-  | İşlemler / Actions | "Onayla / Approve" (primary, small) + "Reddet / Reject" (destructive, ghost, small) |
-- "Onayla / Approve": validates Name and Role are filled; on success shows toast + row disappears
-- "Reddet / Reject": no confirmation dialog required (pending person never had access); row disappears + toast
+  | İşlemler / Actions | "Personeli Onayla / Approve Person" (primary, small) + "Personeli Reddet / Reject Person" (destructive, ghost, small) |
+- "Personeli Onayla / Approve Person": validates Name and Role are filled; on success shows toast + row disappears
+- "Personeli Reddet / Reject Person": no confirmation dialog required (pending person never had access); row disappears + toast
 
 **Sub-section 2: Aktif Personel / Active People**
 - Sub-heading: "Aktif Personel / Active People" (heading/semibold)
-- CTA: "Manuel Ekle / Add Manually" (outline variant, top-right) — for edge case where office registers a person without them using the bot first
+- CTA: "Manuel Personel Ekle / Add Person Manually" (outline variant, top-right) — for edge case where office registers a person without them using the bot first
 - Table columns:
   | Column | Notes |
   |--------|-------|
@@ -329,8 +342,9 @@ All copy shown in format: **Turkish (default) / English**. Both keys must exist 
 | Sign-in confirmation | Bağlantı e-postanıza gönderildi. Gelen kutunuzu kontrol edin. | Sign-in link sent. Check your inbox. |
 | Sign-in allowlist error | Bu e-posta adresi yetkili değil. Yöneticinizle iletişime geçin. | This email address is not authorized. Contact your administrator. |
 | Create Project CTA | Proje Oluştur | Create Project |
-| Save CTA (edit) | Kaydet | Save |
-| Cancel | İptal | Cancel |
+| Save Changes CTA (edit form) | Değişiklikleri Kaydet | Save Changes |
+| Back to Project (secondary, edit form) | Projeye Dön | Back to Project |
+| Back to Projects (secondary, new form) | Projelere Dön | Back to Projects |
 | Add BOQ Item CTA | Kalem Ekle | Add Item |
 | Import from Excel CTA | Excel'den İçe Aktar | Import from Excel |
 | Download template | Şablon İndir | Download Template |
@@ -338,9 +352,9 @@ All copy shown in format: **Turkish (default) / English**. Both keys must exist 
 | Upload GeoJSON CTA | Dosya Seç | Choose File |
 | Save Route CTA | Rotayı Kaydet | Save Route |
 | Replace Route | Rotayı Değiştir | Replace Route |
-| Approve person CTA | Onayla | Approve |
-| Reject person (pending) | Reddet | Reject |
-| Add person manually CTA | Manuel Ekle | Add Manually |
+| Approve person CTA | Personeli Onayla | Approve Person |
+| Reject person (pending) | Personeli Reddet | Reject Person |
+| Add person manually CTA | Manuel Personel Ekle | Add Person Manually |
 | Sign out | Çıkış | Sign Out |
 
 **Empty states:**
