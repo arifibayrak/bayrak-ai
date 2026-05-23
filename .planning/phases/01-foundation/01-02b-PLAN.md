@@ -13,9 +13,9 @@ requirements: [SETUP-03]
 
 must_haves:
   truths:
-    - "The generated Drizzle migration declares routes.geom as geometry(LineString,4326), NOT geometry(point,4326), and carries the -- HAND-EDITED regression-guard comment"
+    - "D-08: The generated Drizzle migration declares routes.geom as geometry(LineString,4326), NOT geometry(point,4326), and carries the -- HAND-EDITED regression-guard comment"
     - "No `geometry(point` remains in any migration file"
-    - "The PostGIS extension is enabled on the live database (SELECT postgis_version() returns a value)"
+    - "D-10: The PostGIS extension is enabled on the live database via the first migration (SELECT postgis_version() returns a value); GiST index on routes.geom is applied"
     - "All Phase 1 tables exist in the live DB after the schema push: tenants, users, accounts, sessions, verification_tokens, projects, boq_items, routes, people, pending_people, assignments"
     - "A single default tenant row exists with the fixed UUID 00000000-0000-0000-0000-000000000001"
     - "Storing an Istanbul coordinate (lng 28.9, lat 41.0) reads back longitude-first in ST_AsGeoJSON output"
@@ -38,10 +38,10 @@ must_haves:
 ---
 
 <objective>
-Take the schema authored in plan 01-02a to a live, correct database: run `drizzle-kit generate`, hand-edit the generated migration so routes.geom is `geometry(LineString,4326)` (drizzle-kit emits point by default), author the coordinate-order PostGIS integration test, then — at a BLOCKING checkpoint — push the schema to the live Neon database, seed the default tenant, and run the DB integration tests.
+Take the schema authored in plan 01-02a to a live, correct database: run `drizzle-kit generate`, hand-edit the generated migration so routes.geom is `geometry(LineString,4326)` (drizzle-kit emits point by default — D-08), author the coordinate-order PostGIS integration test, then — at a BLOCKING checkpoint — push the schema to the live Neon database (PostGIS enabled via the first migration per D-10), seed the default tenant, and run the DB integration tests.
 
-Purpose: This isolates the two error-prone, false-positive-prone steps from schema authoring: (1) the manual point→LineString migration edit that silently regresses on every regenerate, and (2) the live schema push, which build/type checks alone cannot verify (types come from config, so a green build with no live DB is a false-positive). Separating these into their own non-autonomous plan keeps 01-02a fully autonomous and reviewable without a provisioned connection string, while gating the live write behind explicit human confirmation. NOTE: the actual generated migration filename may differ (e.g. `0001_<adjective>_<name>.sql`); `files_modified` lists the conventional name — the executor edits whatever drizzle-kit emits.
-Output: A migrated Neon database with PostGIS enabled, all 11 tables present, routes.geom correctly typed as LineString, a seeded default tenant, and passing coordinate-order + schema DB integration tests.
+Purpose: This isolates the two error-prone, false-positive-prone steps from schema authoring: (1) the manual point→LineString migration edit that silently regresses on every regenerate (D-08), and (2) the live schema push, which build/type checks alone cannot verify (types come from config, so a green build with no live DB is a false-positive). Separating these into their own non-autonomous plan keeps 01-02a fully autonomous and reviewable without a provisioned connection string, while gating the live write behind explicit human confirmation. NOTE: the actual generated migration filename may differ (e.g. `0001_<adjective>_<name>.sql`); `files_modified` lists the conventional name — the executor edits whatever drizzle-kit emits.
+Output: A migrated Neon database with PostGIS enabled (D-10), all 11 tables present, routes.geom correctly typed as LineString (D-08), a seeded default tenant, and passing coordinate-order + schema DB integration tests.
 </objective>
 
 <execution_context>
@@ -72,12 +72,13 @@ Output: A migrated Neon database with PostGIS enabled, all 11 tables present, ro
   <read_first>
     - .planning/phases/01-foundation/01-RESEARCH.md § "Schema" Pattern 1/2 (the MANUAL MIGRATION EDIT block) and § "Common Pitfalls" Pitfall 1
     - .planning/phases/01-foundation/01-VALIDATION.md § "Per-Task Verification Map" (coordinate-order + PostGIS-present rows)
+    - .planning/phases/01-foundation/01-CONTEXT.md D-08 (geometry(linestring,4326), hand-edit migration), D-10 (PostGIS in first migration, GiST indexes)
     - src/db/schema/routes.ts (authored in plan 01-02a — the LineString customType + hand-edit warning comment)
     - tests/fixtures/db.ts (describeIfDb + test client from plan 01-01)
   </read_first>
   <action>
-    Run `npx drizzle-kit generate` to emit the schema migration from the 01-02a schema. Open the generated Drizzle migration SQL. Find the routes.geom column emitted as `geometry(point, 4326)` (or `geometry(Point,4326)`) and CHANGE it to `geometry(LineString, 4326)`. Add the comment line `-- HAND-EDITED: Drizzle generates point; must be linestring` directly above that column. Confirm the GiST index on geom is present in the generated SQL; add it if drizzle-kit omitted it. Do NOT run `drizzle-kit push` (it bypasses this file-review edit) — the push happens via the migrate runner in Task 2.
-    Author tests/postgis.test.ts under describeIfDb: (a) `SELECT postgis_version()` returns a non-null value (extension present); (b) insert a route via `ST_GeomFromGeoJSON` of a LineString whose first coordinate is Istanbul [28.9, 41.0], then read back via `ST_AsGeoJSON(geom)` and assert the first coordinate is 28.9 (longitude first) — proving coordinate order (SETUP-03 / GEO coordinate-order guard).
+    Run `npx drizzle-kit generate` to emit the schema migration from the 01-02a schema. Open the generated Drizzle migration SQL. Find the routes.geom column emitted as `geometry(point, 4326)` (or `geometry(Point,4326)`) and CHANGE it to `geometry(LineString, 4326)` (D-08). Add the comment line `-- HAND-EDITED: Drizzle generates point; must be linestring` directly above that column. Confirm the GiST index on geom is present in the generated SQL; add it if drizzle-kit omitted it (D-10 GiST requirement). Do NOT run `drizzle-kit push` (it bypasses this file-review edit) — the push happens via the migrate runner in Task 2.
+    Author tests/postgis.test.ts under describeIfDb: (a) `SELECT postgis_version()` returns a non-null value (extension present — D-10); (b) insert a route via `ST_GeomFromGeoJSON` of a LineString whose first coordinate is Istanbul [28.9, 41.0], then read back via `ST_AsGeoJSON(geom)` and assert the first coordinate is 28.9 (longitude first) — proving coordinate order (SETUP-03 / GEO coordinate-order guard).
   </action>
   <verify>
     <automated>grep -rl "HAND-EDITED" src/db/migrations/ && grep -ri "geometry(LineString" src/db/migrations/ && bash -c 'if grep -rqi "geometry(point" src/db/migrations/; then echo "FAIL: point still present"; exit 1; fi'</automated>
@@ -99,7 +100,7 @@ Output: A migrated Neon database with PostGIS enabled, all 11 tables present, ro
   </read_first>
   <action>
     [BLOCKING — schema push] Apply the schema to the live Neon database, seed the default tenant, and run the DB integration tests. This is a human-action checkpoint because it requires the Neon connection string (provisioned outside Claude in `.env.local`) and writes to a live database; build/type checks alone are a false-positive verification state. Claude runs the commands once the connection strings are present; the human confirms the live DB state.
-    Steps: (1) ensure DATABASE_URL + TEST_DATABASE_URL are set in `.env.local`; (2) run the migration runner `npx tsx src/db/migrate.ts` (enables PostGIS, then applies the LineString-corrected migration); (3) run the seed `npx tsx src/db/seed.ts`; (4) verify the live DB; (5) run the DB integration tests against the test branch. See <how-to-verify> for the exact commands.
+    Steps: (1) ensure DATABASE_URL + TEST_DATABASE_URL are set in `.env.local`; (2) run the migration runner `npx tsx src/db/migrate.ts` (enables PostGIS via the first migration per D-10, then applies the LineString-corrected migration per D-08); (3) run the seed `npx tsx src/db/seed.ts`; (4) verify the live DB; (5) run the DB integration tests against the test branch. See <how-to-verify> for the exact commands.
   </action>
   <what-built>
     The full Drizzle schema (plan 01-02a), the PostGIS-first migration runner (src/db/migrate.ts), the seed script (src/db/seed.ts), and the coordinate-order test (this plan). The migration runner enables PostGIS then applies the LineString-corrected migration. This task applies them to the live Neon database.
@@ -165,3 +166,4 @@ Create `.planning/phases/01-foundation/01-02b-SUMMARY.md` when done.
 </output>
 </content>
 </invoke>
+</output>
