@@ -31,7 +31,14 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Office engineer can register a worker or auditor by Telegram User ID and name, and assign them to a project
   4. Office engineer can view remaining balance per BOQ line item on the project page
   5. Dashboard language can be toggled between Turkish and English and the preference persists across pages
-**Plans**: TBD
+**Plans**: 6 plans
+Plans:
+- [ ] 01-01-PLAN.md — Next.js 15 scaffold, deps, shadcn, Vitest harness + fixtures (Wave 0)
+- [ ] 01-02-PLAN.md — Drizzle/PostGIS schema + LineString migration + seed + [BLOCKING] schema push
+- [ ] 01-03-PLAN.md — Auth.js allowlist magic-link + dashboard guard + next-intl TR/EN
+- [ ] 01-04-PLAN.md — Minimal Telegram /start webhook (pending_people, idempotent, secret-verified)
+- [ ] 01-05-PLAN.md — Project CRUD + people approval/assignment + tabbed detail shell
+- [ ] 01-06-PLAN.md — BOQ CRUD + Excel import + GeoJSON route upload
 **UI hint**: yes
 
 ### Phase 2: Worker Bot
@@ -100,7 +107,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 0/TBD | Not started | - |
+| 1. Foundation | 0/6 | Not started | - |
 | 2. Worker Bot | 0/TBD | Not started | - |
 | 3. Audit Loop | 0/TBD | Not started | - |
 | 4. Spatial Layer | 0/TBD | Not started | - |
