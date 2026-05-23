@@ -31,12 +31,13 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Office engineer can register a worker or auditor by Telegram User ID and name, and assign them to a project
   4. Office engineer can view remaining balance per BOQ line item on the project page
   5. Dashboard language can be toggled between Turkish and English and the preference persists across pages
-**Plans**: 6 plans
+**Plans**: 7 plans
 Plans:
 - [ ] 01-01-PLAN.md — Next.js 15 scaffold, deps, shadcn, Vitest harness + fixtures (Wave 0)
-- [ ] 01-02-PLAN.md — Drizzle/PostGIS schema + LineString migration + seed + [BLOCKING] schema push
+- [ ] 01-02a-PLAN.md — Author Drizzle/PostGIS schema + 0000 PostGIS migration + migrate runner + seed + tenant/balance helpers
+- [ ] 01-02b-PLAN.md — Generate migration + hand-edit LineString + coordinate-order test + [BLOCKING] live schema push
 - [ ] 01-03-PLAN.md — Auth.js allowlist magic-link + dashboard guard + next-intl TR/EN
-- [ ] 01-04-PLAN.md — Minimal Telegram /start webhook (pending_people, idempotent, secret-verified)
+- [ ] 01-04-PLAN.md — Minimal Telegram /start webhook (pending_people, idempotent, secretToken-verified)
 - [ ] 01-05-PLAN.md — Project CRUD + people approval/assignment + tabbed detail shell
 - [ ] 01-06-PLAN.md — BOQ CRUD + Excel import + GeoJSON route upload
 **UI hint**: yes

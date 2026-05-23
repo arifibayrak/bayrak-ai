@@ -955,8 +955,14 @@ bot.command('start', async (ctx) => {
   );
 });
 
-// Export as Next.js route handler
-export const POST = webhookCallback(bot, 'std/http');
+// Export as Next.js route handler.
+// Pass secretToken so grammY validates the X-Telegram-Bot-Api-Secret-Token
+// header against TELEGRAM_WEBHOOK_SECRET before running the /start handler.
+// A request with a wrong/missing secret header is rejected (grammY responds
+// with a 401-class error and the update is NOT processed).
+export const POST = webhookCallback(bot, 'std/http', {
+  secretToken: process.env.TELEGRAM_WEBHOOK_SECRET!,
+});
 ```
 
 **vercel.json (root):**
@@ -992,9 +998,12 @@ export async function GET() {
   return Response.json({ ok: true, phase: 1 });
 }
 
-// The webhookCallback from grammY handles secret_token verification automatically
-// when TELEGRAM_WEBHOOK_SECRET env var is set.
-// Alternatively: check X-Telegram-Bot-Api-Secret-Token header manually.
+// grammY verifies the secret token ONLY when you pass the `secretToken` option
+// to webhookCallback (it does NOT auto-read TELEGRAM_WEBHOOK_SECRET from env):
+//   webhookCallback(bot, 'std/http', { secretToken: process.env.TELEGRAM_WEBHOOK_SECRET! })
+// grammY then compares the incoming X-Telegram-Bot-Api-Secret-Token header to that
+// value and rejects mismatches (401-class) without processing the update.
+// Register the webhook with the same value: setWebhook?...&secret_token=${TELEGRAM_WEBHOOK_SECRET}.
 ```
 
 **Phase 1 env vars:**
@@ -1329,22 +1338,22 @@ Vitest is strongly preferred over Jest for this stack because: (1) ESM-native �
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Auth.js signIn callback parameter on verificationRequest**
    - What we know: The callback receives `user`, `account`, `profile`, `email` params. The `email.verificationRequest` flag distinguishes the two call points.
    - What's unclear: Whether `user.email` is populated on the first (pre-email) call in beta.31 specifically.
-   - Recommendation: Test the callback with a `console.log` on first deploy; the allowlist check pattern above is safe either way (returns `false` if email is empty string).
+   - **RESOLVED:** The allowlist callback uses a defensive empty-email check — `const incomingEmail = (user?.email ?? '').toLowerCase(); if (\!incomingEmail) return false;` — so a non-allowlisted (or empty-email) address is blocked on BOTH callback shapes (the pre-email `verificationRequest === true` call and the link-click call). Whether or not `user.email` is populated on the first call in beta.31, no email is sent and no session is created for an address that is not in `AUTH_ALLOWED_EMAILS`.
 
 2. **Tenant ID bootstrapping sequence**
    - What we know: `tenant_id` is nullable in all tables; a default tenant must be seeded.
    - What's unclear: Should the seed tenant UUID be hardcoded in migration SQL, or read from `BAYRAK_TENANT_ID` env var via a seed script?
-   - Recommendation: Hardcode a well-known UUID (e.g., `'00000000-0000-0000-0000-000000000001'`) in migration SQL so the seed is repeatable and deterministic. Put the same UUID in `.env.local` as `BAYRAK_TENANT_ID`.
+   - **RESOLVED:** Hardcode the well-known seed tenant UUID `00000000-0000-0000-0000-000000000001`, created in the PostGIS/first migration path (seeded idempotently in `src/db/seed.ts` via `onConflictDoNothing`). `getDefaultTenantId()` in `src/lib/tenant.ts` returns this UUID (env `BAYRAK_TENANT_ID` override with the same hardcoded fallback), so app code always supplies a deterministic, repeatable tenant_id.
 
 3. **ExcelJS buffer size limit for large BOQ files**
    - What we know: ExcelJS loads the entire workbook into memory.
    - What's unclear: Next.js Server Actions have a 4MB default body limit; large BOQ files from contractor systems may exceed this.
-   - Recommendation: Set `export const runtime = 'nodejs'` on the BOQ import route handler (if needed), and document the 4MB limit in the UI sub-label under the file input.
+   - **RESOLVED:** Surface a 4MB limit note in the import UI as a sub-label under the file input (the BOQ import handler runs on `runtime = 'nodejs'`). Files exceeding the 4MB Server Action body limit are out of scope for v1; the sub-label sets the expectation up front.
 
 ---
 
