@@ -31,6 +31,8 @@ must_haves:
     - "boq_items exposes plannedQty + approvedQty as numeric(12,3) with approvedQty default '0' and a sortOrder column"
     - "remainingBalance(planned, approved) returns planned − approved (SETUP-04) and is unit-tested without a DB"
     - "getDefaultTenantId() returns the fixed seed tenant UUID 00000000-0000-0000-0000-000000000001"
+    - "D-06: boq_items carries material/unit/contracted-qty plus a maintained remaining balance, with a commented-out nullable unit_price placeholder (unit_price omitted in v1, addable later)"
+    - "D-09: every domain table carries a nullable tenant_id referencing tenants.id, with a single seeded default tenant for v1 and no tenant-switching UI"
   artifacts:
     - path: "src/db/schema/index.ts"
       provides: "Barrel export of all Drizzle tables consumed across the app"
