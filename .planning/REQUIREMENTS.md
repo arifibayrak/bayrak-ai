@@ -108,13 +108,50 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (populated by roadmapper) | | |
+| AUTH-01 | Phase 1 | Pending |
+| AUTH-02 | Phase 1 | Pending |
+| AUTH-03 | Phase 1 | Pending |
+| AUTH-04 | Phase 1 | Pending |
+| SETUP-01 | Phase 1 | Pending |
+| SETUP-02 | Phase 1 | Pending |
+| SETUP-03 | Phase 1 | Pending |
+| SETUP-04 | Phase 1 | Pending |
+| I18N-02 | Phase 1 | Pending |
+| LOG-01 | Phase 2 | Pending |
+| LOG-02 | Phase 2 | Pending |
+| LOG-03 | Phase 2 | Pending |
+| LOG-04 | Phase 2 | Pending |
+| LOG-05 | Phase 2 | Pending |
+| LOG-06 | Phase 2 | Pending |
+| LOG-07 | Phase 2 | Pending |
+| LOG-08 | Phase 2 | Pending |
+| LOG-09 | Phase 2 | Pending |
+| LOG-10 | Phase 2 | Pending |
+| I18N-01 | Phase 2 | Pending |
+| AUDIT-01 | Phase 3 | Pending |
+| AUDIT-02 | Phase 3 | Pending |
+| AUDIT-03 | Phase 3 | Pending |
+| AUDIT-04 | Phase 3 | Pending |
+| AUDIT-05 | Phase 3 | Pending |
+| AUDIT-06 | Phase 3 | Pending |
+| GEO-01 | Phase 4 | Pending |
+| GEO-02 | Phase 4 | Pending |
+| DASH-01 | Phase 5 | Pending |
+| DASH-02 | Phase 5 | Pending |
+| DASH-03 | Phase 5 | Pending |
+| DASH-04 | Phase 5 | Pending |
+| DASH-05 | Phase 5 | Pending |
+| AI-01 | Phase 6 | Pending |
+| AI-02 | Phase 6 | Pending |
+| AI-03 | Phase 6 | Pending |
+| AI-04 | Phase 6 | Pending |
+| AI-05 | Phase 6 | Pending |
 
 **Coverage:**
-- v1 requirements: 35 total
-- Mapped to phases: 0 (pending roadmap)
-- Unmapped: 35 ⚠️
+- v1 requirements: 38 total
+- Mapped to phases: 38
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-05-23*
-*Last updated: 2026-05-23 after initial definition*
+*Last updated: 2026-05-23 — traceability populated after roadmap creation*
