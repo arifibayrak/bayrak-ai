@@ -23,7 +23,7 @@ Requirements for the initial release. Each maps to roadmap phases.
 
 ### Worker Logging (Telegram bot)
 
-- [ ] **LOG-01**: Worker is identified by their Telegram User ID on `/start`; the bot greets them by role
+- [x] **LOG-01**: Worker is identified by their Telegram User ID on `/start`; the bot greets them by role
 - [x] **LOG-02**: Worker selects an active project from an inline keyboard of projects assigned to them
 - [x] **LOG-03**: Worker selects which BOQ line item / material the work applies to (inline keyboard)
 - [x] **LOG-04**: Worker uploads a photo; the bot rejects non-photo input and reprompts
@@ -117,7 +117,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SETUP-03 | Phase 1 | Complete |
 | SETUP-04 | Phase 1 | Complete |
 | I18N-02 | Phase 1 | Complete |
-| LOG-01 | Phase 2 | Pending |
+| LOG-01 | Phase 2 | Complete |
 | LOG-02 | Phase 2 | Complete |
 | LOG-03 | Phase 2 | Complete |
 | LOG-04 | Phase 2 | Complete |

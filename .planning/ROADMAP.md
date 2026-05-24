@@ -87,7 +87,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 02-04-PLAN.md — Bot pipeline scaffold: idempotency middleware (D-13 Guard 1), identity guard, /start + Devam/Baştan, /iptal, FSM dispatcher + cold-start resume (SC5) + TTL
+- [x] 02-04-PLAN.md — Bot pipeline scaffold: idempotency middleware (D-13 Guard 1), identity guard, /start + Devam/Baştan, /iptal, FSM dispatcher + cold-start resume (SC5) + TTL
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
@@ -164,7 +164,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 7/7 | Complete | 2026-05-24 |
-| 2. Worker Bot | 3/6 | In Progress|  |
+| 2. Worker Bot | 4/6 | In Progress|  |
 | 3. Audit Loop | 0/TBD | Not started | - |
 | 4. Spatial Layer | 0/TBD | Not started | - |
 | 5. Dashboard & Map | 0/TBD | Not started | - |
