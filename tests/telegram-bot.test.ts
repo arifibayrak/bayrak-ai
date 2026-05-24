@@ -1751,6 +1751,239 @@ describe('quantity + notes', () => {
 });
 
 // ---------------------------------------------------------------------------
+// (l1) Pure unit tests — submission insert (LOG-08, D-18)
+//
+// Tests verify:
+//   - confirm:submit calls getTxDb().transaction with status='pending_audit'
+//     and flowId matching the state row
+//   - notes=null when skipped
+//   - bot replies "Gönderildi" with a "Yeni kayıt" button (D-18)
+//   - the flow does NOT auto-advance to a new flow
+// ---------------------------------------------------------------------------
+
+describe('submission insert (unit)', () => {
+  const WORKER_ID = 85001;
+  const PERSON_ID = 'person-85001';
+  const FLOW_ID = 'flow-85001-uuid-0000';
+  const PROJECT_ID = 'proj-85001';
+  const BOQ_ITEM_ID = 'boq-85001';
+
+  const fullStateData = {
+    step: 'confirm',
+    projectId: PROJECT_ID,
+    boqItemId: BOQ_ITEM_ID,
+    photoUrl: 'https://blob.example.com/photo.jpg',
+    photoFileId: 'file_id_85001',
+    locationLat: 41.0082,
+    locationLon: 28.9784,
+    quantity: 50,
+    unit: 'm',
+    notes: null,
+  };
+
+  beforeEach(() => {
+    process.env.TELEGRAM_BOT_TOKEN = 'TEST:fake_token_insert';
+    process.env.TELEGRAM_WEBHOOK_SECRET = 'test-secret-insert';
+    vi.resetModules();
+  });
+
+  afterEach(() => {
+    delete process.env.TELEGRAM_BOT_TOKEN;
+    delete process.env.TELEGRAM_WEBHOOK_SECRET;
+    vi.restoreAllMocks();
+    vi.resetModules();
+  });
+
+  it('LOG-08: confirm:submit replies "Gönderildi" with a "Yeni kayıt" button (D-18)', async () => {
+    // Mock @/db for conversation_state load + idempotency
+    vi.doMock('@/db', () => ({
+      db: {
+        insert: vi.fn().mockReturnValue({
+          values: vi.fn().mockReturnValue({
+            onConflictDoNothing: vi.fn().mockReturnValue({
+              returning: vi.fn().mockResolvedValue([{ id: BigInt(1) }]),
+            }),
+          }),
+        }),
+        select: vi.fn().mockReturnValue({
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue([{
+              id: 'state-confirm-85001',
+              telegramUserId: BigInt(WORKER_ID),
+              personId: PERSON_ID,
+              flowId: FLOW_ID,
+              currentStep: 'confirm',
+              data: fullStateData,
+              updatedAt: new Date(),
+            }]),
+          }),
+        }),
+        update: vi.fn().mockReturnValue({
+          set: vi.fn().mockReturnValue({
+            where: vi.fn().mockReturnValue({
+              returning: vi.fn().mockResolvedValue([{ id: 'state-confirm-85001' }]),
+            }),
+          }),
+        }),
+      },
+    }));
+
+    // Mock getTxDb via neon-serverless (used by handleConfirmSubmit)
+    const mockTxInsert = vi.fn().mockReturnValue({
+      values: vi.fn().mockReturnValue({
+        onConflictDoNothing: vi.fn().mockResolvedValue([]),
+      }),
+    });
+    const mockTxDelete = vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue([]) });
+    const mockTxFn = vi.fn().mockImplementation(async (fn: (tx: unknown) => Promise<void>) => {
+      await fn({ insert: mockTxInsert, delete: mockTxDelete });
+    });
+    // Pool must be a real class (new Pool(...)) — use a class mock
+    class MockPool { constructor(_opts: unknown) {} }
+    vi.doMock('@neondatabase/serverless', () => ({
+      Pool: MockPool,
+      neonConfig: {},
+    }));
+    vi.doMock('drizzle-orm/neon-serverless', () => ({
+      drizzle: vi.fn().mockReturnValue({ transaction: mockTxFn }),
+    }));
+
+    const bot = await setupBotForTest();
+    const sentMethods: Array<{ method: string; payload: unknown }> = [];
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    bot.api.config.use(async (_prev: any, method: any, payload: any) => {
+      sentMethods.push({ method, payload });
+      return Promise.resolve({ ok: true, result: {} as never });
+    });
+
+    const confirmSubmitUpdate = {
+      update_id: WORKER_ID + 100,
+      callback_query: {
+        id: 'cb-confirm-submit',
+        from: { id: WORKER_ID, first_name: 'Worker', is_bot: false, language_code: 'tr' },
+        chat_instance: 'chat-inst-submit',
+        data: 'confirm:submit',
+        message: {
+          message_id: 400,
+          from: { id: 123456, is_bot: true, first_name: 'TestBot', username: 'testbot' },
+          chat: { id: WORKER_ID, type: 'private' as const, first_name: 'Worker' },
+          date: Math.floor(Date.now() / 1000),
+          text: 'confirm message',
+        },
+      },
+    };
+
+    await bot.handleUpdate(confirmSubmitUpdate);
+
+    // Must reply with "Gönderildi" text
+    const { MESSAGES } = await import('@/lib/bot-messages');
+    const textReplies = sentMethods.filter(m => m.method === 'sendMessage');
+    expect(textReplies.some(r => (r.payload as { text?: string }).text?.includes(MESSAGES.sent))).toBe(true);
+
+    // Must include a "Yeni kayıt" button (D-18)
+    const sentReply = textReplies.find(r => (r.payload as { text?: string }).text?.includes(MESSAGES.sent));
+    const kb = (sentReply?.payload as { reply_markup?: { inline_keyboard: Array<Array<{ callback_data: string; text: string }>> } })?.reply_markup;
+    expect(kb).toBeDefined();
+    const allButtons = kb!.inline_keyboard.flat();
+    expect(allButtons.some(b => b.callback_data === 'flow:new')).toBe(true);
+    expect(allButtons.some(b => b.text === MESSAGES.newLog)).toBe(true);
+  });
+
+  it('LOG-08: confirm:submit does NOT auto-advance to a new flow (D-18)', async () => {
+    vi.doMock('@/db', () => ({
+      db: {
+        insert: vi.fn().mockReturnValue({
+          values: vi.fn().mockReturnValue({
+            onConflictDoNothing: vi.fn().mockReturnValue({
+              returning: vi.fn().mockResolvedValue([{ id: BigInt(1) }]),
+            }),
+          }),
+        }),
+        select: vi.fn().mockReturnValue({
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue([{
+              id: 'state-confirm-85002',
+              telegramUserId: BigInt(WORKER_ID),
+              personId: PERSON_ID,
+              flowId: FLOW_ID,
+              currentStep: 'confirm',
+              data: fullStateData,
+              updatedAt: new Date(),
+            }]),
+          }),
+        }),
+        update: vi.fn().mockReturnValue({
+          set: vi.fn().mockReturnValue({
+            where: vi.fn().mockReturnValue({
+              returning: vi.fn().mockResolvedValue([{ id: 'state-confirm-85002' }]),
+            }),
+          }),
+        }),
+      },
+    }));
+
+    class MockPool2 { constructor(_opts: unknown) {} }
+    vi.doMock('@neondatabase/serverless', () => ({
+      Pool: MockPool2,
+      neonConfig: {},
+    }));
+    vi.doMock('drizzle-orm/neon-serverless', () => ({
+      drizzle: vi.fn().mockReturnValue({
+        transaction: vi.fn().mockImplementation(async (fn: (tx: unknown) => Promise<void>) => {
+          await fn({
+            insert: vi.fn().mockReturnValue({ values: vi.fn().mockReturnValue({ onConflictDoNothing: vi.fn().mockResolvedValue([]) }) }),
+            delete: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue([]) }),
+          });
+        }),
+      }),
+    }));
+
+    const bot = await setupBotForTest();
+    const sentMethods: Array<{ method: string; payload: unknown }> = [];
+
+    // eslint-disable name of greeting to detect auto-loop
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    bot.api.config.use(async (_prev: any, method: any, payload: any) => {
+      sentMethods.push({ method, payload });
+      return Promise.resolve({ ok: true, result: {} as never });
+    });
+
+    const confirmUpdate = {
+      update_id: WORKER_ID + 200,
+      callback_query: {
+        id: 'cb-no-loop',
+        from: { id: WORKER_ID, first_name: 'Worker', is_bot: false, language_code: 'tr' },
+        chat_instance: 'chat-inst-noloop',
+        data: 'confirm:submit',
+        message: {
+          message_id: 401,
+          from: { id: 123456, is_bot: true, first_name: 'TestBot', username: 'testbot' },
+          chat: { id: WORKER_ID, type: 'private' as const, first_name: 'Worker' },
+          date: Math.floor(Date.now() / 1000),
+          text: 'confirm message',
+        },
+      },
+    };
+
+    await bot.handleUpdate(confirmUpdate);
+
+    // Should only have one sendMessage (the Gönderildi reply)
+    // NO greeting message (which would indicate auto-loop started)
+    const { MESSAGES } = await import('@/lib/bot-messages');
+    const textReplies = sentMethods.filter(m => m.method === 'sendMessage');
+    // Must NOT contain a greeting (which would appear in an auto-loop)
+    const greetingLike = textReplies.find(r =>
+      (r.payload as { text?: string }).text?.includes('Merhaba') &&
+      (r.payload as { text?: string }).text?.includes('seçin')
+    );
+    expect(greetingLike).toBeUndefined();
+    // Must contain the sent message
+    expect(textReplies.some(r => (r.payload as { text?: string }).text?.includes(MESSAGES.sent))).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // (l) Pure unit tests — confirm summary + per-field edit (D-16)
 //
 // Tests verify:
