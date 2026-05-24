@@ -78,3 +78,37 @@ export async function getRoute(projectId: string) {
 
   return result[0] ?? null;
 }
+
+/**
+ * getRouteGeoJSON — fetch the project route and return geometry as parsed GeoJSON.
+ *
+ * ST_AsGeoJSON is MANDATORY — routes.geom custom type fromDriver returns raw WKB.
+ * Returns null when no route exists for the project.
+ * uploadedAt is serialized to ISO string for RSC → client serializability.
+ * DASH-01: coordinates are [longitude, latitude] per GeoJSON spec.
+ */
+export async function getRouteGeoJSON(projectId: string) {
+  const session = await auth();
+  if (!session) throw new Error('Unauthorized');
+
+  const { eq } = await import('drizzle-orm');
+  const result = await db
+    .select({
+      id: routes.id,
+      coordinateCount: routes.coordinateCount,
+      uploadedAt: routes.uploadedAt,
+      geomJson: sql`ST_AsGeoJSON(${routes.geom})`,
+    })
+    .from(routes)
+    .where(eq(routes.projectId, projectId))
+    .limit(1);
+
+  if (!result[0]) return null;
+
+  const { geomJson, uploadedAt, ...rest } = result[0];
+  return {
+    ...rest,
+    uploadedAt: (uploadedAt as Date).toISOString(),
+    geojson: JSON.parse(geomJson as string) as { type: 'LineString'; coordinates: [number, number][] },
+  };
+}
