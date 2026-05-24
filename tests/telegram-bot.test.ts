@@ -371,6 +371,7 @@ describe('unregistered user (identity guard)', () => {
             onConflictDoNothing: vi.fn().mockReturnValue({
               returning: vi.fn().mockResolvedValue([{ id: BigInt(1) }]),
             }),
+            onConflictDoUpdate: vi.fn().mockResolvedValue(undefined),
           }),
         }),
         select: vi.fn().mockReturnValue({
@@ -499,6 +500,7 @@ describe('/start + cancel', () => {
             onConflictDoNothing: vi.fn().mockReturnValue({
               returning: vi.fn().mockResolvedValue([{ id: BigInt(1) }]),
             }),
+            onConflictDoUpdate: vi.fn().mockResolvedValue(undefined),
           }),
         }),
         select: vi.fn().mockImplementation(() => {
@@ -575,6 +577,7 @@ describe('/start + cancel', () => {
             onConflictDoNothing: vi.fn().mockReturnValue({
               returning: vi.fn().mockResolvedValue([{ id: BigInt(2) }]),
             }),
+            onConflictDoUpdate: vi.fn().mockResolvedValue(undefined),
           }),
         }),
         select: vi.fn().mockImplementation(() => {
@@ -659,6 +662,7 @@ describe('/start + cancel', () => {
             onConflictDoNothing: vi.fn().mockReturnValue({
               returning: vi.fn().mockResolvedValue([{ id: BigInt(3) }]),
             }),
+            onConflictDoUpdate: vi.fn().mockResolvedValue(undefined),
           }),
         }),
         select: vi.fn().mockReturnValue({
@@ -707,6 +711,7 @@ describe('cold-start resume (SC5) + TTL (D-22)', () => {
           onConflictDoNothing: vi.fn().mockReturnValue({
             returning: vi.fn().mockResolvedValue([{ id: BigInt(1) }]),
           }),
+          onConflictDoUpdate: vi.fn().mockResolvedValue(undefined),
         }),
       }),
       select: vi.fn().mockReturnValue({
@@ -901,6 +906,7 @@ describe('project + boq selection', () => {
           onConflictDoNothing: vi.fn().mockReturnValue({
             returning: vi.fn().mockResolvedValue([{ id: BigInt(1) }]),
           }),
+          onConflictDoUpdate: vi.fn().mockResolvedValue(undefined),
         }),
       }),
       select: vi.fn().mockImplementation((_fields?: unknown) => {
@@ -966,6 +972,7 @@ describe('project + boq selection', () => {
             onConflictDoNothing: vi.fn().mockReturnValue({
               returning: vi.fn().mockResolvedValue([{ id: BigInt(1) }]),
             }),
+            onConflictDoUpdate: vi.fn().mockResolvedValue(undefined),
           }),
         }),
         select: vi.fn().mockImplementation(() => {
@@ -1043,6 +1050,7 @@ describe('project + boq selection', () => {
             onConflictDoNothing: vi.fn().mockReturnValue({
               returning: vi.fn().mockResolvedValue([{ id: BigInt(1) }]),
             }),
+            onConflictDoUpdate: vi.fn().mockResolvedValue(undefined),
           }),
         }),
         select: vi.fn().mockImplementation(() => {
@@ -1125,6 +1133,7 @@ describe('project + boq selection', () => {
             onConflictDoNothing: vi.fn().mockReturnValue({
               returning: vi.fn().mockResolvedValue([{ id: BigInt(1) }]),
             }),
+            onConflictDoUpdate: vi.fn().mockResolvedValue(undefined),
           }),
         }),
         select: vi.fn().mockImplementation(() => {
@@ -1191,6 +1200,7 @@ describe('project + boq selection', () => {
             onConflictDoNothing: vi.fn().mockReturnValue({
               returning: vi.fn().mockResolvedValue([{ id: BigInt(1) }]),
             }),
+            onConflictDoUpdate: vi.fn().mockResolvedValue(undefined),
           }),
         }),
         select: vi.fn().mockImplementation(() => {
@@ -1276,6 +1286,7 @@ describe('photo + location enforcement', () => {
           onConflictDoNothing: vi.fn().mockReturnValue({
             returning: vi.fn().mockResolvedValue([{ id: BigInt(1) }]),
           }),
+          onConflictDoUpdate: vi.fn().mockResolvedValue(undefined),
         }),
       }),
       select: vi.fn().mockReturnValue({
@@ -1437,6 +1448,7 @@ describe('quantity + notes', () => {
           onConflictDoNothing: vi.fn().mockReturnValue({
             returning: vi.fn().mockResolvedValue([{ id: BigInt(1) }]),
           }),
+          onConflictDoUpdate: vi.fn().mockResolvedValue(undefined),
         }),
       }),
       select: vi.fn().mockReturnValue({
@@ -1502,20 +1514,16 @@ describe('quantity + notes', () => {
     const bot = await setupBotForTest();
     let capturedUpdateData: Record<string, unknown> | null = null;
 
-    // We need to intercept the saveState update call to check the quantity value
-    // Since saveState calls db.update, we need to capture what it saves.
-    // We'll re-mock @/db to intercept the update set call.
+    // CR-05: saveState now uses insert().values().onConflictDoUpdate() instead of update().set().
+    // Capture the set argument passed to onConflictDoUpdate to verify the quantity value.
     vi.resetModules();
     vi.doMock('@/lib/bot-photo', () => ({
       uploadPhotoToBlob: vi.fn().mockResolvedValue('https://blob.example.com/photo.jpg'),
     }));
 
-    const mockUpdateSetWhere = vi.fn().mockReturnValue({
-      returning: vi.fn().mockResolvedValue([{ id: 'state-qty' }]),
-    });
-    const mockUpdateSet = vi.fn().mockImplementation((data: Record<string, unknown>) => {
-      capturedUpdateData = data;
-      return { where: mockUpdateSetWhere };
+    const mockOnConflictDoUpdate = vi.fn().mockImplementation((opts: Record<string, unknown>) => {
+      capturedUpdateData = opts.set as Record<string, unknown>;
+      return Promise.resolve(undefined);
     });
 
     vi.doMock('@/db', () => ({
@@ -1525,6 +1533,7 @@ describe('quantity + notes', () => {
             onConflictDoNothing: vi.fn().mockReturnValue({
               returning: vi.fn().mockResolvedValue([{ id: BigInt(1) }]),
             }),
+            onConflictDoUpdate: mockOnConflictDoUpdate,
           }),
         }),
         select: vi.fn().mockReturnValue({
@@ -1538,9 +1547,7 @@ describe('quantity + notes', () => {
             }]),
           }),
         }),
-        update: vi.fn().mockReturnValue({
-          set: mockUpdateSet,
-        }),
+        update: vi.fn().mockReturnValue({ set: vi.fn().mockReturnValue({ where: vi.fn().mockReturnValue({ returning: vi.fn().mockResolvedValue([]) }) }) }),
       },
     }));
 
@@ -1555,7 +1562,7 @@ describe('quantity + notes', () => {
 
     await bot2.handleUpdate(makeTextUpdate(WORKER_ID, '25,5', WORKER_ID + 200));
 
-    // Verify the update was called with quantity = 25.5 (not 25)
+    // Verify the upsert was called with quantity = 25.5 (not 25)
     expect(capturedUpdateData).not.toBeNull();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const savedQty = (capturedUpdateData as any)?.data?.quantity;
@@ -1587,13 +1594,11 @@ describe('quantity + notes', () => {
     let capturedData: Record<string, unknown> | null = null;
     const replies: string[] = [];
 
+    // CR-05: saveState now uses insert().values().onConflictDoUpdate() — capture from there
     vi.resetModules();
-    const mockUpdateSetWhere2 = vi.fn().mockReturnValue({
-      returning: vi.fn().mockResolvedValue([{ id: 'state-notes' }]),
-    });
-    const mockUpdateSet2 = vi.fn().mockImplementation((data: Record<string, unknown>) => {
-      capturedData = data;
-      return { where: mockUpdateSetWhere2 };
+    const mockOnConflictDoUpdate2 = vi.fn().mockImplementation((opts: Record<string, unknown>) => {
+      capturedData = opts.set as Record<string, unknown>;
+      return Promise.resolve(undefined);
     });
 
     vi.doMock('@/db', () => ({
@@ -1603,6 +1608,7 @@ describe('quantity + notes', () => {
             onConflictDoNothing: vi.fn().mockReturnValue({
               returning: vi.fn().mockResolvedValue([{ id: BigInt(1) }]),
             }),
+            onConflictDoUpdate: mockOnConflictDoUpdate2,
           }),
         }),
         select: vi.fn().mockReturnValue({
@@ -1616,9 +1622,7 @@ describe('quantity + notes', () => {
             }]),
           }),
         }),
-        update: vi.fn().mockReturnValue({
-          set: mockUpdateSet2,
-        }),
+        update: vi.fn().mockReturnValue({ set: vi.fn().mockReturnValue({ where: vi.fn().mockReturnValue({ returning: vi.fn().mockResolvedValue([]) }) }) }),
       },
     }));
 
@@ -1649,7 +1653,8 @@ describe('quantity + notes', () => {
 
     await bot3.handleUpdate(skipUpdate);
 
-    // Verify null notes saved in data
+    // Verify null notes saved in data (from onConflictDoUpdate set argument)
+    // set = { currentStep, data, updatedAt } — notes lives at capturedData.data.notes
     expect(capturedData).not.toBeNull();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const savedNotes = (capturedData as any)?.data?.notes;
@@ -1668,13 +1673,11 @@ describe('quantity + notes', () => {
     const bot = await setupBotForTest();
     let capturedData: Record<string, unknown> | null = null;
 
+    // CR-05: saveState now uses insert().values().onConflictDoUpdate() — capture from there
     vi.resetModules();
-    const mockUpdateSetWhere3 = vi.fn().mockReturnValue({
-      returning: vi.fn().mockResolvedValue([{ id: 'state-notes-text' }]),
-    });
-    const mockUpdateSet3 = vi.fn().mockImplementation((data: Record<string, unknown>) => {
-      capturedData = data;
-      return { where: mockUpdateSetWhere3 };
+    const mockOnConflictDoUpdate3 = vi.fn().mockImplementation((opts: Record<string, unknown>) => {
+      capturedData = opts.set as Record<string, unknown>;
+      return Promise.resolve(undefined);
     });
 
     vi.doMock('@/db', () => ({
@@ -1684,6 +1687,7 @@ describe('quantity + notes', () => {
             onConflictDoNothing: vi.fn().mockReturnValue({
               returning: vi.fn().mockResolvedValue([{ id: BigInt(1) }]),
             }),
+            onConflictDoUpdate: mockOnConflictDoUpdate3,
           }),
         }),
         select: vi.fn().mockReturnValue({
@@ -1697,9 +1701,7 @@ describe('quantity + notes', () => {
             }]),
           }),
         }),
-        update: vi.fn().mockReturnValue({
-          set: mockUpdateSet3,
-        }),
+        update: vi.fn().mockReturnValue({ set: vi.fn().mockReturnValue({ where: vi.fn().mockReturnValue({ returning: vi.fn().mockResolvedValue([]) }) }) }),
       },
     }));
 
@@ -1712,7 +1714,8 @@ describe('quantity + notes', () => {
 
     await bot4.handleUpdate(makeTextUpdate(WORKER_ID, 'Boru döşeme tamamlandı', WORKER_ID + 500));
 
-    // Verify notes saved in data
+    // Verify notes saved in data (from onConflictDoUpdate set argument)
+    // set = { currentStep, data, updatedAt } — notes lives at capturedData.data.notes
     expect(capturedData).not.toBeNull();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const savedNotes = (capturedData as any)?.data?.notes;
@@ -1778,6 +1781,7 @@ describe('submission insert (unit)', () => {
             onConflictDoNothing: vi.fn().mockReturnValue({
               returning: vi.fn().mockResolvedValue([{ id: BigInt(1) }]),
             }),
+            onConflictDoUpdate: vi.fn().mockResolvedValue(undefined),
           }),
         }),
         select: vi.fn().mockReturnValue({
@@ -1873,6 +1877,7 @@ describe('submission insert (unit)', () => {
             onConflictDoNothing: vi.fn().mockReturnValue({
               returning: vi.fn().mockResolvedValue([{ id: BigInt(1) }]),
             }),
+            onConflictDoUpdate: vi.fn().mockResolvedValue(undefined),
           }),
         }),
         select: vi.fn().mockReturnValue({
@@ -1995,6 +2000,7 @@ describe('confirm summary + edit (D-16)', () => {
           onConflictDoNothing: vi.fn().mockReturnValue({
             returning: vi.fn().mockResolvedValue([{ id: BigInt(1) }]),
           }),
+          onConflictDoUpdate: vi.fn().mockResolvedValue(undefined),
         }),
       }),
       select: vi.fn().mockReturnValue({
@@ -2065,14 +2071,11 @@ describe('confirm summary + edit (D-16)', () => {
     const bot = await setupBotForTest();
     let capturedUpdateData: Record<string, unknown> | null = null;
 
-    // Re-mock @/db to capture saveState update
+    // CR-05: saveState now uses insert().values().onConflictDoUpdate() — capture from there
     vi.resetModules();
-    const mockUpdateSetWhere = vi.fn().mockReturnValue({
-      returning: vi.fn().mockResolvedValue([{ id: 'state-confirm' }]),
-    });
-    const mockUpdateSet = vi.fn().mockImplementation((data: Record<string, unknown>) => {
-      capturedUpdateData = data;
-      return { where: mockUpdateSetWhere };
+    const mockOnConflictDoUpdateEdit = vi.fn().mockImplementation((opts: Record<string, unknown>) => {
+      capturedUpdateData = opts.set as Record<string, unknown>;
+      return Promise.resolve(undefined);
     });
 
     vi.doMock('@/db', () => ({
@@ -2082,6 +2085,7 @@ describe('confirm summary + edit (D-16)', () => {
             onConflictDoNothing: vi.fn().mockReturnValue({
               returning: vi.fn().mockResolvedValue([{ id: BigInt(1) }]),
             }),
+            onConflictDoUpdate: mockOnConflictDoUpdateEdit,
           }),
         }),
         select: vi.fn().mockReturnValue({
@@ -2095,7 +2099,7 @@ describe('confirm summary + edit (D-16)', () => {
             }]),
           }),
         }),
-        update: vi.fn().mockReturnValue({ set: mockUpdateSet }),
+        update: vi.fn().mockReturnValue({ set: vi.fn().mockReturnValue({ where: vi.fn().mockReturnValue({ returning: vi.fn().mockResolvedValue([]) }) }) }),
       },
     }));
 
@@ -2127,6 +2131,7 @@ describe('confirm summary + edit (D-16)', () => {
     await bot2.handleUpdate(editUpdate);
 
     // saveState should have been called with currentStep='quantity' and editReturnStep='confirm'
+    // (captured from onConflictDoUpdate set argument)
     expect(capturedUpdateData).not.toBeNull();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((capturedUpdateData as any)?.currentStep).toBe('quantity');
@@ -2150,6 +2155,7 @@ describe('confirm summary + edit (D-16)', () => {
             onConflictDoNothing: vi.fn().mockReturnValue({
               returning: vi.fn().mockResolvedValue([{ id: BigInt(1) }]),
             }),
+            onConflictDoUpdate: vi.fn().mockResolvedValue(undefined),
           }),
         }),
         select: vi.fn().mockReturnValue({
@@ -2208,6 +2214,12 @@ describeIfDb('submission persistence & idempotency (SC4)', () => {
   let flowId: string;
 
   beforeEach(async () => {
+    // CR-04: Belt-and-suspenders — ensure getTxDb() inside the handler also hits the
+    // test database even if the global test setup changes. tests/setup.ts sets
+    // DATABASE_URL = TEST_DATABASE_URL globally, but this local override makes the
+    // SC4 describe block self-contained and safe regardless of execution order.
+    process.env.DATABASE_URL = process.env.TEST_DATABASE_URL;
+
     // Reset modules FIRST — clear any vi.doMock from prior test groups
     // (especially the '@neondatabase/serverless' mock from submission insert unit tests)
     vi.resetModules();
@@ -2304,6 +2316,9 @@ describeIfDb('submission persistence & idempotency (SC4)', () => {
     await truncateAllTables(testDb);
     delete process.env.TELEGRAM_BOT_TOKEN;
     delete process.env.TELEGRAM_WEBHOOK_SECRET;
+    // CR-04: restore DATABASE_URL to avoid leaking test override into other describe blocks
+    // (tests/setup.ts sets it correctly for the full suite, but we restore here to be safe)
+    process.env.DATABASE_URL = process.env.TEST_DATABASE_URL;
     vi.restoreAllMocks();
     vi.resetModules();
   });
@@ -2456,5 +2471,465 @@ describeIfDb('submission persistence & idempotency (SC4)', () => {
     );
     const count = (result.rows[0] as { cnt: number }).cnt;
     expect(count).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// (m) Pure unit tests — CR-01 flow:resume keyboard rebuild
+//
+// Tests verify that flow:resume sends an inline keyboard (not bare text) for
+// keyboard-driven steps (PROJECT, BOQ, CONFIRM).
+// ---------------------------------------------------------------------------
+
+describe('flow:resume rebuilds inline keyboard (CR-01)', () => {
+  const WORKER_ID = 95001;
+  const PERSON_ID = 'person-95001';
+  const FLOW_ID = 'flow-95001';
+  const PROJECT_ID = 'proj-95001';
+  const BOQ_ITEM_ID = 'boq-95001';
+
+  function makeResumeCallbackUpdate(userId: number, updateId: number) {
+    return {
+      update_id: updateId,
+      callback_query: {
+        id: 'cb-resume-' + updateId,
+        from: { id: userId, first_name: 'Worker', is_bot: false, language_code: 'tr' },
+        chat_instance: 'chat-inst-resume',
+        data: 'flow:resume',
+        message: {
+          message_id: 600,
+          from: { id: 123456, is_bot: true, first_name: 'TestBot', username: 'testbot' },
+          chat: { id: userId, type: 'private' as const, first_name: 'Worker' },
+          date: Math.floor(Date.now() / 1000),
+          text: 'resume',
+        },
+      },
+    };
+  }
+
+  beforeEach(() => {
+    process.env.TELEGRAM_BOT_TOKEN = 'TEST:fake_token_cr01';
+    process.env.TELEGRAM_WEBHOOK_SECRET = 'test-secret-cr01';
+    vi.resetModules();
+  });
+
+  afterEach(() => {
+    delete process.env.TELEGRAM_BOT_TOKEN;
+    delete process.env.TELEGRAM_WEBHOOK_SECRET;
+    vi.restoreAllMocks();
+    vi.resetModules();
+  });
+
+  it('CR-01: flow:resume at PROJECT step sends project keyboard (not bare text)', async () => {
+    let selectCount = 0;
+    vi.doMock('@/db', () => ({
+      db: {
+        insert: vi.fn().mockReturnValue({
+          values: vi.fn().mockReturnValue({
+            onConflictDoNothing: vi.fn().mockReturnValue({
+              returning: vi.fn().mockResolvedValue([{ id: BigInt(1) }]),
+            }),
+            onConflictDoUpdate: vi.fn().mockResolvedValue(undefined),
+          }),
+        }),
+        select: vi.fn().mockImplementation(() => {
+          selectCount++;
+          const n = selectCount;
+          return {
+            from: vi.fn().mockReturnValue({
+              where: vi.fn().mockImplementation(() => {
+                if (n === 1) {
+                  // conversation_state lookup (flow:resume path)
+                  return Promise.resolve([{
+                    id: 'state-cr01', telegramUserId: BigInt(WORKER_ID),
+                    personId: PERSON_ID, flowId: FLOW_ID,
+                    currentStep: 'project',
+                    data: { step: 'project', page: 0, personId: PERSON_ID },
+                    updatedAt: new Date(),
+                  }]);
+                }
+                // resolveWorker: people lookup
+                return Promise.resolve([{
+                  id: PERSON_ID, telegramUserId: BigInt(WORKER_ID),
+                  telegramName: 'Worker', displayName: 'Test Worker',
+                }]);
+              }),
+              innerJoin: vi.fn().mockReturnValue({
+                where: vi.fn().mockResolvedValue([{ id: PROJECT_ID, name: 'Test Proje' }]),
+              }),
+            }),
+          };
+        }),
+      },
+    }));
+
+    const bot = await setupBotForTest();
+    const sentMethods: Array<{ method: string; payload: unknown }> = [];
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    bot.api.config.use(async (_prev: any, method: any, payload: any) => {
+      sentMethods.push({ method, payload });
+      return Promise.resolve({ ok: true, result: {} as never });
+    });
+
+    await bot.handleUpdate(makeResumeCallbackUpdate(WORKER_ID, 95001));
+
+    // Should have sent a message with an inline keyboard
+    const msgReply = sentMethods.find(m => m.method === 'sendMessage');
+    expect(msgReply).toBeDefined();
+    const kb = (msgReply?.payload as { reply_markup?: { inline_keyboard: Array<Array<{ callback_data: string }>> } })?.reply_markup;
+    expect(kb).toBeDefined();
+    // Keyboard must contain project:select: buttons
+    const allButtons = kb!.inline_keyboard.flat();
+    expect(allButtons.some(b => b.callback_data?.startsWith('project:select:'))).toBe(true);
+  });
+
+  it('CR-01: flow:resume at BOQ step sends BOQ keyboard (not bare text)', async () => {
+    let selectCount = 0;
+    vi.doMock('@/db', () => ({
+      db: {
+        insert: vi.fn().mockReturnValue({
+          values: vi.fn().mockReturnValue({
+            onConflictDoNothing: vi.fn().mockReturnValue({
+              returning: vi.fn().mockResolvedValue([{ id: BigInt(1) }]),
+            }),
+            onConflictDoUpdate: vi.fn().mockResolvedValue(undefined),
+          }),
+        }),
+        select: vi.fn().mockImplementation(() => {
+          selectCount++;
+          const n = selectCount;
+          return {
+            from: vi.fn().mockReturnValue({
+              where: vi.fn().mockImplementation(() => {
+                if (n === 1) {
+                  // conversation_state lookup
+                  return Promise.resolve([{
+                    id: 'state-cr01-boq', telegramUserId: BigInt(WORKER_ID),
+                    personId: PERSON_ID, flowId: FLOW_ID,
+                    currentStep: 'boq',
+                    data: { step: 'boq', projectId: PROJECT_ID, page: 0, personId: PERSON_ID },
+                    updatedAt: new Date(),
+                  }]);
+                }
+                // boqItems lookup
+                return Promise.resolve([{
+                  id: BOQ_ITEM_ID, material: 'Boru', unit: 'm',
+                  plannedQty: '500', approvedQty: '100',
+                  projectId: PROJECT_ID,
+                }]);
+              }),
+              innerJoin: vi.fn().mockReturnValue({
+                where: vi.fn().mockResolvedValue([]),
+              }),
+            }),
+          };
+        }),
+      },
+    }));
+
+    const bot = await setupBotForTest();
+    const sentMethods: Array<{ method: string; payload: unknown }> = [];
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    bot.api.config.use(async (_prev: any, method: any, payload: any) => {
+      sentMethods.push({ method, payload });
+      return Promise.resolve({ ok: true, result: {} as never });
+    });
+
+    await bot.handleUpdate(makeResumeCallbackUpdate(WORKER_ID, 95002));
+
+    const msgReply = sentMethods.find(m => m.method === 'sendMessage');
+    expect(msgReply).toBeDefined();
+    const kb = (msgReply?.payload as { reply_markup?: { inline_keyboard: Array<Array<{ callback_data: string }>> } })?.reply_markup;
+    expect(kb).toBeDefined();
+    // Keyboard must contain boq:select: buttons
+    const allButtons = kb!.inline_keyboard.flat();
+    expect(allButtons.some(b => b.callback_data?.startsWith('boq:select:'))).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// (n) Pure unit tests — CR-02 quantity Infinity rejection
+//
+// Tests verify that "Infinity", "-Infinity", and "1.234.5" are all rejected
+// by the quantity validation guard.
+// ---------------------------------------------------------------------------
+
+describe('quantity validation — Infinity + ambiguous decimal (CR-02 + WR-02)', () => {
+  const WORKER_ID = 96001;
+  const PERSON_ID = 'person-96001';
+  const FLOW_ID = 'flow-96001';
+  const PROJECT_ID = 'proj-96001';
+  const BOQ_ITEM_ID = 'boq-96001';
+
+  function buildQtyDbMock() {
+    return {
+      insert: vi.fn().mockReturnValue({
+        values: vi.fn().mockReturnValue({
+          onConflictDoNothing: vi.fn().mockReturnValue({
+            returning: vi.fn().mockResolvedValue([{ id: BigInt(1) }]),
+          }),
+          onConflictDoUpdate: vi.fn().mockResolvedValue(undefined),
+        }),
+      }),
+      select: vi.fn().mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([{
+            id: 'state-qty-cr02', telegramUserId: BigInt(WORKER_ID),
+            personId: PERSON_ID, flowId: FLOW_ID,
+            currentStep: 'quantity',
+            data: { step: 'quantity', projectId: PROJECT_ID, boqItemId: BOQ_ITEM_ID, unit: 'm' },
+            updatedAt: new Date(),
+          }]),
+        }),
+      }),
+      update: vi.fn().mockReturnValue({
+        set: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            returning: vi.fn().mockResolvedValue([]),
+          }),
+        }),
+      }),
+    };
+  }
+
+  beforeEach(() => {
+    process.env.TELEGRAM_BOT_TOKEN = 'TEST:fake_token_cr02';
+    process.env.TELEGRAM_WEBHOOK_SECRET = 'test-secret-cr02';
+    vi.resetModules();
+  });
+
+  afterEach(() => {
+    delete process.env.TELEGRAM_BOT_TOKEN;
+    delete process.env.TELEGRAM_WEBHOOK_SECRET;
+    vi.restoreAllMocks();
+    vi.resetModules();
+  });
+
+  it('CR-02: "Infinity" is rejected with rejectNotNumeric', async () => {
+    vi.doMock('@/db', () => ({ db: buildQtyDbMock() }));
+    const bot = await setupBotForTest();
+    const replies: string[] = [];
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    bot.api.config.use(async (_prev: any, method: any, payload: any) => {
+      if (method === 'sendMessage' && payload?.text) replies.push(payload.text);
+      return Promise.resolve({ ok: true, result: {} as never });
+    });
+
+    await bot.handleUpdate({ update_id: 96001, message: {
+      message_id: 1, from: { id: WORKER_ID, first_name: 'W', is_bot: false, language_code: 'tr' },
+      chat: { id: WORKER_ID, type: 'private' as const, first_name: 'W' },
+      date: Math.floor(Date.now() / 1000), text: 'Infinity',
+    }});
+
+    const { MESSAGES } = await import('@/lib/bot-messages');
+    expect(replies.some(r => r.includes(MESSAGES.rejectNotNumeric))).toBe(true);
+  });
+
+  it('CR-02: "-Infinity" is rejected with rejectNotNumeric', async () => {
+    vi.doMock('@/db', () => ({ db: buildQtyDbMock() }));
+    const bot = await setupBotForTest();
+    const replies: string[] = [];
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    bot.api.config.use(async (_prev: any, method: any, payload: any) => {
+      if (method === 'sendMessage' && payload?.text) replies.push(payload.text);
+      return Promise.resolve({ ok: true, result: {} as never });
+    });
+
+    await bot.handleUpdate({ update_id: 96002, message: {
+      message_id: 2, from: { id: WORKER_ID, first_name: 'W', is_bot: false, language_code: 'tr' },
+      chat: { id: WORKER_ID, type: 'private' as const, first_name: 'W' },
+      date: Math.floor(Date.now() / 1000), text: '-Infinity',
+    }});
+
+    const { MESSAGES } = await import('@/lib/bot-messages');
+    expect(replies.some(r => r.includes(MESSAGES.rejectNotNumeric))).toBe(true);
+  });
+
+  it('WR-02: "1.234,5" (ambiguous thousands+decimal) is rejected with rejectNotNumeric', async () => {
+    vi.doMock('@/db', () => ({ db: buildQtyDbMock() }));
+    const bot = await setupBotForTest();
+    const replies: string[] = [];
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    bot.api.config.use(async (_prev: any, method: any, payload: any) => {
+      if (method === 'sendMessage' && payload?.text) replies.push(payload.text);
+      return Promise.resolve({ ok: true, result: {} as never });
+    });
+
+    await bot.handleUpdate({ update_id: 96003, message: {
+      message_id: 3, from: { id: WORKER_ID, first_name: 'W', is_bot: false, language_code: 'tr' },
+      chat: { id: WORKER_ID, type: 'private' as const, first_name: 'W' },
+      date: Math.floor(Date.now() / 1000), text: '1.234,5',
+    }});
+
+    const { MESSAGES } = await import('@/lib/bot-messages');
+    expect(replies.some(r => r.includes(MESSAGES.rejectNotNumeric))).toBe(true);
+  });
+
+  it('WR-02: "25,5" (single Turkish comma decimal) is accepted as 25.5', async () => {
+    let capturedData: Record<string, unknown> | null = null;
+
+    // CR-05: saveState now uses insert().values().onConflictDoUpdate() — capture from there
+    // set = { currentStep, data, updatedAt } — quantity lives at capturedData.data.quantity
+    const mockOnConflictDoUpdateWr02 = vi.fn().mockImplementation((opts: Record<string, unknown>) => {
+      capturedData = opts.set as Record<string, unknown>;
+      return Promise.resolve(undefined);
+    });
+
+    vi.doMock('@/db', () => ({
+      db: {
+        insert: vi.fn().mockReturnValue({
+          values: vi.fn().mockReturnValue({
+            onConflictDoNothing: vi.fn().mockReturnValue({
+              returning: vi.fn().mockResolvedValue([{ id: BigInt(1) }]),
+            }),
+            onConflictDoUpdate: mockOnConflictDoUpdateWr02,
+          }),
+        }),
+        select: vi.fn().mockReturnValue({
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue([{
+              id: 'state-qty-cr02', telegramUserId: BigInt(WORKER_ID),
+              personId: PERSON_ID, flowId: FLOW_ID,
+              currentStep: 'quantity',
+              data: { step: 'quantity', projectId: PROJECT_ID, boqItemId: BOQ_ITEM_ID, unit: 'm' },
+              updatedAt: new Date(),
+            }]),
+          }),
+        }),
+        update: vi.fn().mockReturnValue({ set: vi.fn().mockReturnValue({ where: vi.fn().mockReturnValue({ returning: vi.fn().mockResolvedValue([]) }) }) }),
+      },
+    }));
+
+    const bot = await setupBotForTest();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    bot.api.config.use(async (_prev: any, _method: any, _payload: any) =>
+      Promise.resolve({ ok: true, result: {} as never })
+    );
+
+    await bot.handleUpdate({ update_id: 96004, message: {
+      message_id: 4, from: { id: WORKER_ID, first_name: 'W', is_bot: false, language_code: 'tr' },
+      chat: { id: WORKER_ID, type: 'private' as const, first_name: 'W' },
+      date: Math.floor(Date.now() / 1000), text: '25,5',
+    }});
+
+    expect(capturedData).not.toBeNull();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect((capturedData as any)?.data?.quantity).toBe(25.5);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// (o) Pure unit tests — WR-03 confirm summary shows names (not UUIDs)
+//
+// Tests verify that after project + BOQ selection, the confirm summary
+// caption contains the project name and BOQ material label, not raw UUIDs.
+// ---------------------------------------------------------------------------
+
+describe('confirm summary shows names not UUIDs (WR-03)', () => {
+  const WORKER_ID = 97001;
+  const PERSON_ID = 'person-97001';
+  const FLOW_ID = 'flow-97001';
+  const PROJECT_ID = 'proj-97001-uuid';
+  const PROJECT_NAME = 'Gaziantep Boru Hattı';
+  const BOQ_ITEM_ID = 'boq-97001-uuid';
+  const BOQ_MATERIAL = 'DN200 HDPE Boru';
+
+  beforeEach(() => {
+    process.env.TELEGRAM_BOT_TOKEN = 'TEST:fake_token_wr03';
+    process.env.TELEGRAM_WEBHOOK_SECRET = 'test-secret-wr03';
+    vi.resetModules();
+  });
+
+  afterEach(() => {
+    delete process.env.TELEGRAM_BOT_TOKEN;
+    delete process.env.TELEGRAM_WEBHOOK_SECRET;
+    vi.restoreAllMocks();
+    vi.resetModules();
+  });
+
+  it('WR-03: confirm summary caption shows projectName and boqMaterial, not raw UUIDs', async () => {
+    // State at CONFIRM step with both projectName and boqMaterial populated (as stored by WR-03 fix)
+    vi.doMock('@/db', () => ({
+      db: {
+        insert: vi.fn().mockReturnValue({
+          values: vi.fn().mockReturnValue({
+            onConflictDoNothing: vi.fn().mockReturnValue({
+              returning: vi.fn().mockResolvedValue([{ id: BigInt(1) }]),
+            }),
+            onConflictDoUpdate: vi.fn().mockResolvedValue(undefined),
+          }),
+        }),
+        select: vi.fn().mockReturnValue({
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue([{
+              id: 'state-confirm-wr03', telegramUserId: BigInt(WORKER_ID),
+              personId: PERSON_ID, flowId: FLOW_ID,
+              currentStep: 'confirm',
+              data: {
+                step: 'confirm',
+                personId: PERSON_ID,
+                projectId: PROJECT_ID,
+                projectName: PROJECT_NAME,
+                boqItemId: BOQ_ITEM_ID,
+                boqMaterial: BOQ_MATERIAL,
+                photoUrl: 'https://blob.example.com/photo.jpg',
+                photoFileId: 'file_id_wr03',
+                locationLat: 41.0082,
+                locationLon: 28.9784,
+                quantity: 75,
+                unit: 'm',
+                notes: null,
+              },
+              updatedAt: new Date(),
+            }]),
+          }),
+        }),
+        update: vi.fn().mockReturnValue({
+          set: vi.fn().mockReturnValue({
+            where: vi.fn().mockReturnValue({
+              returning: vi.fn().mockResolvedValue([{ id: 'state-confirm-wr03' }]),
+            }),
+          }),
+        }),
+      },
+    }));
+
+    const bot = await setupBotForTest();
+    const sentMethods: Array<{ method: string; payload: unknown }> = [];
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    bot.api.config.use(async (_prev: any, method: any, payload: any) => {
+      sentMethods.push({ method, payload });
+      return Promise.resolve({ ok: true, result: {} as never });
+    });
+
+    // Deliver a text message at CONFIRM step to trigger handleStepConfirm
+    await bot.handleUpdate({
+      update_id: 97001,
+      message: {
+        message_id: 1,
+        from: { id: WORKER_ID, first_name: 'W', is_bot: false, language_code: 'tr' },
+        chat: { id: WORKER_ID, type: 'private' as const, first_name: 'W' },
+        date: Math.floor(Date.now() / 1000),
+        text: 'test',
+      },
+    });
+
+    // sendPhoto is used when photoUrl is set (the normal path)
+    const photoCall = sentMethods.find(m => m.method === 'sendPhoto');
+    expect(photoCall).toBeDefined();
+
+    const caption = (photoCall?.payload as { caption?: string })?.caption ?? '';
+    // WR-03: must contain the human-readable project name and BOQ material
+    expect(caption).toContain(PROJECT_NAME);
+    expect(caption).toContain(BOQ_MATERIAL);
+    // Must NOT contain the raw UUIDs in the name/material fields
+    expect(caption).not.toContain(PROJECT_ID);
+    expect(caption).not.toContain(BOQ_ITEM_ID);
   });
 });
