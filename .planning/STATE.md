@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: "Completed 04-01-PLAN.md: schema + seed fixture + Wave 0 test scaffold"
-last_updated: "2026-05-24T20:08:53Z"
-last_activity: 2026-05-24 -- Phase 04-01 completed
+stopped_at: "Completed 04-02-PLAN.md: live schema migration"
+last_updated: "2026-05-24T20:18:20.967Z"
+last_activity: 2026-05-24
 progress:
   total_phases: 6
   completed_phases: 3
   total_plans: 22
-  completed_plans: 19
+  completed_plans: 20
   percent: 50
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-23)
 ## Current Position
 
 Phase: 4 (Spatial Layer) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-05-24
 
-Progress: [█████████░] 86%
+Progress: [█████████░] 91%
 
 ## Performance Metrics
 
@@ -68,6 +68,7 @@ Progress: [█████████░] 86%
 | Phase 03-audit-loop P03-04 | 20m | 2 tasks | 3 files |
 | Phase 03-audit-loop P05 | 180 | 3 tasks | 3 files |
 | Phase 04-spatial-layer P01 | 7 | 3 tasks | 3 files |
+| Phase 04-spatial-layer P02 | 8 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -101,6 +102,7 @@ Recent decisions affecting current work:
 - [Phase 01-06]: Base UI DropdownMenuTrigger uses render prop for polymorphism (no asChild — consistent with Button pattern from 01-05)
 - [Phase 04-01]: Five Phase 4 spatial columns on submissions — all nullable; locationMatch text enum {near,far,no_route} is three-state source of truth (D-43/D-44); locationWarning bool for SC2 filtering; locationDistanceM stored to avoid re-querying PostGIS in fanOutToAuditors
 - [Phase 04-01]: SPATIAL_FIXTURE_IDS const exported alongside seedSpatialFixture so test files import UUIDs without duplicating them
+- [Phase ?]: D-49: drizzle-kit push unusable for this project — spatial_ref_sys permission error; migrate.ts (Drizzle migrate()) is the project migration runner
 
 ### Pending Todos
 
@@ -122,6 +124,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-24T20:10:27.662Z
-Stopped at: Phase 4 context gathered
+Last session: 2026-05-24T20:18:20.961Z
+Stopped at: Completed 04-02-PLAN.md: live schema migration
 Resume file: None
