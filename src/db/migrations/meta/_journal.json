@@ -22,6 +22,13 @@
       "when": 1779645161811,
       "tag": "0002_normal_mach_iv",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1779653649878,
+      "tag": "0003_slippery_prowler",
+      "breakpoints": true
     }
   ]
 }
