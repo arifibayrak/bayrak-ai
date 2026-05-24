@@ -8,6 +8,13 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { describeIfDb, getTestDb, truncateAllTables } from './fixtures/db';
 
+// ─── next/cache mock (revalidatePath throws outside Next.js rendering context) ─
+
+vi.mock('next/cache', () => ({
+  revalidatePath: vi.fn(),
+  revalidateTag: vi.fn(),
+}));
+
 // ─── auth() mock ───────────────────────────────────────────────────────────────
 
 let mockSession: { user: { email: string } } | null = { user: { email: 'test@example.com' } };
