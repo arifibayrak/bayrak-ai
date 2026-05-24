@@ -255,7 +255,8 @@ describe('keyboard builders', () => {
 
 describe('idempotency (D-13 Guard 1)', () => {
   // Spy to detect if downstream handler body ran
-  let handlerSpy: ReturnType<typeof vi.fn>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let handlerSpy: (...args: any[]) => any;
 
   // Mocked DB insert chain for processedUpdates
   let mockOnConflictDoNothing: ReturnType<typeof vi.fn>;
@@ -271,7 +272,7 @@ describe('idempotency (D-13 Guard 1)', () => {
     process.env.TELEGRAM_WEBHOOK_SECRET = 'test-secret-idempotency';
     vi.resetModules();
 
-    handlerSpy = vi.fn();
+    handlerSpy = vi.fn() as (...args: unknown[]) => unknown;
     repliedTexts = [];
 
     // Default: first call returns a row (new update), second call returns [] (duplicate)
@@ -303,32 +304,47 @@ describe('idempotency (D-13 Guard 1)', () => {
     vi.resetModules();
   });
 
-  it('first delivery of an update_id runs downstream handler', async () => {
+  it('first delivery of an update_id allows downstream handlers to run (produces a reply)', async () => {
     const bot = await setupBotForTest();
+    const replies: string[] = [];
 
-    // Register a spy handler AFTER the idempotency middleware
-    bot.on('message', (ctx) => {
-      handlerSpy(ctx.update.update_id);
+    // Override the transformer to capture replies for this test
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    bot.api.config.use(async (_prev: any, method: any, payload: any) => {
+      if (method === 'sendMessage') {
+        handlerSpy((payload as { text: string }).text);
+        replies.push((payload as { text: string }).text);
+      }
+      return Promise.resolve({ ok: true, result: {} as never });
     });
 
     await bot.handleUpdate(makeTextUpdate(111, 'hello', 1001));
 
+    // The message handler should have run and produced a reply (noActiveFlow)
     expect(handlerSpy).toHaveBeenCalledTimes(1);
-    expect(handlerSpy).toHaveBeenCalledWith(1001);
+    expect(replies.length).toBeGreaterThan(0);
   });
 
-  it('duplicate update_id (second delivery) skips all downstream handlers', async () => {
-    // Reset to always return [] (already processed)
+  it('duplicate update_id (second delivery) skips all downstream handlers (no reply)', async () => {
+    // Reset to always return [] (already processed — duplicate)
     mockReturning.mockResolvedValue([]);
     const bot = await setupBotForTest();
+    const replies: string[] = [];
 
-    bot.on('message', (ctx) => {
-      handlerSpy(ctx.update.update_id);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    bot.api.config.use(async (_prev: any, method: any, payload: any) => {
+      if (method === 'sendMessage') {
+        handlerSpy((payload as { text: string }).text);
+        replies.push((payload as { text: string }).text);
+      }
+      return Promise.resolve({ ok: true, result: {} as never });
     });
 
     await bot.handleUpdate(makeTextUpdate(222, 'hello', 2002));
 
+    // No handler should have run — no reply produced
     expect(handlerSpy).not.toHaveBeenCalled();
+    expect(replies.length).toBe(0);
   });
 
   it('processedUpdates insert uses BigInt-wrapped update_id', async () => {
@@ -345,7 +361,8 @@ describe('idempotency (D-13 Guard 1)', () => {
     const bot = await setupBotForTest();
 
     const replies: string[] = [];
-    bot.api.config.use(async (_prev, method, payload) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    bot.api.config.use(async (_prev: any, method: any, payload: any) => {
       if (method === 'sendMessage' && 'text' in payload) {
         replies.push((payload as { text: string }).text);
       }
@@ -405,7 +422,8 @@ describe('unregistered user (identity guard)', () => {
     const replies: string[] = [];
 
     // Override transformer to capture replies
-    bot.api.config.use(async (_prev, method, payload) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    bot.api.config.use(async (_prev: any, method: any, payload: any) => {
       if (method === 'sendMessage') {
         replies.push((payload as { text: string }).text);
       }
