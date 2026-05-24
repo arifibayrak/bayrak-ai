@@ -76,6 +76,7 @@ CREATE TABLE "routes" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"tenant_id" uuid,
 	"project_id" uuid NOT NULL,
+	-- HAND-EDITED: Drizzle generates point; must be linestring
 	"geom" geometry(LineString, 4326) NOT NULL,
 	"coordinate_count" integer NOT NULL,
 	"uploaded_at" timestamp with time zone DEFAULT now() NOT NULL,

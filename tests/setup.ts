@@ -1,8 +1,13 @@
 // Vitest global setup — runs before each test file
-// Loads environment variables from .env.local if present (for local dev)
-// Note: TEST_DATABASE_URL must be set externally for DB integration tests
+// Loads environment variables from .env.local so DB integration tests can connect
+// to the Neon database without requiring env vars to be set externally.
 
-// No watch mode flags — this file runs in `vitest run` (non-interactive) mode only
+import { config } from 'dotenv';
+import path from 'path';
 
-// Ensure NODE_ENV is set for test environment
-// NODE_ENV is set by vitest automatically; this comment documents expected value is "test"
+// Load .env.local from the project root (one level above tests/)
+// dotenv ignores keys already set in process.env so CI-injected vars take precedence.
+config({
+  path: path.resolve(__dirname, '..', '.env.local'),
+  override: false, // never overwrite env vars already set (e.g. CI)
+});
