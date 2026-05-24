@@ -14,6 +14,7 @@
  * Security (T-05-AC): auth() guard on every exported function.
  * Security (T-05-IV): status whitelist + clamped integer coercion.
  * Security (T-05-GEO): ST_AsGeoJSON applied via parameterized sql`` on column ref only.
+ * Security (CR-01): tenant-scoped WHERE clauses on all read queries.
  *
  * Serialization: all Date values are converted to ISO strings before return
  * (RSC→client serializability, RESEARCH Pitfall 5).
@@ -26,6 +27,7 @@ import { boqItems } from '@/db/schema/boq-items';
 import { routes } from '@/db/schema/routes';
 import { people } from '@/db/schema/people';
 import { auth } from '@/lib/auth';
+import { getDefaultTenantId } from '@/lib/tenant';
 
 // ── Whitelist for status filter (T-05-IV / V5) ───────────────────────────────
 const VALID_STATUSES = ['pending_audit', 'approved', 'rejected'] as const;
@@ -39,6 +41,8 @@ type ValidStatus = typeof VALID_STATUSES[number];
  * Returns null when no route exists for the project.
  * ST_AsGeoJSON is MANDATORY — routes.geom custom type fromDriver returns raw WKB string.
  * DASH-01: coordinates are [longitude, latitude] per GeoJSON spec (lng first, D-48).
+ * CR-01: tenant-scoped to prevent cross-tenant reads.
+ * CR-03: guarded JSON.parse — returns null when geomJson is null/undefined.
  */
 export async function getRouteGeoJSON(projectId: string) {
   const session = await auth();
@@ -52,12 +56,21 @@ export async function getRouteGeoJSON(projectId: string) {
       geomJson: sql<string>`ST_AsGeoJSON(${routes.geom})`,
     })
     .from(routes)
-    .where(eq(routes.projectId, projectId))
+    .where(
+      and(
+        eq(routes.projectId, projectId),
+        eq(routes.tenantId, getDefaultTenantId()),  // CR-01: tenant scope
+      )
+    )
     .limit(1);
 
   if (!result[0]) return null;
 
   const { geomJson, uploadedAt, ...rest } = result[0];
+
+  // CR-03: guard JSON.parse — ST_AsGeoJSON returns null for null geometry
+  if (!geomJson) return null;
+
   return {
     ...rest,
     uploadedAt: uploadedAt.toISOString(),
@@ -73,6 +86,7 @@ export async function getRouteGeoJSON(projectId: string) {
  * Palette is built from BOQ item sort_order (stable, D-58 / RESEARCH Pitfall 6).
  * The same paletteSlot map is used in getApprovedPoints so the legend and map
  * markers always agree.
+ * CR-01: tenant-scoped to prevent cross-tenant reads.
  */
 export async function getBoqLegend(projectId: string) {
   const session = await auth();
@@ -81,7 +95,12 @@ export async function getBoqLegend(projectId: string) {
   const ordered = await db
     .select({ id: boqItems.id, material: boqItems.material, sortOrder: boqItems.sortOrder })
     .from(boqItems)
-    .where(eq(boqItems.projectId, projectId))
+    .where(
+      and(
+        eq(boqItems.projectId, projectId),
+        eq(boqItems.tenantId, getDefaultTenantId()),  // CR-01: tenant scope
+      )
+    )
     .orderBy(boqItems.sortOrder);
 
   return ordered.map((item, idx) => ({
@@ -97,7 +116,12 @@ async function buildPaletteSlotMap(projectId: string): Promise<Map<string, numbe
   const ordered = await db
     .select({ id: boqItems.id })
     .from(boqItems)
-    .where(eq(boqItems.projectId, projectId))
+    .where(
+      and(
+        eq(boqItems.projectId, projectId),
+        eq(boqItems.tenantId, getDefaultTenantId()),  // CR-01: tenant scope
+      )
+    )
     .orderBy(boqItems.sortOrder);
 
   return new Map(ordered.map((item, idx) => [item.id, idx % 6]));
@@ -111,6 +135,8 @@ async function buildPaletteSlotMap(projectId: string): Promise<Map<string, numbe
  * Filters: status = 'approved' AND snapped_point IS NOT NULL (D-46).
  * An approved row with no snapped_point (no_route case) does NOT appear.
  * Each feature carries serializable properties — no Date or numeric-string leaks.
+ * CR-01: tenant-scoped to prevent cross-tenant reads.
+ * CR-03: guarded JSON.parse — null snappedPointJson rows are filtered out.
  *
  * DASH-02, T-05-AC, T-05-GEO.
  */
@@ -142,29 +168,38 @@ export async function getApprovedPoints(projectId: string) {
     .where(
       and(
         eq(submissions.projectId, projectId),
+        eq(submissions.tenantId, getDefaultTenantId()),  // CR-01: tenant scope
         eq(submissions.status, 'approved'),
         isNotNull(submissions.snappedPoint),  // D-46: exclude no_route rows
       )
     );
 
-  const features = rows.map((r) => ({
-    type: 'Feature' as const,
-    geometry: JSON.parse(r.snappedPointJson) as { type: 'Point'; coordinates: [number, number] },
-    properties: {
-      id: r.id,
-      boqItemId: r.boqItemId,
-      boqPaletteSlot: paletteSlotMap.get(r.boqItemId) ?? 0,
-      boqMaterial: r.boqMaterial ?? null,
-      locationWarning: r.locationWarning ?? false,
-      locationDistanceM: r.locationDistanceM != null ? Number(r.locationDistanceM) : null,
-      quantity: Number(r.quantity),
-      unit: r.unit ?? null,
-      photoUrl: r.photoUrl,
-      status: r.status,
-      decidedAt: r.decidedAt?.toISOString() ?? null,
-      auditorName: r.auditorName ?? null,
-    },
-  }));
+  // CR-03: guard JSON.parse — filter rows where snappedPointJson is null
+  // (defensive against Drizzle type mismatch or future schema changes)
+  const features = rows
+    .map((r) => {
+      if (!r.snappedPointJson) return null;  // CR-03: skip malformed rows
+      const geometry = JSON.parse(r.snappedPointJson) as { type: 'Point'; coordinates: [number, number] };
+      return {
+        type: 'Feature' as const,
+        geometry,
+        properties: {
+          id: r.id,
+          boqItemId: r.boqItemId,
+          boqPaletteSlot: paletteSlotMap.get(r.boqItemId) ?? 0,
+          boqMaterial: r.boqMaterial ?? null,
+          locationWarning: r.locationWarning ?? false,
+          locationDistanceM: r.locationDistanceM != null ? Number(r.locationDistanceM) : null,
+          quantity: Number(r.quantity),
+          unit: r.unit ?? null,
+          photoUrl: r.photoUrl,
+          status: r.status,
+          decidedAt: r.decidedAt?.toISOString() ?? null,
+          auditorName: r.auditorName ?? null,
+        },
+      };
+    })
+    .filter((f): f is NonNullable<typeof f> => f !== null);
 
   return {
     type: 'FeatureCollection' as const,
@@ -182,6 +217,7 @@ export async function getApprovedPoints(projectId: string) {
  * Returns: { rows, total, page, pageSize, pageCount }.
  *
  * All Date values are serialized to ISO strings; all numerics to Number.
+ * CR-01: tenant-scoped to prevent cross-tenant reads.
  * DASH-03.
  */
 export async function getSubmissions(
@@ -211,8 +247,11 @@ export async function getSubmissions(
   const safePageSize = Math.min(100, Math.max(1, Math.floor(Number(pageSize)) || 25));
   const offset = (safePage - 1) * safePageSize;
 
-  // Build conditions
-  const conditions = [eq(submissions.projectId, projectId)];
+  // Build conditions — CR-01: always include tenant scope
+  const conditions = [
+    eq(submissions.projectId, projectId),
+    eq(submissions.tenantId, getDefaultTenantId()),  // CR-01: tenant scope
+  ];
   if (status && status !== 'all') {
     conditions.push(eq(submissions.status, status as ValidStatus));
   }
