@@ -38,6 +38,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Progress } from '@/components/ui/progress';
 import { remainingBalance } from '@/lib/boq-balance';
 import { deleteBoqItem } from '@/actions/boq';
 import { BoqItemDialog } from './BoqItemDialog';
@@ -81,6 +82,20 @@ function balanceColorClass(balance: number, planned: number): string {
   return 'text-[hsl(142_76%_36%)]'; // success
 }
 
+/**
+ * progressColorClass — returns Tailwind text color class for completion percentage.
+ *
+ * Thresholds (UI-SPEC, DASH-04):
+ *   >= 90% → success (green) — nearly done
+ *   > 0% && <= 10% → warning (amber) — barely started
+ *   else → default (no class)
+ */
+function progressColorClass(pct: number): string {
+  if (pct >= 90) return 'text-[hsl(142_76%_36%)]'; // success
+  if (pct > 0 && pct <= 10) return 'text-[hsl(38_92%_50%)]'; // warning
+  return '';
+}
+
 export function BoqTable({ projectId, items, onItemChanged }: BoqTableProps) {
   const t = useTranslations('dashboard.boq');
   const tc = useTranslations('common');
@@ -114,6 +129,8 @@ export function BoqTable({ projectId, items, onItemChanged }: BoqTableProps) {
             <TableHead scope="col" className="w-20">{t('col_unit')}</TableHead>
             <TableHead scope="col" className="w-[120px] text-right">{t('col_contracted_qty')}</TableHead>
             <TableHead scope="col" className="w-[120px] text-right">{t('col_approved_qty')}</TableHead>
+            <TableHead scope="col" className="w-20 text-right">{t('col_completion_pct')}</TableHead>
+            <TableHead scope="col" className="min-w-[80px]">{/* Progress bar — no header text */}</TableHead>
             <TableHead scope="col" className="w-[120px] text-right">{t('col_remaining')}</TableHead>
             <TableHead scope="col" className="w-20">{t('col_actions')}</TableHead>
           </TableRow>
@@ -124,6 +141,7 @@ export function BoqTable({ projectId, items, onItemChanged }: BoqTableProps) {
             const approved = parseFloat(item.approvedQty);
             const balance = remainingBalance(item.plannedQty, item.approvedQty);
             const colorClass = balanceColorClass(balance, planned);
+            const completionPct = planned > 0 ? Math.min((approved / planned) * 100, 100) : 0;
 
             return (
               <TableRow key={item.id}>
@@ -132,6 +150,12 @@ export function BoqTable({ projectId, items, onItemChanged }: BoqTableProps) {
                 <TableCell>{item.unit}</TableCell>
                 <TableCell className="text-right tabular-nums">{formatQty(planned)}</TableCell>
                 <TableCell className="text-right tabular-nums">{formatQty(approved)}</TableCell>
+                <TableCell className={`text-right tabular-nums ${progressColorClass(completionPct)}`}>
+                  {new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 1 }).format(completionPct) + '%'}
+                </TableCell>
+                <TableCell>
+                  <Progress value={completionPct} className="min-w-[80px] h-2" />
+                </TableCell>
                 <TableCell className={`text-right tabular-nums font-medium ${colorClass}`}>
                   {formatQty(balance)}
                 </TableCell>
