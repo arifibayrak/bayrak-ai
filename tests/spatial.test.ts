@@ -22,7 +22,7 @@
  * Route fixture:      [[28.9, 41.0], [28.95, 41.05]] — ~6 km Istanbul segment
  */
 
-import { beforeEach, afterEach, it, expect } from 'vitest';
+import { beforeEach, afterEach, it, expect, describe } from 'vitest';
 import { sql } from 'drizzle-orm';
 import {
   describeIfDb,
@@ -31,7 +31,7 @@ import {
   seedSpatialFixture,
   SPATIAL_FIXTURE_IDS,
 } from './fixtures/db';
-import { snapToRoute } from '../src/lib/spatial';
+import { snapToRoute, formatDistance, buildLocationCaptionLine } from '../src/lib/spatial';
 
 // Deterministic flow_id UUIDs for each test scenario (no collisions)
 const FLOW_ID_NEAR    = 'eeeeeeee-0000-0000-0000-000000000001';
@@ -333,4 +333,52 @@ describeIfDb('Phase 4 spatial snap (GEO-01, GEO-02)', () => {
       expect(row.status).toBe('pending_audit');
     }
   );
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// D-47 auditor caption (GEO-02) — PURE unit tests, no DB required
+//
+// Tests formatDistance formatting and the three-state caption decision
+// (buildLocationCaptionLine). These run in plain `describe` so they pass
+// even without TEST_DATABASE_URL (no describeIfDb gating).
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('D-47 auditor caption (GEO-02) — formatDistance', () => {
+  it('formatDistance(1234) returns "~1.2 km"', () => {
+    expect(formatDistance(1234)).toBe('~1.2 km');
+  });
+
+  it('formatDistance(420) returns "~420 m"', () => {
+    expect(formatDistance(420)).toBe('~420 m');
+  });
+
+  it('formatDistance(1000) returns "~1.0 km" (≥1000 boundary)', () => {
+    expect(formatDistance(1000)).toBe('~1.0 km');
+  });
+
+  it('formatDistance(999) returns "~999 m" (just below boundary)', () => {
+    expect(formatDistance(999)).toBe('~999 m');
+  });
+});
+
+describe('D-47 auditor caption (GEO-02) — buildLocationCaptionLine', () => {
+  it("'far' + 1234 → '⚠ Konum rotadan uzak (~1.2 km)'", () => {
+    expect(buildLocationCaptionLine('far', 1234)).toBe('⚠ Konum rotadan uzak (~1.2 km)');
+  });
+
+  it("'no_route' → 'ℹ Rota yüklenmemiş — konum doğrulanamadı'", () => {
+    expect(buildLocationCaptionLine('no_route', null)).toBe('ℹ Rota yüklenmemiş — konum doğrulanamadı');
+  });
+
+  it("'near' → null (silent)", () => {
+    expect(buildLocationCaptionLine('near', 200)).toBeNull();
+  });
+
+  it("null locationMatch → null (pre-Phase-4 rows, silent)", () => {
+    expect(buildLocationCaptionLine(null, null)).toBeNull();
+  });
+
+  it("'far' with null distanceM → null (cannot format without distance)", () => {
+    expect(buildLocationCaptionLine('far', null)).toBeNull();
+  });
 });
