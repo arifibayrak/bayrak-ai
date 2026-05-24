@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: "Paused at checkpoint — Phase 05 Plan 06 (05-06): Tasks 1+2 done; awaiting human-verify checkpoint before SUMMARY"
-last_updated: "2026-05-25T00:00:00Z"
-last_activity: 2026-05-25
+status: verifying
+stopped_at: Completed Phase 05 Plan 05 — BoqTable % Tamamlanan column + Progress bar (DASH-04 / D-50)
+last_updated: "2026-05-24T23:38:29.086Z"
+last_activity: 2026-05-24
 progress:
   total_phases: 6
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 28
-  completed_plans: 27
-  percent: 67
+  completed_plans: 28
+  percent: 83
 ---
 
 # Project State
@@ -27,10 +27,10 @@ See: .planning/PROJECT.md (updated 2026-05-23)
 
 Phase: 05 (dashboard-map) — EXECUTING
 Plan: 6 of 6
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-05-24
 
-Progress: [██████████] 96%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -77,6 +77,7 @@ Progress: [██████████] 96%
 | Phase 05 P05-05 | 5 | 1 tasks | 1 files |
 | Phase 05 P04 | 20 | 2 tasks | 2 files |
 | Phase 05-dashboard-map P03 | 30 | 3 tasks | 3 files |
+| Phase 05-dashboard-map P06 | 25 | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -139,6 +140,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-24T23:29:43.982Z
+Last session: 2026-05-24T23:38:29.077Z
 Stopped at: Completed Phase 05 Plan 05 — BoqTable % Tamamlanan column + Progress bar (DASH-04 / D-50)
 Resume file: None

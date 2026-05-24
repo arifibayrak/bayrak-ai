@@ -17,7 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: Worker Bot** - grammY conversation state machine (States 0–6) with durable Postgres sessions, input enforcement, and submission persistence (completed 2026-05-24)
 - [x] **Phase 3: Audit Loop** - Auditor notification, Approve/Reject handling, atomic BOQ deduction, race-safe idempotency, and worker rejection notification (completed 2026-05-24)
 - [x] **Phase 4: Spatial Layer** - PostGIS nearest-segment matching, location proximity warning, and `approved_points` population (completed 2026-05-24)
-- [ ] **Phase 5: Dashboard & Map** - Mapbox route and approved-points overlay, BOQ progress view, and submission list with status filtering
+- [x] **Phase 5: Dashboard & Map** - Mapbox route and approved-points overlay, BOQ progress view, and submission list with status filtering (completed 2026-05-24)
 - [ ] **Phase 6: AI Vision Assist** - Async Claude vision analysis, eval harness gate, anomaly badges on dashboard and advisory Telegram follow-up
 
 ## Phase Details
@@ -188,7 +188,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3)*
 
-- [ ] 05-06-PLAN.md — Page wiring: force-dynamic, Kayıtlar tab registration, searchParams plumbing, RefreshOnFocus (DASH-05)
+- [x] 05-06-PLAN.md — Page wiring: force-dynamic, Kayıtlar tab registration, searchParams plumbing, RefreshOnFocus (DASH-05)
 
 **UI hint**: yes
 
@@ -219,5 +219,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 2. Worker Bot | 6/6 | Complete   | 2026-05-24 |
 | 3. Audit Loop | 5/5 | Complete   | 2026-05-24 |
 | 4. Spatial Layer | 4/4 | Complete    | 2026-05-24 |
-| 5. Dashboard & Map | 5/6 | In Progress|  |
+| 5. Dashboard & Map | 6/6 | Complete   | 2026-05-24 |
 | 6. AI Vision Assist | 0/TBD | Not started | - |
