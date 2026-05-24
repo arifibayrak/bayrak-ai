@@ -39,9 +39,9 @@ Requirements for the initial release. Each maps to roadmap phases.
 - [ ] **AUDIT-01**: When a worker confirms, every assigned auditor for that project receives a Telegram message with the photo, location/map link, selected BOQ item, quantity, and notes
 - [ ] **AUDIT-02**: The auditor message includes inline [✅ Approve] and [❌ Reject] buttons
 - [ ] **AUDIT-03**: Only an auditor assigned to that project can act on the buttons (authorization enforced server-side)
-- [ ] **AUDIT-04**: On Approve, the submission becomes `approved` and the selected BOQ line item decrements by the submitted quantity — atomically, with no double-deduction on duplicate callbacks
-- [ ] **AUDIT-05**: On Reject, the bot prompts the auditor for a text reason, sets `status: rejected`, and notifies the worker with the reason
-- [ ] **AUDIT-06**: With multiple auditors assigned, the first action wins; a later action on an already-decided submission is safely rejected and the auditor is told it is resolved
+- [x] **AUDIT-04**: On Approve, the submission becomes `approved` and the selected BOQ line item decrements by the submitted quantity — atomically, with no double-deduction on duplicate callbacks
+- [x] **AUDIT-05**: On Reject, the bot prompts the auditor for a text reason, sets `status: rejected`, and notifies the worker with the reason
+- [x] **AUDIT-06**: With multiple auditors assigned, the first action wins; a later action on an already-decided submission is safely rejected and the auditor is told it is resolved
 
 ### Geospatial
 
@@ -131,9 +131,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | AUDIT-01 | Phase 3 | Pending |
 | AUDIT-02 | Phase 3 | Pending |
 | AUDIT-03 | Phase 3 | Pending |
-| AUDIT-04 | Phase 3 | Pending |
-| AUDIT-05 | Phase 3 | Pending |
-| AUDIT-06 | Phase 3 | Pending |
+| AUDIT-04 | Phase 3 | Complete |
+| AUDIT-05 | Phase 3 | Complete |
+| AUDIT-06 | Phase 3 | Complete |
 | GEO-01 | Phase 4 | Pending |
 | GEO-02 | Phase 4 | Pending |
 | DASH-01 | Phase 5 | Pending |
