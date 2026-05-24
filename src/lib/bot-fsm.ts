@@ -42,11 +42,19 @@ export type Step = typeof STEPS[keyof typeof STEPS];
  * Consumed by every step handler in Plans 04-06.
  * editReturnStep enables the D-16 jump-to-edit → return-to-confirm flow.
  * page tracks the current paginated keyboard page for BOQ/project lists.
+ *
+ * WR-01: personId is stored in JSONB at flow start so all downstream saveState
+ *   calls can read data.personId reliably instead of relying on an undefined fallback.
+ * WR-03: projectName and boqMaterial are stored when each step advances so the
+ *   confirm summary shows human-readable labels, not raw UUIDs.
  */
 export interface ConversationData {
   step: Step;
+  personId?: string;      // WR-01: person UUID — stored at flow start
   projectId?: string;
+  projectName?: string;   // WR-03: project display name stored when project is selected
   boqItemId?: string;
+  boqMaterial?: string;   // WR-03: BOQ item material label stored when BOQ item is selected
   photoUrl?: string;      // Vercel Blob URL (upload-on-receipt per Q1 resolution)
   photoFileId?: string;   // Telegram file_id reference
   locationLat?: number;

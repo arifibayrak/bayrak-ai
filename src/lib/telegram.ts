@@ -166,33 +166,32 @@ export async function saveState(
   flowId?: string
 ): Promise<void> {
   const { conversationState } = await import('@/db/schema/conversation-state');
-  const { eq } = await import('drizzle-orm');
-  const { sql } = await import('drizzle-orm');
+  // CR-05: combine both imports into one destructuring to reduce dynamic import calls (also fixes IN-01)
+  const { eq, sql } = await import('drizzle-orm');
 
   const now = new Date();
-
-  // Try to UPDATE an existing row first (most common path — mid-flow step advance)
-  const updateResult = await db
-    .update(conversationState)
-    .set({ currentStep: step, data, updatedAt: now })
-    .where(eq(conversationState.telegramUserId, telegramUserId))
-    .returning({ id: conversationState.id });
-
-  if (updateResult && updateResult.length > 0) {
-    return; // Row existed and was updated
-  }
-
-  // No existing row → INSERT (first save for this flow)
   const resolvedFlowId = flowId ?? sql`gen_random_uuid()`;
-  await db.insert(conversationState).values({
-    telegramUserId,
-    personId,
-    tenantId: getDefaultTenantId(),
-    flowId: resolvedFlowId,
-    currentStep: step,
-    data,
-    updatedAt: now,
-  });
+
+  // CR-05: Replace UPDATE-then-INSERT with a single atomic upsert.
+  // The old pattern had a race window: two concurrent /start requests could both
+  // find zero rows on UPDATE and both attempt INSERT, causing a unique-constraint
+  // violation on telegram_user_id that was never caught.
+  // onConflictDoUpdate is atomic and eliminates the race entirely.
+  await db
+    .insert(conversationState)
+    .values({
+      telegramUserId,
+      personId,
+      tenantId: getDefaultTenantId(),
+      flowId: resolvedFlowId,
+      currentStep: step,
+      data,
+      updatedAt: now,
+    })
+    .onConflictDoUpdate({
+      target: conversationState.telegramUserId,
+      set: { currentStep: step, data, updatedAt: now },
+    });
 }
 
 // ---------------------------------------------------------------------------
@@ -265,12 +264,14 @@ bot.command('start', async (ctx) => {
 
   // No active flow (or stale) — start a clean flow (D-15 clean start path)
   // Upsert conversation_state: set currentStep to PROJECT, page 0
+  // WR-01: store personId in the JSONB data so downstream handlers can read
+  // data.personId reliably without falling back to the undefined fallback path.
   const { CONVERSATION_TTL_MS: _ttl } = await import('@/lib/bot-fsm');
   await saveState(
     db,
     BigInt(telegramUserId),
     STEPS.PROJECT,
-    { step: STEPS.PROJECT, page: 0 },
+    { step: STEPS.PROJECT, page: 0, personId: workerIdentity.person.id },
     workerIdentity.person.id
   );
 
@@ -354,11 +355,12 @@ bot.on('callback_query:data', async (ctx) => {
       return;
     }
 
+    // WR-01: store personId in the JSONB data on flow:restart as well
     await saveState(
       db,
       BigInt(telegramUserId),
       STEPS.PROJECT,
-      { step: STEPS.PROJECT, page: 0 },
+      { step: STEPS.PROJECT, page: 0, personId: workerIdentity.person.id },
       workerIdentity.person.id
     );
 
@@ -380,24 +382,73 @@ bot.on('callback_query:data', async (ctx) => {
 /**
  * repromptStep — sends a resume-prefixed prompt for the given step.
  * Used on cold-start resume (D-14, SC5) and by flow:resume.
+ *
+ * CR-01: For keyboard-driven steps (PROJECT, BOQ, CONFIRM) the plain-text
+ * reprompt left workers with no actionable buttons. This version rebuilds the
+ * appropriate inline keyboard so a resumed worker can always act.
+ *
+ * - STEPS.PROJECT: resolves worker and rebuilds the project selection keyboard.
+ * - STEPS.BOQ: queries the stored projectId's BOQ items and rebuilds the BOQ keyboard.
+ * - STEPS.CONFIRM: delegates to handleStepConfirm which sends the full confirm photo + keyboard.
+ * - All other steps: plain-text reprompt (no keyboard needed — text/location/photo input).
  */
 async function repromptStep(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ctx: any,
   step: string,
-  _data: Record<string, unknown>
+  data: Record<string, unknown>
 ): Promise<void> {
   const { MESSAGES } = await import('@/lib/bot-messages');
   const { STEPS } = await import('@/lib/bot-fsm');
+  const { db } = await import('@/db');
 
+  const telegramUserId = ctx.from?.id;
+
+  if (step === STEPS.PROJECT) {
+    // CR-01: rebuild the project keyboard for the worker's assigned projects
+    if (!telegramUserId) {
+      await ctx.reply(MESSAGES.noActiveFlow);
+      return;
+    }
+    const { buildProjectKeyboard } = await import('@/lib/bot-keyboards');
+    const workerIdentity = await resolveWorker(db, BigInt(telegramUserId));
+    const page = (data.page as number) ?? 0;
+    await ctx.reply(MESSAGES.resumePrefix + MESSAGES.chooseProject, {
+      reply_markup: buildProjectKeyboard(workerIdentity?.projects ?? [], page),
+    });
+    return;
+  }
+
+  if (step === STEPS.BOQ) {
+    // CR-01: rebuild the BOQ keyboard from the stored projectId
+    const projectId = data.projectId as string | undefined;
+    if (!projectId) {
+      await ctx.reply(MESSAGES.noActiveFlow);
+      return;
+    }
+    const { buildBoqKeyboard } = await import('@/lib/bot-keyboards');
+    const { boqItems } = await import('@/db/schema/boq-items');
+    const { eq } = await import('drizzle-orm');
+    const boqRows = await db.select().from(boqItems).where(eq(boqItems.projectId, projectId));
+    const page = (data.page as number) ?? 0;
+    await ctx.reply(MESSAGES.resumePrefix + MESSAGES.chooseBoqItem, {
+      reply_markup: buildBoqKeyboard(boqRows, page),
+    });
+    return;
+  }
+
+  if (step === STEPS.CONFIRM) {
+    // CR-01: delegate to the real confirm handler which sends the full summary + keyboard
+    await handleStepConfirm(ctx, data, db);
+    return;
+  }
+
+  // Text/media steps — plain-text reprompt (worker types/sends input, no inline keyboard needed)
   const stepPrompts: Record<string, string> = {
-    [STEPS.PROJECT]: MESSAGES.chooseProject,
-    [STEPS.BOQ]: MESSAGES.chooseBoqItem,
     [STEPS.PHOTO]: MESSAGES.promptPhoto,
     [STEPS.LOCATION]: MESSAGES.promptLocation,
-    [STEPS.QUANTITY]: MESSAGES.promptQuantity((_data.unit as string) ?? ''),
+    [STEPS.QUANTITY]: MESSAGES.promptQuantity((data.unit as string) ?? ''),
     [STEPS.NOTES]: MESSAGES.promptNotes,
-    [STEPS.CONFIRM]: MESSAGES.confirmSummary,
   };
 
   const stepPrompt = stepPrompts[step] ?? MESSAGES.noActiveFlow;
@@ -488,11 +539,12 @@ async function dispatchCallbackQuery(
     }
     const { buildProjectKeyboard: bpk } = await import('@/lib/bot-keyboards');
     const { MESSAGES: MSG } = await import('@/lib/bot-messages');
+    // WR-01: store personId in the JSONB data on flow:new as well
     await saveState(
       db,
       BigInt(telegramUserId),
       STEPS.PROJECT,
-      { step: STEPS.PROJECT, page: 0 },
+      { step: STEPS.PROJECT, page: 0, personId: workerIdentity.person.id },
       workerIdentity.person.id
     );
     await ctx.reply(MSG.greeting(workerIdentity.person.displayName), {
@@ -657,8 +709,14 @@ export async function handleStepProject(
       .from(boqItems)
       .where(eq(boqItems.projectId, value));
 
-    // Advance to BOQ step
-    const newData = { ...data, projectId: value };
+    // WR-03: store projectName alongside projectId so the confirm summary shows
+    // the human-readable name instead of the raw UUID.
+    const selectedProject = workerIdentity.projects.find(p => p.id === value);
+    const newData = {
+      ...data,
+      projectId: value,
+      projectName: selectedProject?.name ?? value,
+    };
     await saveState(
       db,
       BigInt(telegramUserId),
@@ -754,9 +812,11 @@ export async function handleStepBoq(
     }
 
     const workerIdentityForConfirm = await resolveWorker(db, BigInt(telegramUserId));
+    // WR-03: also store boqMaterial so the confirm summary is human-readable
     const newDataConfirm = {
       ...data,
       boqItemId: value,
+      boqMaterial: selectedItem.material,
       unit: selectedItem.unit,
     };
     await saveState(
@@ -797,9 +857,11 @@ export async function handleStepBoq(
 
     // Positive balance — advance to PHOTO step
     const workerIdentity = await resolveWorker(db, BigInt(telegramUserId));
+    // WR-03: store boqMaterial so the confirm summary shows the item name, not the UUID
     const newData = {
       ...data,
       boqItemId: value,
+      boqMaterial: selectedItem.material,
       unit: selectedItem.unit,
     };
     await saveState(
@@ -969,12 +1031,25 @@ export async function handleStepQuantity(
 
   const rawText = ctx.message?.text ?? '';
 
-  // Pitfall 4: normalize Turkish comma decimal BEFORE parseFloat
-  // parseFloat('25,5') truncates to 25; parseFloat('25.5') gives 25.5 correctly.
-  const normalized = rawText.replace(',', '.');
+  // WR-02: normalize Turkish decimal separator robustly.
+  // Rule: Turkish field workers type "25,5" (comma = decimal separator).
+  // Step 1 — replace ALL commas with periods (replaceAll, not the non-global String.replace).
+  // Step 2 — if the result has more than one period the input is ambiguous
+  //   (e.g. "1.234,5" → "1.234.5" — could be 1234.5 or a typo). Reject it.
+  // Step 3 — parseFloat the normalized single-period string.
+  // CR-02: use !isFinite() instead of isNaN() so "Infinity"/"-Infinity" are also rejected.
+  const normalized = rawText.trim().replace(/,/g, '.');
+  const dotCount = (normalized.match(/\./g) ?? []).length;
+  if (dotCount > 1) {
+    // Ambiguous format (e.g. "1.234,5" or "1,234.5") — reject with clear message (WR-02)
+    await ctx.reply(MESSAGES.rejectNotNumeric);
+    return;
+  }
   const parsed = parseFloat(normalized);
 
-  if (isNaN(parsed) || parsed <= 0) {
+  // CR-02: !isFinite rejects NaN, Infinity, and -Infinity in one check.
+  // Previously isNaN passed Infinity through (parseFloat('Infinity') === Infinity).
+  if (!isFinite(parsed) || parsed <= 0) {
     // Invalid quantity — reprompt (LOG-06)
     await ctx.reply(MESSAGES.rejectNotNumeric);
     return;
@@ -1191,32 +1266,43 @@ async function handleConfirmSubmit(
   const { submissions } = await import('@/db/schema/submissions');
   const txDb = await getTxDb();
 
-  await txDb.transaction(async (tx) => {
-    // Insert submissions row — .onConflictDoNothing() on flow_id (D-13 Guard 2)
-    await tx
-      .insert(submissions)
-      .values({
-        tenantId: getDefaultTenantId(),
-        flowId,
-        personId,
-        projectId: data.projectId as string,
-        boqItemId: data.boqItemId as string,
-        photoUrl: data.photoUrl as string,
-        photoFileId: (data.photoFileId as string) ?? null,
-        locationLat: data.locationLat != null ? String(data.locationLat) : null,
-        locationLon: data.locationLon != null ? String(data.locationLon) : null,
-        quantity: String(data.quantity),
-        notes: (data.notes as string | null) ?? null,
-        status: 'pending_audit',
-        submittedAt: new Date(),
-      })
-      .onConflictDoNothing();
+  // CR-03: wrap the transaction in try/catch.
+  // On any failure (network blip, DB constraint, Infinity quantity value, etc.)
+  // the transaction rolls back automatically. We reply with a Turkish error message
+  // and return WITHOUT deleting conversation_state so the worker can retry "Onayla ve Gönder".
+  try {
+    await txDb.transaction(async (tx) => {
+      // Insert submissions row — .onConflictDoNothing() on flow_id (D-13 Guard 2)
+      await tx
+        .insert(submissions)
+        .values({
+          tenantId: getDefaultTenantId(),
+          flowId,
+          personId,
+          projectId: data.projectId as string,
+          boqItemId: data.boqItemId as string,
+          photoUrl: data.photoUrl as string,
+          photoFileId: (data.photoFileId as string) ?? null,
+          locationLat: data.locationLat != null ? String(data.locationLat) : null,
+          locationLon: data.locationLon != null ? String(data.locationLon) : null,
+          quantity: String(data.quantity),
+          notes: (data.notes as string | null) ?? null,
+          status: 'pending_audit',
+          submittedAt: new Date(),
+        })
+        .onConflictDoNothing();
 
-    // Delete the conversation_state row — atomically with the insert
-    await tx
-      .delete(conversationState)
-      .where(eq(conversationState.telegramUserId, BigInt(telegramUserId)));
-  });
+      // Delete the conversation_state row — atomically with the insert
+      await tx
+        .delete(conversationState)
+        .where(eq(conversationState.telegramUserId, BigInt(telegramUserId)));
+    });
+  } catch (_txErr) {
+    // Transaction failed — reply with a Turkish error and leave conversation_state intact
+    // so the worker can tap "Onayla ve Gönder" again (CR-03).
+    await ctx.reply(MESSAGES.genericError);
+    return;
+  }
 
   // Reply "Gönderildi ✅" with a single "Yeni kayıt" button (D-18 — no auto-loop)
   const doneKeyboard = new InlineKeyboard().text(MESSAGES.newLog, 'flow:new');
