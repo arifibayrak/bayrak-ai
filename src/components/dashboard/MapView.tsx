@@ -28,7 +28,7 @@
 
 import { useRef, useState, useCallback } from 'react';
 import Map, { Source, Layer, Popup } from 'react-map-gl/mapbox';
-import type { MapRef, LayerProps, MapLayerMouseEvent } from 'react-map-gl/mapbox';
+import type { MapRef, LayerProps, MapMouseEvent } from 'react-map-gl/mapbox';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
@@ -185,7 +185,7 @@ export function MapView({ routeGeoJSON, approvedPoints, boqLegend }: MapViewProp
   }, [routeGeoJSON]);
 
   // D-51: click a point → open popup.
-  const handleMapClick = useCallback((event: MapLayerMouseEvent) => {
+  const handleMapClick = useCallback((event: MapMouseEvent) => {
     const feature = event.features?.[0];
     if (!feature) return;
     if (feature.geometry.type !== 'Point') return;
