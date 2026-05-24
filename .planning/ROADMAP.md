@@ -48,7 +48,7 @@ Plans:
 **Wave 3** *(blocked on Wave 2 completion)*
 
 - [ ] 01-02b-PLAN.md — Generate migration + hand-edit LineString + coordinate-order test + [BLOCKING] live schema push
-- [ ] 01-03-PLAN.md — Auth.js allowlist magic-link + dashboard guard + next-intl TR/EN
+- [x] 01-03-PLAN.md — Auth.js allowlist magic-link + dashboard guard + next-intl TR/EN
 - [ ] 01-04-PLAN.md — Minimal Telegram /start webhook (pending_people, idempotent, secretToken-verified)
 
 **Wave 4** *(blocked on Wave 3 completion)*
@@ -142,7 +142,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 2/7 | In Progress|  |
+| 1. Foundation | 3/7 | In Progress|  |
 | 2. Worker Bot | 0/TBD | Not started | - |
 | 3. Audit Loop | 0/TBD | Not started | - |
 | 4. Spatial Layer | 0/TBD | Not started | - |

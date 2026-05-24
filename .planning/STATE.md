@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 1 Plan 02a complete — schema authored
-last_updated: "2026-05-24T00:35:00.000Z"
+stopped_at: Phase 1 Plan 02a complete — schema authored, ready for 01-02b (live DB push)
+last_updated: "2026-05-24T00:45:49.062Z"
 last_activity: 2026-05-24
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 7
-  completed_plans: 2
-  percent: 28
+  completed_plans: 3
+  percent: 0
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-23)
 ## Current Position
 
 Phase: 01 (foundation) — EXECUTING
-Plan: 3 of 7 (02b next)
+Plan: 4 of 7 (02b next)
 Status: Ready to execute
 Last activity: 2026-05-24
 
-Progress: [██░░░░░░░░] 28%
+Progress: [████░░░░░░] 43%
 
 ## Performance Metrics
 
@@ -52,6 +52,7 @@ Progress: [██░░░░░░░░] 28%
 - Trend: -
 
 *Updated after each plan completion*
+| Phase 01-foundation P03 | 45 | - tasks | - files |
 
 ## Accumulated Context
 
@@ -65,6 +66,10 @@ Recent decisions affecting current work:
 - Roadmap: AI flags are advisory only; eval harness with acceptance criteria required before flags shown to auditors (AI-05)
 - Schema (01-02a): geometry(LineString,4326) generated correctly by drizzle-kit customType — Pitfall 1 hand-edit did not trigger for drizzle-kit 0.31.x
 - Schema (01-02a): getDefaultTenantId() pattern established — all app code MUST supply tenant_id on insert (Pitfall 3 prevention)
+- [Phase 01-03]: isAllowed() is pure exported helper in auth-allowlist.ts with no Auth.js runtime dependency
+- [Phase 01-03]: signIn callback blocks both verificationRequest and link-click (Pitfall 2, T-03-01 mitigated)
+- [Phase 01-03]: LanguageToggle sets locale cookie then page reloads for server-side getRequestConfig to pick up new locale
+- [Phase 01-03]: TopNav sign-out uses Server Action form to keep signOut call server-side
 
 ### Pending Todos
 
@@ -86,6 +91,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-24T00:35:00.000Z
+Last session: 2026-05-24T00:45:49.049Z
 Stopped at: Phase 1 Plan 02a complete — schema authored, ready for 01-02b (live DB push)
 Resume file: None
