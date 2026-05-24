@@ -53,7 +53,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 01-05-PLAN.md — Project CRUD + people approval/assignment + tabbed detail shell
+- [x] 01-05-PLAN.md — Project CRUD + people approval/assignment + tabbed detail shell
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
@@ -142,7 +142,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 5/7 | In Progress|  |
+| 1. Foundation | 6/7 | In Progress|  |
 | 2. Worker Bot | 0/TBD | Not started | - |
 | 3. Audit Loop | 0/TBD | Not started | - |
 | 4. Spatial Layer | 0/TBD | Not started | - |

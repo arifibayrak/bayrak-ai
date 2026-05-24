@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 1 Plan 02b complete — live Neon DB migrated (PostGIS 3.5 + 11 tables + LineString geom + seed tenant); 31/31 tests green; ready for 01-05
-last_updated: "2026-05-24T01:40:03.102Z"
+stopped_at: Phase 1 Plan 05 complete — project CRUD + people approval + tabbed detail shell; 49/49 tests green; ready for 01-06 (BOQ CRUD + Excel import + GeoJSON route upload)
+last_updated: "2026-05-24T02:10:00.000Z"
 last_activity: 2026-05-24
 progress:
   total_phases: 6
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-23)
 ## Current Position
 
 Phase: 01 (foundation) — EXECUTING
-Plan: 6 of 7 (02b next)
+Plan: 7 of 7 (01-06 next)
 Status: Ready to execute
 Last activity: 2026-05-24
 
-Progress: [███████░░░] 71%
+Progress: [████████░░] 86%
 
 ## Performance Metrics
 
@@ -55,6 +55,7 @@ Progress: [███████░░░] 71%
 | Phase 01-foundation P03 | 45 | - tasks | - files |
 | Phase 01-foundation P04 | 7 minutes | 1 tasks | 3 files |
 | Phase 01-foundation P02b | 35 | 2 tasks | 9 files |
+| Phase 01-foundation P05 | 21 | 2 tasks | 15 files |
 
 ## Accumulated Context
 
@@ -78,6 +79,10 @@ Recent decisions affecting current work:
 - [Phase 01-02b]: vitest fileParallelism:false required when test files share a single Neon DB — parallel TRUNCATE races with inserts causing FK violations
 - [Phase 01-02b]: grammY bot.botInfo setter must be set explicitly after vi.spyOn(bot.init) mock — grammY checks this.me before creating handler context
 - [Phase 01-02b]: grammY api.config.use(transformer) is the correct intercept for ctx.reply() in tests; vi.spyOn on api.sendMessage doesn't work (raw Proxy dispatch)
+- [Phase 01-05]: neon-serverless Pool (WebSocket driver) required for db.transaction() — neon-http does not support transactions
+- [Phase 01-05]: vi.mock('next/cache') required in Server Action tests — revalidatePath throws 'static generation store missing' outside Next.js rendering context
+- [Phase 01-05]: Base UI Select onValueChange callback is (value: string | null, ...) — all setState callers must null-coalesce with ?? ''
+- [Phase 01-05]: Zod v4 z.enum() parameter is 'error' not 'errorMap'
 
 ### Pending Todos
 
@@ -99,6 +104,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-24T01:40:03.097Z
-Stopped at: Phase 1 Plan 04 complete — /start webhook with secret-token verification shipped; ready for 01-05 (people approval Server Actions)
+Last session: 2026-05-24T02:10:00.000Z
+Stopped at: Phase 1 Plan 05 complete — project CRUD + people approval + tabbed detail shell; 49/49 tests green; ready for 01-06
 Resume file: None
