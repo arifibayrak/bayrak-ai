@@ -5,22 +5,29 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { BoqTab } from '@/components/dashboard/BoqTab';
 import { RouteTab } from '@/components/dashboard/RouteTab';
 import { PeopleTab } from '@/components/dashboard/PeopleTab';
+import { KayitlarTab } from '@/components/dashboard/KayitlarTab';
+import { RefreshOnFocus } from '@/components/dashboard/RefreshOnFocus';
 import { getProject } from '@/actions/projects';
 import { getPendingPeople, getActivePeople } from '@/actions/people';
 
+// D-55 / RESEARCH Open Q1: force-dynamic on the page segment ensures every
+// load/navigation re-fetches fresh data (map points + BOQ %) from the server.
+export const dynamic = 'force-dynamic';
+
 interface Props {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; status?: string; page?: string }>;
 }
 
 export default async function ProjectDetailPage({ params, searchParams }: Props) {
   const { id } = await params;
-  const { tab } = await searchParams;
+  const { tab, status, page } = await searchParams;
 
   const t = await getTranslations('dashboard.projects');
   const boqT = await getTranslations('dashboard.boq');
   const routeT = await getTranslations('dashboard.route');
   const peopleT = await getTranslations('dashboard.people');
+  const submissionsT = await getTranslations('dashboard.submissions');
 
   const project = await getProject(id);
   if (!project) notFound();
@@ -32,8 +39,11 @@ export default async function ProjectDetailPage({ params, searchParams }: Props)
     import('@/actions/projects').then(m => m.getProjects()),
   ]);
 
-  // Determine active tab — default to 'boq'
-  const activeTab = tab === 'rota' ? 'rota' : tab === 'personel' ? 'personel' : 'boq';
+  // Determine active tab — default to 'boq' (D-49 order: BOQ · Rota · Kayıtlar · Personel)
+  const activeTab =
+    tab === 'rota'     ? 'rota'     :
+    tab === 'kayitlar' ? 'kayitlar' :
+    tab === 'personel' ? 'personel' : 'boq';
 
   return (
     <div className="space-y-0">
@@ -49,7 +59,10 @@ export default async function ProjectDetailPage({ params, searchParams }: Props)
       {/* Page heading */}
       <h1 className="text-xl font-semibold mb-4">{project.name}</h1>
 
-      {/* Tab strip — tab state in URL ?tab=boq|rota|personel */}
+      {/* Refresh on window focus / visibility regain so map + BOQ % update (DASH-05 / D-55) */}
+      <RefreshOnFocus />
+
+      {/* Tab strip — tab state in URL ?tab=boq|rota|kayitlar|personel (D-49) */}
       <Tabs defaultValue={activeTab} className="w-full">
         <div className="border-b border-border sticky top-14 bg-background z-10 -mx-6 px-6">
           <TabsList variant="line" className="h-10 w-auto">
@@ -61,6 +74,11 @@ export default async function ProjectDetailPage({ params, searchParams }: Props)
             <TabsTrigger value="rota">
               <Link href={`/dashboard/projects/${id}?tab=rota`} className="contents" prefetch={false}>
                 {routeT('title')}
+              </Link>
+            </TabsTrigger>
+            <TabsTrigger value="kayitlar">
+              <Link href={`/dashboard/projects/${id}?tab=kayitlar`} className="contents" prefetch={false}>
+                {submissionsT('tab_label')}
               </Link>
             </TabsTrigger>
             <TabsTrigger value="personel">
@@ -77,6 +95,10 @@ export default async function ProjectDetailPage({ params, searchParams }: Props)
 
         <TabsContent value="rota" className="pt-12">
           <RouteTab projectId={id} />
+        </TabsContent>
+
+        <TabsContent value="kayitlar" className="pt-12">
+          <KayitlarTab projectId={id} searchParams={{ status, page }} />
         </TabsContent>
 
         <TabsContent value="personel" className="pt-12">
