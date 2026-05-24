@@ -276,3 +276,423 @@ export async function editAllSiblingMessages(
 
 // Re-export getTxDb for Plan 05 use (decision transaction needs it)
 export { getTxDb };
+
+// ---------------------------------------------------------------------------
+// handleAuditDecision — authorize + atomic approve / reject-reason entry (D-29, D-36)
+// ---------------------------------------------------------------------------
+
+/**
+ * handleAuditDecision — entry point for audit:approve:<id> and audit:reject:<id> taps.
+ *
+ * Step 0: answerCallbackQuery is already called generically in telegram.ts:316 for all
+ *   callbacks. We still call it with a toast on the unauthorized / already-resolved /
+ *   error paths (Pattern 3 / Pitfall 2).
+ *
+ * Step 1 — AUTHORIZATION (D-36): re-query assignments every tap. Never trust callback_data.
+ *   Non-assigned tap → answerCallbackQuery({text: auditUnauthorized, show_alert:true}) + return.
+ *
+ * Step 2a — approve: atomic UPDATE-RETURNING WHERE status='pending_audit' (D-29).
+ *   Empty RETURNING → AlreadyResolvedError → toast + return.
+ *   Commit: approved_qty += quantity (D-27 increment-only).
+ *   After commit: editAllSiblingMessages + notify worker.
+ *
+ * Step 2b — reject (D-30/D-31): do NOT touch submissions. saveState to
+ *   AWAITING_REJECT_REASON, reply with reason keyboard. Submission stays pending_audit.
+ *
+ * @param ctx           - grammY Context
+ * @param action        - 'approve' | 'reject'
+ * @param submissionId  - UUID from callback_data
+ * @param db            - Drizzle neon-http client (lazy-imported in dispatcher)
+ */
+export async function handleAuditDecision(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ctx: any,
+  action: 'approve' | 'reject',
+  submissionId: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  db: any
+): Promise<void> {
+  const { MESSAGES } = await import('@/lib/bot-messages');
+  const { submissions } = await import('@/db/schema/submissions');
+  const { people } = await import('@/db/schema/people');
+  const { assignments } = await import('@/db/schema/assignments');
+  const { eq, and } = await import('drizzle-orm');
+  const { STEPS } = await import('@/lib/bot-fsm');
+  const { saveState } = await import('@/lib/telegram');
+  const { buildRejectReasonKeyboard } = await import('@/lib/bot-keyboards');
+
+  // ── Step 1: Authorization ────────────────────────────────────────────────
+
+  // Load the submission's projectId + personId (personId is the worker)
+  const subRows = await db
+    .select({
+      projectId: submissions.projectId,
+      personId: submissions.personId,
+      status: submissions.status,
+    })
+    .from(submissions)
+    .where(eq(submissions.id, submissionId));
+
+  if (!subRows.length) {
+    await ctx.answerCallbackQuery({ text: 'Kayıt bulunamadı', show_alert: true });
+    return;
+  }
+
+  const submission = subRows[0];
+
+  // Resolve the tapping auditor's person row by telegram_user_id
+  const auditorPersonRows = await db
+    .select({ id: people.id, displayName: people.displayName })
+    .from(people)
+    .where(eq(people.telegramUserId, BigInt(ctx.from.id)));
+
+  if (!auditorPersonRows.length) {
+    await ctx.answerCallbackQuery({ text: MESSAGES.auditUnauthorized, show_alert: true });
+    return;
+  }
+
+  const auditorPerson = auditorPersonRows[0];
+
+  // Check active auditor assignment on this project (D-36)
+  const assignmentRows = await db
+    .select({ id: assignments.id })
+    .from(assignments)
+    .where(
+      and(
+        eq(assignments.personId, auditorPerson.id),
+        eq(assignments.projectId, submission.projectId),
+        eq(assignments.roleOnProject, 'auditor')
+      )
+    );
+
+  if (!assignmentRows.length) {
+    await ctx.answerCallbackQuery({ text: MESSAGES.auditUnauthorized, show_alert: true });
+    return;
+  }
+
+  // ── Step 2a: APPROVE ─────────────────────────────────────────────────────
+
+  if (action === 'approve') {
+    const { boqItems } = await import('@/db/schema/boq-items');
+    const { sql } = await import('drizzle-orm');
+
+    const txDb = await getTxDb();
+
+    let approvedQuantity: string | number = 0;
+    let boqItemId = '';
+    let workerPersonId = submission.personId;
+
+    try {
+      await txDb.transaction(async (tx) => {
+        const { submissions: sub2 } = await import('@/db/schema/submissions');
+        const { boqItems: boq2 } = await import('@/db/schema/boq-items');
+        const { eq: eq2, and: and2, sql: sql2 } = await import('drizzle-orm');
+
+        // Atomic first-wins guard: WHERE status='pending_audit' is the race barrier (D-29)
+        const affected = await tx
+          .update(sub2)
+          .set({
+            status: 'approved',
+            decidedBy: auditorPerson.id,
+            decidedAt: new Date(),
+          })
+          .where(and2(eq2(sub2.id, submissionId), eq2(sub2.status, 'pending_audit')))
+          .returning({
+            id: sub2.id,
+            quantity: sub2.quantity,
+            boqItemId: sub2.boqItemId,
+          });
+
+        if (affected.length === 0) {
+          // Already decided by a prior/concurrent tap (D-29, AUDIT-06)
+          throw new AlreadyResolvedError();
+        }
+
+        approvedQuantity = affected[0].quantity;
+        boqItemId = affected[0].boqItemId;
+
+        // D-27: increment approved_qty atomically (increment-only, never subtractive)
+        await tx
+          .update(boq2)
+          .set({
+            approvedQty: sql2`approved_qty + ${affected[0].quantity}`,
+          })
+          .where(eq2(boq2.id, affected[0].boqItemId));
+      });
+    } catch (err) {
+      if (err instanceof AlreadyResolvedError) {
+        await ctx.answerCallbackQuery({ text: MESSAGES.auditAlreadyResolved });
+        return;
+      }
+      console.error('[handleAuditDecision] approve transaction failed for submissionId', submissionId, ':', err);
+      await ctx.answerCallbackQuery({ text: MESSAGES.genericError, show_alert: true });
+      return;
+    }
+
+    // Resolve worker telegram_user_id for notification (D-37)
+    const workerRows = await db
+      .select({ telegramUserId: people.telegramUserId })
+      .from(people)
+      .where(eq(people.id, workerPersonId));
+
+    // Post-commit: edit all sibling messages + notify worker (D-34, D-37)
+    const auditorDisplayName = auditorPerson.displayName;
+    await editAllSiblingMessages(submissionId, MESSAGES.auditApprovedOutcome(auditorDisplayName));
+
+    if (workerRows.length) {
+      const { bot } = await import('@/lib/telegram');
+      try {
+        await bot.api.sendMessage(
+          Number(workerRows[0].telegramUserId),
+          MESSAGES.workerApproved
+        );
+      } catch (notifyErr) {
+        // D-40: best-effort — log and continue
+        console.error('[handleAuditDecision] worker notification failed:', notifyErr);
+      }
+    }
+
+    return;
+  }
+
+  // ── Step 2b: REJECT ──────────────────────────────────────────────────────
+
+  if (action === 'reject') {
+    // D-30/D-31: do NOT modify submissions — only write conversation_state
+    // The submission stays pending_audit until a reason is provided and commitRejection runs.
+    // D-32: saveState upsert overwrites any active worker flow (one active flow per telegram_user_id)
+    await saveState(
+      db,
+      BigInt(ctx.from.id),
+      STEPS.AWAITING_REJECT_REASON,
+      {
+        submissionId,
+        auditorPersonId: auditorPerson.id,
+        workerPersonId: submission.personId,
+      },
+      auditorPerson.id
+    );
+
+    await ctx.reply(MESSAGES.auditRejectPrompt, {
+      reply_markup: buildRejectReasonKeyboard(),
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// commitRejection — the SINGLE rejection commit point (Pitfall 3 / D-31)
+// ---------------------------------------------------------------------------
+
+/**
+ * commitRejection — atomically commits a rejection with a mandatory reason.
+ *
+ * Only called after a reason exists (canned or free-text). This is the single
+ * rejection commit point — Pitfall 3 ensures no status='rejected' is ever set
+ * before a reason is captured.
+ *
+ * On AlreadyResolvedError: replies already-resolved toast + returns.
+ * On success: clears auditor's conversation_state, edits sibling messages, notifies worker.
+ *
+ * @param ctx             - grammY Context
+ * @param submissionId    - UUID from conversation_state data
+ * @param auditorPersonId - Person UUID of the deciding auditor
+ * @param reason          - Canned or free-text rejection reason
+ * @param db              - Drizzle neon-http client
+ */
+export async function commitRejection(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ctx: any,
+  submissionId: string,
+  auditorPersonId: string,
+  reason: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  db: any
+): Promise<void> {
+  const { MESSAGES } = await import('@/lib/bot-messages');
+  const { people } = await import('@/db/schema/people');
+  const { eq } = await import('drizzle-orm');
+  const { conversationState } = await import('@/db/schema/conversation-state');
+
+  // Get auditor's display name + the worker's telegramUserId (need it for notify after commit)
+  const auditorRows = await db
+    .select({ displayName: people.displayName })
+    .from(people)
+    .where(eq(people.id, auditorPersonId));
+
+  const auditorDisplayName = auditorRows[0]?.displayName ?? 'Denetçi';
+
+  const txDb = await getTxDb();
+  let workerPersonId: string | null = null;
+
+  try {
+    await txDb.transaction(async (tx) => {
+      const { submissions } = await import('@/db/schema/submissions');
+      const { eq: eq2, and: and2 } = await import('drizzle-orm');
+
+      // Atomic first-wins guard for rejection (same UPDATE-RETURNING pattern as approve)
+      const affected = await tx
+        .update(submissions)
+        .set({
+          status: 'rejected',
+          decidedBy: auditorPersonId,
+          decidedAt: new Date(),
+          rejectionReason: reason,
+        })
+        .where(and2(eq2(submissions.id, submissionId), eq2(submissions.status, 'pending_audit')))
+        .returning({ id: submissions.id, personId: submissions.personId });
+
+      if (affected.length === 0) {
+        throw new AlreadyResolvedError();
+      }
+
+      workerPersonId = affected[0].personId;
+    });
+  } catch (err) {
+    if (err instanceof AlreadyResolvedError) {
+      await ctx.answerCallbackQuery({ text: MESSAGES.auditAlreadyResolved });
+      // Clean up auditor's conversation_state even on already-resolved
+      await db
+        .delete(conversationState)
+        .where(eq(conversationState.telegramUserId, BigInt(ctx.from.id)));
+      return;
+    }
+    console.error('[commitRejection] transaction failed for submissionId', submissionId, ':', err);
+    await ctx.answerCallbackQuery({ text: MESSAGES.genericError, show_alert: true });
+    return;
+  }
+
+  // Clear auditor's conversation_state (reject flow complete)
+  await db
+    .delete(conversationState)
+    .where(eq(conversationState.telegramUserId, BigInt(ctx.from.id)));
+
+  // Post-commit: edit all sibling messages + notify worker (D-34, D-37)
+  await editAllSiblingMessages(submissionId, MESSAGES.auditRejectedOutcome(auditorDisplayName, reason));
+
+  if (workerPersonId) {
+    const workerRows = await db
+      .select({ telegramUserId: people.telegramUserId })
+      .from(people)
+      .where(eq(people.id, workerPersonId));
+
+    if (workerRows.length) {
+      const { bot } = await import('@/lib/telegram');
+      try {
+        await bot.api.sendMessage(
+          Number(workerRows[0].telegramUserId),
+          MESSAGES.workerRejected(reason)
+        );
+      } catch (notifyErr) {
+        // D-40: best-effort
+        console.error('[commitRejection] worker notification failed:', notifyErr);
+      }
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// handleAuditReasonSelect — canned reason tap / free-text sentinel (D-30)
+// ---------------------------------------------------------------------------
+
+/**
+ * handleAuditReasonSelect — handles audit:reason:<value> callbacks.
+ *
+ * If reasonOrFree === 'free': update FSM to AWAITING_REJECT_REASON (keeping data),
+ *   reply free-text prompt, do NOT commit.
+ * Else: treat as canned reason → commitRejection.
+ *
+ * submissionId + auditorPersonId come from conversation_state.data (never callback_data).
+ *
+ * @param ctx           - grammY Context
+ * @param reasonOrFree  - Parsed reason string or 'free' sentinel
+ * @param db            - Drizzle neon-http client
+ */
+export async function handleAuditReasonSelect(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ctx: any,
+  reasonOrFree: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  db: any
+): Promise<void> {
+  const { MESSAGES } = await import('@/lib/bot-messages');
+  const { conversationState } = await import('@/db/schema/conversation-state');
+  const { eq } = await import('drizzle-orm');
+  const { isStaleState, STEPS } = await import('@/lib/bot-fsm');
+  const { saveState } = await import('@/lib/telegram');
+
+  // Load auditor's conversation_state by telegram_user_id
+  const stateRows = await db
+    .select()
+    .from(conversationState)
+    .where(eq(conversationState.telegramUserId, BigInt(ctx.from.id)));
+
+  const state = stateRows?.[0] ?? null;
+
+  if (!state || isStaleState(state.updatedAt)) {
+    await ctx.answerCallbackQuery({ text: MESSAGES.auditAlreadyResolved });
+    return;
+  }
+
+  const stateData = state.data as { submissionId: string; auditorPersonId: string; workerPersonId: string };
+
+  if (reasonOrFree === 'free') {
+    // Başka (yaz) path: keep same data, update step to AWAITING_REJECT_REASON_FREE equivalent
+    // We reuse AWAITING_REJECT_REASON step to keep the message switch routing consistent
+    await saveState(
+      db,
+      BigInt(ctx.from.id),
+      STEPS.AWAITING_REJECT_REASON,
+      stateData,
+      stateData.auditorPersonId
+    );
+    await ctx.reply(MESSAGES.auditRejectFreeTextPrompt);
+    return;
+  }
+
+  // Canned reason — commit rejection immediately
+  await commitRejection(ctx, stateData.submissionId, stateData.auditorPersonId, reasonOrFree, db);
+}
+
+// ---------------------------------------------------------------------------
+// handleAuditRejectFreeText — free-text reason message handler (D-31)
+// ---------------------------------------------------------------------------
+
+/**
+ * handleAuditRejectFreeText — processes a free-text message in AWAITING_REJECT_REASON step.
+ *
+ * Trims and caps at 500 chars (V5 input validation).
+ * Empty/whitespace → reprompt, keep state (reason is mandatory, D-31).
+ * Non-empty → commitRejection.
+ *
+ * @param ctx       - grammY Context (bot.on('message') handler context)
+ * @param stateData - The conversation_state.data object from the auditor's FSM row
+ * @param db        - Drizzle neon-http client
+ */
+export async function handleAuditRejectFreeText(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ctx: any,
+  stateData: Record<string, unknown>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  db: any
+): Promise<void> {
+  const { MESSAGES } = await import('@/lib/bot-messages');
+
+  const rawText = (ctx.message?.text as string | undefined) ?? '';
+  const trimmed = rawText.trim();
+
+  if (!trimmed) {
+    // Empty/whitespace → reprompt (reason is mandatory, D-31)
+    await ctx.reply(MESSAGES.auditRejectFreeTextPrompt);
+    return;
+  }
+
+  // V5: cap at 500 chars
+  const cappedReason = trimmed.slice(0, 500);
+
+  const { submissionId, auditorPersonId } = stateData as {
+    submissionId: string;
+    auditorPersonId: string;
+  };
+
+  await commitRejection(ctx, submissionId, auditorPersonId, cappedReason, db);
+}
