@@ -9,3 +9,6 @@ export * from './routes';
 export * from './people';
 export * from './pending-people';
 export * from './assignments';
+export * from './conversation-state';  // references tenants, people
+export * from './processed-updates';   // no FK references
+export * from './submissions';         // references tenants, people, projects, boq-items
