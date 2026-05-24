@@ -66,10 +66,11 @@ export async function truncateAllTables(db: Awaited<ReturnType<typeof getTestDb>
     "users",
   ];
 
-  for (const table of tables) {
-    // Use IF EXISTS so this doesn't fail before migrations run
-    await db.execute(
-      sql.raw(`TRUNCATE TABLE IF EXISTS "${table}" RESTART IDENTITY CASCADE`)
-    );
-  }
+  // TRUNCATE TABLE IF EXISTS is not valid PostgreSQL syntax (IF EXISTS is only for DROP TABLE).
+  // RESTART IDENTITY is only relevant for SERIAL/IDENTITY columns; all our tables use UUID PKs.
+  // truncateAllTables is only called inside describeIfDb blocks which require TEST_DATABASE_URL
+  // pointing at a fully migrated DB — all tables are guaranteed to exist at call time.
+  // Truncate all at once in dependency-safe order with CASCADE to handle FK relationships.
+  const tableList = tables.map(t => `"${t}"`).join(', ');
+  await db.execute(sql.raw(`TRUNCATE TABLE ${tableList} CASCADE`));
 }

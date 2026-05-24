@@ -155,6 +155,16 @@ describeIfDb('/start handler — pending_people upsert idempotency (AUTH-02)', (
     testDb = await getTestDb();
     await truncateAllTables(testDb);
 
+    // Re-seed the default tenant after truncation — the /start handler inserts
+    // pending_people rows with tenantId = getDefaultTenantId() which references
+    // this row via FK constraint.
+    const { sql } = await import('drizzle-orm');
+    await testDb.execute(sql.raw(`
+      INSERT INTO tenants (id, name)
+      VALUES ('00000000-0000-0000-0000-000000000001', 'Default Tenant (test)')
+      ON CONFLICT DO NOTHING
+    `));
+
     // Provide fake env so the telegram modules load cleanly
     process.env.TELEGRAM_BOT_TOKEN = 'TEST:fake_token_for_db_tests';
     process.env.TELEGRAM_WEBHOOK_SECRET = 'db-test-secret-value';
@@ -181,8 +191,28 @@ describeIfDb('/start handler — pending_people upsert idempotency (AUTH-02)', (
     // Import bot AFTER mock is installed (fresh module from vi.resetModules)
     const { bot } = await import('@/lib/telegram');
 
-    // Stub bot.init() to prevent getMe network call
+    // Stub bot.init() to prevent getMe network call AND set bot.botInfo
+    // so grammY's handleUpdate doesn't throw "Bot not initialized!".
+    // grammY checks this.me (exposed as bot.botInfo setter) before creating context.
     vi.spyOn(bot, 'init').mockResolvedValue();
+    bot.botInfo = {
+      id: 123456,
+      is_bot: true,
+      first_name: 'TestBot',
+      username: 'testbot',
+      can_join_groups: false,
+      can_read_all_group_messages: false,
+      supports_inline_queries: false,
+    };
+
+    // Install a grammY transformer that intercepts ALL outgoing API calls so
+    // ctx.reply() (and any other bot.api call) doesn't hit real Telegram servers.
+    // Transformers are the official grammY intercept mechanism (api.config.use).
+    // Returning { ok: true, result: {} } satisfies the Bot API response shape.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    bot.api.config.use((_prev, _method, _payload, _signal) =>
+      Promise.resolve({ ok: true, result: {} as any })
+    );
 
     await bot.handleUpdate({
       update_id: userId,
