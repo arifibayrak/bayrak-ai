@@ -1,0 +1,8 @@
+{
+  "functions": {
+    "src/app/api/telegram/webhook/route.ts": {
+      "memory": 512,
+      "maxDuration": 55
+    }
+  }
+}

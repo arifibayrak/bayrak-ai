@@ -1,0 +1,33 @@
+{
+  "auth": {
+    "signin": {
+      "heading": "bayrak.ai",
+      "subheading": "Office Sign In",
+      "email_label": "Email",
+      "cta": "Send Sign-in Link",
+      "helper": "A sign-in link will be sent to your authorised email address.",
+      "success": "Link sent to your email. Please check your inbox.",
+      "error_not_allowed": "This email address is not authorised. Contact your administrator.",
+      "sending": "Sending..."
+    }
+  },
+  "dashboard": {
+    "boq": {
+      "add_item": "Add Item",
+      "import_excel": "Import from Excel",
+      "download_template": "Download Template",
+      "confirm_import": "Confirm & Import"
+    },
+    "projects": {
+      "title": "Projects",
+      "new": "New Project",
+      "no_projects": "No projects yet."
+    },
+    "people": {
+      "pending": "Pending Approval",
+      "active": "Active People",
+      "approve": "Approve",
+      "reject": "Reject"
+    }
+  }
+}

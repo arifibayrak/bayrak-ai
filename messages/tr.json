@@ -1,0 +1,33 @@
+{
+  "auth": {
+    "signin": {
+      "heading": "bayrak.ai",
+      "subheading": "Ofis Girişi",
+      "email_label": "E-posta",
+      "cta": "Giriş Bağlantısı Gönder",
+      "helper": "Yetkili e-posta adresinize giriş bağlantısı gönderilecek.",
+      "success": "Bağlantı e-postanıza gönderildi. Gelen kutunuzu kontrol edin.",
+      "error_not_allowed": "Bu e-posta adresi yetkili değil. Yöneticinizle iletişime geçin.",
+      "sending": "Gönderiliyor..."
+    }
+  },
+  "dashboard": {
+    "boq": {
+      "add_item": "Kalem Ekle",
+      "import_excel": "Excel'den İçe Aktar",
+      "download_template": "Şablon İndir",
+      "confirm_import": "Onayla ve İçe Aktar"
+    },
+    "projects": {
+      "title": "Projeler",
+      "new": "Yeni Proje",
+      "no_projects": "Henüz proje yok."
+    },
+    "people": {
+      "pending": "Onay Bekleyenler",
+      "active": "Aktif Kişiler",
+      "approve": "Onayla",
+      "reject": "Reddet"
+    }
+  }
+}
