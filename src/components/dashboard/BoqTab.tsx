@@ -1,21 +1,30 @@
 /**
- * BoqTab.tsx — STUB component.
+ * BoqTab.tsx
  *
- * This component is a file-ownership boundary stub created by plan 01-05.
- * Plan 01-06 fills the internals with BOQ CRUD, Excel import, and the full
- * BOQ table — WITHOUT modifying [id]/page.tsx (clean plan boundary).
+ * Project BOQ tab — plan 01-06 replaces the stub from plan 01-05.
+ * Async Server Component: fetches BOQ items and passes them to the client shell.
  *
- * Contract: exports BoqTab, accepts projectId prop.
+ * Boundary: this file and its client sub-components own the BOQ tab internals.
+ * The [id]/page.tsx file is NOT modified (file-ownership boundary).
+ *
+ * UI-SPEC #4a: BOQ table, Add/Edit dialog, Excel import flow, remaining-balance colors.
+ * D-04: ships BOTH manual CRUD AND the Excel importer.
  */
+
+import { getBoqItems } from '@/actions/boq';
+import { BoqTabClient } from './BoqTabClient';
 
 interface BoqTabProps {
   projectId: string;
 }
 
-export function BoqTab({ projectId: _projectId }: BoqTabProps) {
+export async function BoqTab({ projectId }: BoqTabProps) {
+  const items = await getBoqItems(projectId);
+
   return (
-    <div className="py-12 text-center text-muted-foreground text-sm">
-      <p>BOQ içeriği yükleniyor... / Loading BOQ contents...</p>
-    </div>
+    <BoqTabClient
+      projectId={projectId}
+      initialItems={items}
+    />
   );
 }

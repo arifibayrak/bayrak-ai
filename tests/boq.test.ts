@@ -191,7 +191,8 @@ describeIfDb('BOQ Server Actions (DB)', () => {
 
   it('throws Unauthorized when auth() returns null', async () => {
     const { auth } = await import('@/lib/auth');
-    vi.mocked(auth).mockResolvedValueOnce(null);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    vi.mocked(auth).mockResolvedValueOnce(null as any);
 
     const { addBoqItem } = await import('@/actions/boq');
     await expect(
