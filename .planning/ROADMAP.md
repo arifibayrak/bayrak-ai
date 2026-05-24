@@ -78,7 +78,7 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 02-01-PLAN.md — Three new Drizzle schema files (conversation_state, processed_updates, submissions) + barrel + FK-safe truncate + Wave 0 test scaffold
+- [x] 02-01-PLAN.md — Three new Drizzle schema files (conversation_state, processed_updates, submissions) + barrel + FK-safe truncate + Wave 0 test scaffold
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -164,7 +164,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 7/7 | Complete | 2026-05-24 |
-| 2. Worker Bot | 0/6 | Planned | - |
+| 2. Worker Bot | 1/6 | In Progress|  |
 | 3. Audit Loop | 0/TBD | Not started | - |
 | 4. Spatial Layer | 0/TBD | Not started | - |
 | 5. Dashboard & Map | 0/TBD | Not started | - |

@@ -30,9 +30,9 @@ Requirements for the initial release. Each maps to roadmap phases.
 - [ ] **LOG-05**: Worker shares location via Telegram's native location feature; the bot rejects typed coordinates and reprompts
 - [ ] **LOG-06**: Worker enters a numeric quantity of material used; the bot rejects non-numeric input and reprompts
 - [ ] **LOG-07**: Worker can add optional free-text notes
-- [ ] **LOG-08**: On confirmation, the submission persists with `status: pending_audit`
+- [x] **LOG-08**: On confirmation, the submission persists with `status: pending_audit`
 - [ ] **LOG-09**: The bot guides the worker sequentially and reprompts on any skipped or out-of-order step
-- [ ] **LOG-10**: A worker's in-progress multi-step submission is preserved reliably and never lost or duplicated across the bot's serverless invocations
+- [x] **LOG-10**: A worker's in-progress multi-step submission is preserved reliably and never lost or duplicated across the bot's serverless invocations
 
 ### Audit Loop
 
@@ -124,9 +124,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | LOG-05 | Phase 2 | Pending |
 | LOG-06 | Phase 2 | Pending |
 | LOG-07 | Phase 2 | Pending |
-| LOG-08 | Phase 2 | Pending |
+| LOG-08 | Phase 2 | Complete |
 | LOG-09 | Phase 2 | Pending |
-| LOG-10 | Phase 2 | Pending |
+| LOG-10 | Phase 2 | Complete |
 | I18N-01 | Phase 2 | Pending |
 | AUDIT-01 | Phase 3 | Pending |
 | AUDIT-02 | Phase 3 | Pending |
