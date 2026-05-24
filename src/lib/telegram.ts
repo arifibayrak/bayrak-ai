@@ -1325,6 +1325,43 @@ async function handleConfirmSubmit(
     return;
   }
 
+  // Derive the submission id from the flow_id (UNIQUE constraint — D-13 Guard 2).
+  // The transaction insert uses .onConflictDoNothing() without RETURNING id, so we
+  // look up the row by flowId post-transaction. If it returns nothing, a duplicate
+  // confirm already fanned out on the first insert — skip fan-out (D-13).
+  let submissionId: string | null = null;
+  try {
+    const subRows = await db
+      .select({ id: submissions.id })
+      .from(submissions)
+      .where(eq(submissions.flowId, flowId));
+    submissionId = subRows?.[0]?.id ?? null;
+  } catch (lookupErr) {
+    // Non-fatal: fan-out will be skipped; worker reply still goes through.
+    console.error('[handleConfirmSubmit] flowId lookup failed for flowId', flowId, ':', lookupErr);
+  }
+
+  // Schedule the auditor fan-out AFTER the worker's reply to avoid blocking (T-3-FANOUT-01).
+  // after() runs after the Next.js response is sent; if it does not fire in the grammY
+  // handler chain (RESEARCH Open Question 1), the fallback is a direct await before the
+  // reply — see the SUMMARY for which path was taken.
+  if (submissionId) {
+    const submissionIdForFanOut = submissionId;
+    try {
+      const { after } = await import('next/server');
+      after(async () => {
+        const { fanOutToAuditors } = await import('@/lib/bot-audit');
+        await fanOutToAuditors(submissionIdForFanOut);
+      });
+    } catch (_afterErr) {
+      // after() unavailable in this runtime context — fall back to direct await.
+      // This adds a small delay before the worker's reply but is functionally correct.
+      // Document: after() FALLBACK path taken (see 03-04-SUMMARY.md).
+      const { fanOutToAuditors } = await import('@/lib/bot-audit');
+      await fanOutToAuditors(submissionIdForFanOut);
+    }
+  }
+
   // Reply "Gönderildi ✅" with a single "Yeni kayıt" button (D-18 — no auto-loop)
   const doneKeyboard = new InlineKeyboard().text(MESSAGES.newLog, 'flow:new');
   await ctx.reply(MESSAGES.sent, { reply_markup: doneKeyboard });
