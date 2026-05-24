@@ -1,8 +1,8 @@
 ---
 phase: 3
 slug: audit-loop
-status: draft
-nyquist_compliant: false
+status: ready
+nyquist_compliant: true
 wave_0_complete: false
 created: 2026-05-24
 ---
@@ -19,7 +19,7 @@ created: 2026-05-24
 |----------|-------|
 | **Framework** | vitest 4.1.x |
 | **Config file** | `vitest.config.ts` (globals on, node env, `tests/setup.ts`, `fileParallelism: false`) |
-| **Quick run command** | `npx vitest run src/lib/<changed>.test.ts tests/<changed>.test.ts` |
+| **Quick run command** | `npx vitest run tests/telegram-audit.test.ts` (optionally `-t "AUDIT-04"` to scope by requirement) |
 | **Full suite command** | `npx vitest run` |
 | **Estimated runtime** | ~30–60 seconds (DB integration tests run sequentially — shared Neon database) |
 
@@ -41,28 +41,28 @@ created: 2026-05-24
 > The race/concurrency and atomic-increment rows below are MANDATORY — they prove the
 > phase's hardest success criteria.
 
+> All Phase 3 tests live in ONE file — `tests/telegram-audit.test.ts` — scaffolded red
+> in Plan 03-01 (Wave 0) and turned green in Plans 03-04/03-05. DB-dependent rows run
+> under `describeIfDb` (skip cleanly without `TEST_DATABASE_URL`). Scope by requirement
+> with `-t "<REQ>"`.
+
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 3-XX-XX | XX | 1 | AUDIT-04 | T-3-RACE | First decision wins; second concurrent tap is a no-op ("already resolved") with NO double-increment of `approved_qty` | integration | `npx vitest run tests/audit-decision-race.test.ts` | ❌ W0 | ⬜ pending |
-| 3-XX-XX | XX | 1 | AUDIT-04 | — | Approve increments `boq_items.approved_qty` by exactly the submitted quantity, atomically with the status transition | integration | `npx vitest run tests/audit-approve.test.ts` | ❌ W0 | ⬜ pending |
-| 3-XX-XX | XX | 1 | AUDIT-06 | T-3-DUP | Replayed callback_query update is de-duped by the `processed_updates` fence (no second decision) | integration | `npx vitest run tests/audit-duplicate-update.test.ts` | ❌ W0 | ⬜ pending |
-| 3-XX-XX | XX | 1 | AUDIT-03 | T-3-AUTHZ | Non-assigned user's tap changes no DB row and returns an ephemeral rejection | integration | `npx vitest run tests/audit-authz.test.ts` | ❌ W0 | ⬜ pending |
-| 3-XX-XX | XX | 1 | AUDIT-05 | — | Reject without a reason leaves submission `pending_audit`; reject WITH reason persists `rejection_reason` and notifies the worker | integration | `npx vitest run tests/audit-reject-reason.test.ts` | ❌ W0 | ⬜ pending |
+| 3-05-01 | 05 | 4 | AUDIT-06 SC5 | T-3-RACE | First decision wins; second concurrent tap is a no-op ("already resolved") with NO double-increment of `approved_qty` | integration (describeIfDb) **MANDATORY** | `npx vitest run tests/telegram-audit.test.ts -t "AUDIT-06"` | ❌ W0 | ⬜ pending |
+| 3-05-01 | 05 | 4 | AUDIT-04 SC3 | — | Approve increments `boq_items.approved_qty` by exactly the submitted quantity, atomically with the status transition; second tap increments once total | integration (describeIfDb) **MANDATORY** | `npx vitest run tests/telegram-audit.test.ts -t "AUDIT-04"` | ❌ W0 | ⬜ pending |
+| 3-05-03 | 05 | 4 | AUDIT-06 | T-3-DUP | Replayed callback_query update is de-duped by the `processed_updates` fence (no second decision) | integration | `npx vitest run tests/telegram-audit.test.ts -t "AUDIT-06"` | ❌ W0 | ⬜ pending |
+| 3-05-01 | 05 | 4 | AUDIT-03 | T-3-AUTHZ | Non-assigned user's tap changes no DB row and returns an ephemeral rejection | unit (mock DB) | `npx vitest run tests/telegram-audit.test.ts -t "AUDIT-03"` | ❌ W0 | ⬜ pending |
+| 3-05-02 | 05 | 4 | AUDIT-05 | — | Reject without a reason leaves submission `pending_audit`; reject WITH reason persists `rejection_reason` and notifies the worker | integration (describeIfDb) | `npx vitest run tests/telegram-audit.test.ts -t "AUDIT-05"` | ❌ W0 | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
 ---
 
-## Wave 0 Requirements
+- [ ] `tests/telegram-audit.test.ts` — single audit test file scaffolded red in Plan 03-01 Task 3, covering ALL audit behaviors: concurrency/double-tap race (AUDIT-06 SC5, MANDATORY), atomic `approved_qty` increment (AUDIT-04 SC3, MANDATORY), idempotency-fence replay (AUDIT-06), action-time authorization (AUDIT-03), and mandatory-reason FSM (AUDIT-05)
+- [ ] grammY callback test harness — `setupBotForTest()` + `bot.api.config.use(transformer)` (NOT `vi.spyOn`); add `makeCallbackUpdate()` as the Phase 3 analog of `makeTextUpdate()` (reuse `tests/telegram-bot.test.ts` pattern)
+- [ ] `tests/fixtures/db.ts` — add `audit_notifications` to `truncateAllTables` BEFORE `submissions` (FK order)
 
-- [ ] `tests/audit-decision-race.test.ts` — concurrency/double-tap race stub (AUDIT-04, AUDIT-06)
-- [ ] `tests/audit-approve.test.ts` — atomic `approved_qty` increment stub (AUDIT-04)
-- [ ] `tests/audit-duplicate-update.test.ts` — idempotency-fence replay stub (AUDIT-06)
-- [ ] `tests/audit-authz.test.ts` — action-time authorization stub (AUDIT-03)
-- [ ] `tests/audit-reject-reason.test.ts` — mandatory-reason FSM stub (AUDIT-05)
-- [ ] grammY callback test harness — set `bot.botInfo` after mocking `bot.init`; intercept replies via `api.config.use(transformer)` (reuse Phase 2 pattern)
-
-*Existing `tests/setup.ts` and DB fixtures from Phase 1/2 cover infrastructure; new audit-specific test files are the Wave 0 additions.*
+*Existing `tests/setup.ts` and DB fixtures from Phase 1/2 cover infrastructure; the consolidated `tests/telegram-audit.test.ts` plus the fixture/truncate-order update are the Wave 0 additions. DB-dependent cases run under `describeIfDb` and skip cleanly without `TEST_DATABASE_URL`.*
 
 ---
 
