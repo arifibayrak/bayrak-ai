@@ -170,7 +170,26 @@ Plans:
   3. The submissions list can be filtered by status (pending / approved / rejected) and shows photo, location, quantity, and notes for each entry
   4. The Mapbox token is restricted to the bayrak.ai domain before any dashboard URL is shared externally
 
-**Plans**: TBD
+**Plans**: 6 plans
+Plans:
+**Wave 1**
+
+- [ ] 05-01-PLAN.md — Setup: install map stack, next/image Blob config, full TR/EN catalog, Wave 0 test scaffolds
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 05-02-PLAN.md — Data layer: getApprovedPoints + getSubmissions + getRouteGeoJSON (ST_AsGeoJSON, status filter, pagination)
+- [ ] 05-05-PLAN.md — BOQ progress: % Tamamlanan column + Progress bar inline in BoqTable (DASH-04)
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [ ] 05-03-PLAN.md — Map: MapView (react-map-gl route line + color-coded points + anomaly ring + popup + legend) wired into Rota tab
+- [ ] 05-04-PLAN.md — Kayıtlar tab: filterable/paginated submissions table + photo lightbox + Maps link
+
+**Wave 4** *(blocked on Wave 3)*
+
+- [ ] 05-06-PLAN.md — Page wiring: force-dynamic, Kayıtlar tab registration, searchParams plumbing, RefreshOnFocus (DASH-05)
+
 **UI hint**: yes
 
 ### Phase 6: AI Vision Assist
