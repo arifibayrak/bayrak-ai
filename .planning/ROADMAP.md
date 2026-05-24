@@ -184,7 +184,7 @@ Plans:
 **Wave 3** *(blocked on Wave 2)*
 
 - [ ] 05-03-PLAN.md — Map: MapView (react-map-gl route line + color-coded points + anomaly ring + popup + legend) wired into Rota tab
-- [ ] 05-04-PLAN.md — Kayıtlar tab: filterable/paginated submissions table + photo lightbox + Maps link
+- [x] 05-04-PLAN.md — Kayıtlar tab: filterable/paginated submissions table + photo lightbox + Maps link
 
 **Wave 4** *(blocked on Wave 3)*
 
@@ -219,5 +219,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 2. Worker Bot | 6/6 | Complete   | 2026-05-24 |
 | 3. Audit Loop | 5/5 | Complete   | 2026-05-24 |
 | 4. Spatial Layer | 4/4 | Complete    | 2026-05-24 |
-| 5. Dashboard & Map | 3/6 | In Progress|  |
+| 5. Dashboard & Map | 4/6 | In Progress|  |
 | 6. AI Vision Assist | 0/TBD | Not started | - |
