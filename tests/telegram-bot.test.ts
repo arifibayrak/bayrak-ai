@@ -1750,6 +1750,243 @@ describe('quantity + notes', () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// (l) Pure unit tests — confirm summary + per-field edit (D-16)
+//
+// Tests verify:
+//   - reaching CONFIRM sends replyWithPhoto with a keyboard containing confirm:submit
+//     and per-field edit buttons
+//   - edit:quantity sets currentStep='quantity' and editReturnStep='confirm'
+//   - re-entering a valid quantity while editReturnStep is set returns to confirm
+// ---------------------------------------------------------------------------
+
+describe('confirm summary + edit (D-16)', () => {
+  const WORKER_ID = 80001;
+  const PERSON_ID = 'person-80001';
+  const FLOW_ID = 'flow-80001';
+  const PROJECT_ID = 'proj-80001';
+  const BOQ_ITEM_ID = 'boq-80001';
+
+  const confirmStateData = {
+    step: 'confirm',
+    projectId: PROJECT_ID,
+    boqItemId: BOQ_ITEM_ID,
+    photoUrl: 'https://blob.example.com/photo.jpg',
+    photoFileId: 'file_id_abc',
+    locationLat: 41.0082,
+    locationLon: 28.9784,
+    quantity: 25,
+    unit: 'm',
+    notes: null,
+  };
+
+  function buildConfirmStateDbMock(stateData: Record<string, unknown> = confirmStateData) {
+    return {
+      insert: vi.fn().mockReturnValue({
+        values: vi.fn().mockReturnValue({
+          onConflictDoNothing: vi.fn().mockReturnValue({
+            returning: vi.fn().mockResolvedValue([{ id: BigInt(1) }]),
+          }),
+        }),
+      }),
+      select: vi.fn().mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([{
+            id: 'state-confirm', telegramUserId: BigInt(WORKER_ID),
+            personId: PERSON_ID, flowId: FLOW_ID,
+            currentStep: 'confirm',
+            data: stateData,
+            updatedAt: new Date(),
+          }]),
+        }),
+      }),
+      update: vi.fn().mockReturnValue({
+        set: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            returning: vi.fn().mockResolvedValue([{ id: 'state-confirm' }]),
+          }),
+        }),
+      }),
+    };
+  }
+
+  beforeEach(() => {
+    process.env.TELEGRAM_BOT_TOKEN = 'TEST:fake_token_confirm';
+    process.env.TELEGRAM_WEBHOOK_SECRET = 'test-secret-confirm';
+    vi.resetModules();
+  });
+
+  afterEach(() => {
+    delete process.env.TELEGRAM_BOT_TOKEN;
+    delete process.env.TELEGRAM_WEBHOOK_SECRET;
+    vi.restoreAllMocks();
+    vi.resetModules();
+  });
+
+  it('D-16: text at CONFIRM step sends replyWithPhoto with confirm:submit and edit buttons', async () => {
+    vi.doMock('@/db', () => ({ db: buildConfirmStateDbMock() }));
+
+    const bot = await setupBotForTest();
+    const sentMethods: Array<{ method: string; payload: unknown }> = [];
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    bot.api.config.use(async (_prev: any, method: any, payload: any) => {
+      sentMethods.push({ method, payload });
+      return Promise.resolve({ ok: true, result: {} as never });
+    });
+
+    // Deliver a text message at CONFIRM step — should trigger handleStepConfirm
+    await bot.handleUpdate(makeTextUpdate(WORKER_ID, 'test', WORKER_ID + 100));
+
+    // Must have called sendPhoto (replyWithPhoto)
+    const photoCall = sentMethods.find(m => m.method === 'sendPhoto');
+    expect(photoCall).toBeDefined();
+
+    // Keyboard must contain confirm:submit and at least one edit: button
+    const kb = (photoCall?.payload as { reply_markup?: { inline_keyboard: Array<Array<{ callback_data: string }>> } })?.reply_markup;
+    expect(kb).toBeDefined();
+    const allButtons = kb!.inline_keyboard.flat();
+    expect(allButtons.some(b => b.callback_data === 'confirm:submit')).toBe(true);
+    expect(allButtons.some(b => b.callback_data === 'edit:quantity')).toBe(true);
+    expect(allButtons.some(b => b.callback_data === 'edit:photo')).toBe(true);
+  });
+
+  it('D-16: edit:quantity callback sets currentStep=quantity and editReturnStep=confirm', async () => {
+    vi.doMock('@/db', () => ({ db: buildConfirmStateDbMock() }));
+
+    const bot = await setupBotForTest();
+    let capturedUpdateData: Record<string, unknown> | null = null;
+
+    // Re-mock @/db to capture saveState update
+    vi.resetModules();
+    const mockUpdateSetWhere = vi.fn().mockReturnValue({
+      returning: vi.fn().mockResolvedValue([{ id: 'state-confirm' }]),
+    });
+    const mockUpdateSet = vi.fn().mockImplementation((data: Record<string, unknown>) => {
+      capturedUpdateData = data;
+      return { where: mockUpdateSetWhere };
+    });
+
+    vi.doMock('@/db', () => ({
+      db: {
+        insert: vi.fn().mockReturnValue({
+          values: vi.fn().mockReturnValue({
+            onConflictDoNothing: vi.fn().mockReturnValue({
+              returning: vi.fn().mockResolvedValue([{ id: BigInt(1) }]),
+            }),
+          }),
+        }),
+        select: vi.fn().mockReturnValue({
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue([{
+              id: 'state-confirm', telegramUserId: BigInt(WORKER_ID),
+              personId: PERSON_ID, flowId: FLOW_ID,
+              currentStep: 'confirm',
+              data: confirmStateData,
+              updatedAt: new Date(),
+            }]),
+          }),
+        }),
+        update: vi.fn().mockReturnValue({ set: mockUpdateSet }),
+      },
+    }));
+
+    const bot2 = await setupBotForTest();
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    bot2.api.config.use(async (_prev: any, _method: any, _payload: any) => {
+      return Promise.resolve({ ok: true, result: {} as never });
+    });
+
+    // Deliver edit:quantity callback
+    const editUpdate = {
+      update_id: WORKER_ID + 200,
+      callback_query: {
+        id: 'cb-edit-qty',
+        from: { id: WORKER_ID, first_name: 'Worker', is_bot: false, language_code: 'tr' },
+        chat_instance: 'chat-inst-edit',
+        data: 'edit:quantity',
+        message: {
+          message_id: 300,
+          from: { id: 123456, is_bot: true, first_name: 'TestBot', username: 'testbot' },
+          chat: { id: WORKER_ID, type: 'private' as const, first_name: 'Worker' },
+          date: Math.floor(Date.now() / 1000),
+          text: 'confirm summary',
+        },
+      },
+    };
+
+    await bot2.handleUpdate(editUpdate);
+
+    // saveState should have been called with currentStep='quantity' and editReturnStep='confirm'
+    expect(capturedUpdateData).not.toBeNull();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect((capturedUpdateData as any)?.currentStep).toBe('quantity');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect((capturedUpdateData as any)?.data?.editReturnStep).toBe('confirm');
+    void bot;
+  });
+
+  it('D-16: re-entering quantity while editReturnStep=confirm returns to confirm (not notes)', async () => {
+    // State at QUANTITY step with editReturnStep='confirm' set
+    const quantityStateWithReturn = {
+      ...confirmStateData,
+      step: 'quantity',
+      editReturnStep: 'confirm',
+    };
+
+    vi.doMock('@/db', () => ({
+      db: {
+        insert: vi.fn().mockReturnValue({
+          values: vi.fn().mockReturnValue({
+            onConflictDoNothing: vi.fn().mockReturnValue({
+              returning: vi.fn().mockResolvedValue([{ id: BigInt(1) }]),
+            }),
+          }),
+        }),
+        select: vi.fn().mockReturnValue({
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue([{
+              id: 'state-qty-return', telegramUserId: BigInt(WORKER_ID),
+              personId: PERSON_ID, flowId: FLOW_ID,
+              currentStep: 'quantity',
+              data: quantityStateWithReturn,
+              updatedAt: new Date(),
+            }]),
+          }),
+        }),
+        update: vi.fn().mockReturnValue({
+          set: vi.fn().mockReturnValue({
+            where: vi.fn().mockReturnValue({
+              returning: vi.fn().mockResolvedValue([{ id: 'state-qty-return' }]),
+            }),
+          }),
+        }),
+      },
+    }));
+
+    const bot = await setupBotForTest();
+    const sentMethods: Array<{ method: string; payload: unknown }> = [];
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    bot.api.config.use(async (_prev: any, method: any, payload: any) => {
+      sentMethods.push({ method, payload });
+      return Promise.resolve({ ok: true, result: {} as never });
+    });
+
+    // Enter valid quantity "30"
+    await bot.handleUpdate(makeTextUpdate(WORKER_ID, '30', WORKER_ID + 300));
+
+    // Should have called sendPhoto (confirm step), NOT sendMessage with promptNotes
+    const photoCall = sentMethods.find(m => m.method === 'sendPhoto');
+    const textReplies = sentMethods.filter(m => m.method === 'sendMessage');
+    const { MESSAGES } = await import('@/lib/bot-messages');
+    const notesReply = textReplies.find(m => (m.payload as { text?: string }).text?.includes(MESSAGES.promptNotes));
+    expect(photoCall).toBeDefined();
+    expect(notesReply).toBeUndefined(); // Must NOT have gone to notes step
+  });
+});
+
 describeIfDb('submission persistence & idempotency (SC4)', () => {
   let testDb: Awaited<ReturnType<typeof getTestDb>>;
 

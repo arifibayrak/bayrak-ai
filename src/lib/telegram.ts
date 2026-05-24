@@ -452,6 +452,55 @@ async function dispatchCallbackQuery(
     return;
   }
 
+  // D-16: edit:<field> callbacks — jump to chosen step, set editReturnStep=CONFIRM
+  if (data.startsWith('edit:')) {
+    const field = data.slice(5); // 'photo' | 'location' | 'quantity' | 'notes' | 'boq'
+    const fieldStepMap: Record<string, string> = {
+      photo: STEPS.PHOTO,
+      location: STEPS.LOCATION,
+      quantity: STEPS.QUANTITY,
+      notes: STEPS.NOTES,
+      boq: STEPS.BOQ,
+    };
+    const targetStep = fieldStepMap[field];
+    if (targetStep) {
+      const currentData = state.data as Record<string, unknown>;
+      const newData = { ...currentData, editReturnStep: STEPS.CONFIRM };
+      await saveState(db, BigInt(telegramUserId), targetStep, newData, state.personId as string);
+      await repromptStep(ctx, targetStep, newData);
+    }
+    return;
+  }
+
+  // confirm:submit — transactional submission insert (LOG-08)
+  if (data === 'confirm:submit') {
+    await handleConfirmSubmit(ctx, db);
+    return;
+  }
+
+  // flow:new — start a clean new flow after successful submission (D-18)
+  if (data === 'flow:new') {
+    const workerIdentity = await resolveWorker(db, BigInt(telegramUserId));
+    if (!workerIdentity) {
+      const { MESSAGES: MSG } = await import('@/lib/bot-messages');
+      await ctx.reply(MSG.pendingApproval);
+      return;
+    }
+    const { buildProjectKeyboard: bpk } = await import('@/lib/bot-keyboards');
+    const { MESSAGES: MSG } = await import('@/lib/bot-messages');
+    await saveState(
+      db,
+      BigInt(telegramUserId),
+      STEPS.PROJECT,
+      { step: STEPS.PROJECT, page: 0 },
+      workerIdentity.person.id
+    );
+    await ctx.reply(MSG.greeting(workerIdentity.person.displayName), {
+      reply_markup: bpk(workerIdentity.projects, 0),
+    });
+    return;
+  }
+
   // Unknown callback — reprompt current step
   await repromptStep(ctx, state.currentStep, state.data as Record<string, unknown>);
 }
@@ -817,8 +866,16 @@ export async function handleStepPhoto(
   const highResPhoto = photoSizes[photoSizes.length - 1];
   const photoFileId: string = highResPhoto.file_id;
 
+  // D-16: if editReturnStep is set, return to CONFIRM after re-capture
+  const editReturn = data.editReturnStep as string | undefined;
+  const newData = { ...data, photoUrl, photoFileId, editReturnStep: undefined };
+  if (editReturn === STEPS.CONFIRM) {
+    await saveState(db, BigInt(telegramUserId), STEPS.CONFIRM, newData, data.personId as string);
+    await handleStepConfirm(ctx, newData, db);
+    return;
+  }
+
   // Advance to LOCATION step
-  const newData = { ...data, photoUrl, photoFileId };
   await saveState(
     db,
     BigInt(telegramUserId),
@@ -858,13 +915,23 @@ export async function handleStepLocation(
     return;
   }
 
-  // Native location received — advance to QUANTITY step
+  // Native location received
+  const editReturnLoc = data.editReturnStep as string | undefined;
   const newData = {
     ...data,
     locationLat: location.latitude,
     locationLon: location.longitude,
+    editReturnStep: undefined,
   };
 
+  // D-16: if editReturnStep is set, return to CONFIRM after re-capture
+  if (editReturnLoc === STEPS.CONFIRM) {
+    await saveState(db, BigInt(telegramUserId), STEPS.CONFIRM, newData, data.personId as string);
+    await handleStepConfirm(ctx, newData, db);
+    return;
+  }
+
+  // Advance to QUANTITY step
   await saveState(
     db,
     BigInt(telegramUserId),
@@ -913,8 +980,18 @@ export async function handleStepQuantity(
     return;
   }
 
-  // Valid quantity — advance to NOTES step
-  const newData = { ...data, quantity: parsed };
+  // Valid quantity
+  const editReturnQty = data.editReturnStep as string | undefined;
+  const newData = { ...data, quantity: parsed, editReturnStep: undefined };
+
+  // D-16: if editReturnStep is set, return to CONFIRM after re-capture
+  if (editReturnQty === STEPS.CONFIRM) {
+    await saveState(db, BigInt(telegramUserId), STEPS.CONFIRM, newData, data.personId as string);
+    await handleStepConfirm(ctx, newData, db);
+    return;
+  }
+
+  // Advance to NOTES step
   await saveState(
     db,
     BigInt(telegramUserId),
@@ -963,8 +1040,8 @@ export async function handleStepNotes(
   // V5: length cap — bound free-text injection surface (D-21, notes stored via Drizzle parameterized insert)
   const cappedNotes = notes !== null ? notes.slice(0, 1000) : null;
 
-  // Advance to CONFIRM step
-  const newData = { ...data, notes: cappedNotes };
+  // Advance to CONFIRM step (notes always routes to CONFIRM — editReturnStep irrelevant here)
+  const newData = { ...data, notes: cappedNotes, editReturnStep: undefined };
   await saveState(
     db,
     BigInt(telegramUserId),
@@ -973,22 +1050,175 @@ export async function handleStepNotes(
     data.personId as string
   );
 
-  // Hand off to confirm step (Plan 06 fills the confirm rendering)
+  // Hand off to confirm step
   await handleStepConfirm(ctx, newData, db);
 }
 
+// ---------------------------------------------------------------------------
+// getTxDb — neon-serverless Pool (WebSocket driver) for transactions.
+//
+// Copied EXACTLY from src/actions/people.ts lines 21-38.
+// neon-http (default @/db) does NOT support transactions — this is the ONLY
+// correct driver for the confirm:submit transactional insert (T-02-16, Pitfall 2).
+// ---------------------------------------------------------------------------
+
+async function getTxDb() {
+  const { Pool, neonConfig } = await import('@neondatabase/serverless');
+  const { drizzle } = await import('drizzle-orm/neon-serverless');
+
+  // In Node.js (non-edge) environments, neon-serverless needs ws
+  // Try to require ws if available, fall back gracefully if not
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const ws = require('ws') as { default?: unknown } | unknown;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    neonConfig.webSocketConstructor = (ws as any).default ?? ws;
+  } catch {
+    // ws not available — will use native WebSocket (browser/edge)
+  }
+
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL! });
+  return drizzle(pool);
+}
+
 /**
- * handleStepConfirm — confirmation step stub (D-16, D-18).
- * Plan 06 fills the confirm summary rendering and submission insert.
- * For Plan 05: reaching CONFIRM is the success state — reply a placeholder.
+ * handleStepConfirm — D-16 confirm summary + per-field edit buttons.
+ *
+ * Renders the captured submission as a photo (replyWithPhoto on the stored
+ * blob URL) with a summary caption and per-field edit buttons + a confirm button.
+ * Tapping an edit button sets editReturnStep and routes to the chosen step.
+ * Tapping "Onayla ve Gönder" triggers the transactional submission insert (Task 2).
  */
 export async function handleStepConfirm(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ctx: any,
-  _data: Record<string, unknown>,
+  data: Record<string, unknown>,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   _db: any
 ): Promise<void> {
   const { MESSAGES } = await import('@/lib/bot-messages');
-  await ctx.reply(MESSAGES.confirmSummary);
+  const { InlineKeyboard: IK } = await import('grammy');
+
+  const photoUrl = data.photoUrl as string | undefined;
+
+  // Build the summary caption
+  const projectName = (data.projectName as string) ?? (data.projectId as string) ?? '—';
+  const boqMaterial = (data.boqMaterial as string) ?? (data.boqItemId as string) ?? '—';
+  const quantity = data.quantity as number | undefined;
+  const unit = (data.unit as string) ?? '';
+  const notes = (data.notes as string | null) ?? '—';
+  const hasLocation = Boolean(data.locationLat && data.locationLon);
+
+  const caption = [
+    MESSAGES.confirmSummary,
+    '',
+    `🏗 Proje: ${projectName}`,
+    `📦 Kalem: ${boqMaterial}`,
+    `📏 Miktar: ${quantity !== undefined ? `${quantity} ${unit}` : '—'}`,
+    `📍 Konum: ${hasLocation ? '✓' : '—'}`,
+    `📝 Not: ${notes}`,
+  ].join('\n');
+
+  // Build per-field edit keyboard + confirm button (D-16)
+  const confirmKeyboard = new IK()
+    .text(MESSAGES.editPhoto, 'edit:photo')
+    .row()
+    .text(MESSAGES.editLocation, 'edit:location')
+    .row()
+    .text(MESSAGES.editQuantity, 'edit:quantity')
+    .row()
+    .text(MESSAGES.editNotes, 'edit:notes')
+    .row()
+    .text('Onayla ve Gönder ✅', 'confirm:submit');
+
+  if (photoUrl) {
+    await ctx.replyWithPhoto(photoUrl, {
+      caption,
+      reply_markup: confirmKeyboard,
+    });
+  } else {
+    // Fallback: no photo yet (should not happen in normal flow)
+    await ctx.reply(caption, { reply_markup: confirmKeyboard });
+  }
+}
+
+/**
+ * handleConfirmSubmit — transactional submission insert (LOG-08, D-18).
+ *
+ * Inserts one submissions row (status pending_audit) and deletes the
+ * conversation_state row in a single getTxDb() transaction.
+ * Uses onConflictDoNothing on the flow_id unique constraint (D-13 Guard 2).
+ * Replies "Gönderildi ✅" with a "Yeni kayıt" button (D-18 — no auto-loop).
+ */
+async function handleConfirmSubmit(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ctx: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  db: any
+): Promise<void> {
+  const { MESSAGES } = await import('@/lib/bot-messages');
+  const telegramUserId = ctx.from?.id;
+  if (!telegramUserId) return;
+
+  // Re-load conversation_state from DB (get the authoritative flowId + personId)
+  const { conversationState } = await import('@/db/schema/conversation-state');
+  const { eq } = await import('drizzle-orm');
+
+  const stateRows = await db
+    .select()
+    .from(conversationState)
+    .where(eq(conversationState.telegramUserId, BigInt(telegramUserId)));
+
+  const state = stateRows?.[0] ?? null;
+  if (!state) {
+    await ctx.reply(MESSAGES.noActiveFlow);
+    return;
+  }
+
+  const data = state.data as Record<string, unknown>;
+  const flowId = state.flowId as string;
+  const personId = state.personId as string;
+
+  // Validate required fields before transactional insert (T-02-17)
+  if (!data.projectId || !data.boqItemId || !data.photoUrl || data.quantity === undefined) {
+    await ctx.reply(MESSAGES.genericError);
+    return;
+  }
+
+  // Transactional insert: submissions row + conversation_state delete in ONE transaction.
+  // getTxDb() uses the neon-serverless Pool (WebSocket) driver which supports transactions.
+  // neon-http (default @/db) throws on .transaction() — Pitfall 2.
+  const { submissions } = await import('@/db/schema/submissions');
+  const txDb = await getTxDb();
+
+  await txDb.transaction(async (tx) => {
+    // Insert submissions row — .onConflictDoNothing() on flow_id (D-13 Guard 2)
+    await tx
+      .insert(submissions)
+      .values({
+        tenantId: getDefaultTenantId(),
+        flowId,
+        personId,
+        projectId: data.projectId as string,
+        boqItemId: data.boqItemId as string,
+        photoUrl: data.photoUrl as string,
+        photoFileId: (data.photoFileId as string) ?? null,
+        locationLat: data.locationLat != null ? String(data.locationLat) : null,
+        locationLon: data.locationLon != null ? String(data.locationLon) : null,
+        quantity: String(data.quantity),
+        notes: (data.notes as string | null) ?? null,
+        status: 'pending_audit',
+        submittedAt: new Date(),
+      })
+      .onConflictDoNothing();
+
+    // Delete the conversation_state row — atomically with the insert
+    await tx
+      .delete(conversationState)
+      .where(eq(conversationState.telegramUserId, BigInt(telegramUserId)));
+  });
+
+  // Reply "Gönderildi ✅" with a single "Yeni kayıt" button (D-18 — no auto-loop)
+  const doneKeyboard = new InlineKeyboard().text(MESSAGES.newLog, 'flow:new');
+  await ctx.reply(MESSAGES.sent, { reply_markup: doneKeyboard });
 }
