@@ -142,6 +142,110 @@ export function makeTextUpdate(userId: number, text: string, updateId?: number) 
 // SC4: the D-13 duplicate-update test is MANDATORY before merge per STATE.md.
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// (d) Pure unit tests — keyboard builders (D-23, D-24)
+//
+// buildBoqKeyboard and buildProjectKeyboard are pure functions.
+// Tests verify pagination behavior, label format, and callback_data shape.
+// ---------------------------------------------------------------------------
+
+describe('keyboard builders', () => {
+  // Minimal structural BOQ item fixtures (matching boqItems row shape)
+  const makeBoqItems = (count: number) =>
+    Array.from({ length: count }, (_, i) => ({
+      id: `item-${i + 1}`,
+      material: `Material ${i + 1}`,
+      unit: 'm',
+      plannedQty: '500',
+      approvedQty: '100',
+    }));
+
+  // Minimal structural project fixtures
+  const makeProjects = (count: number) =>
+    Array.from({ length: count }, (_, i) => ({
+      id: `project-${i + 1}`,
+      name: `Proje ${i + 1}`,
+    }));
+
+  it('buildBoqKeyboard page 0 of 8 items yields 6 item rows + next button only', async () => {
+    const { buildBoqKeyboard } = await import('@/lib/bot-keyboards');
+    const items = makeBoqItems(8);
+    const kb = buildBoqKeyboard(items, 0);
+    const rows = kb.inline_keyboard;
+
+    // 6 item rows + 1 nav row
+    expect(rows).toHaveLength(7);
+    // Nav row has exactly one button: Sonraki ›
+    const navRow = rows[6];
+    expect(navRow).toHaveLength(1);
+    expect(navRow[0].text).toBe('Sonraki ›');
+    expect(navRow[0].callback_data).toBe('boq:page:1');
+  });
+
+  it('buildBoqKeyboard page 1 of 8 items yields 2 item rows + prev button only', async () => {
+    const { buildBoqKeyboard } = await import('@/lib/bot-keyboards');
+    const items = makeBoqItems(8);
+    const kb = buildBoqKeyboard(items, 1);
+    const rows = kb.inline_keyboard;
+
+    // 2 item rows + 1 nav row
+    expect(rows).toHaveLength(3);
+    // Nav row has exactly one button: ‹ Önceki
+    const navRow = rows[2];
+    expect(navRow).toHaveLength(1);
+    expect(navRow[0].text).toBe('‹ Önceki');
+    expect(navRow[0].callback_data).toBe('boq:page:0');
+  });
+
+  it('buildBoqKeyboard item button label contains remaining balance and unit with "kaldı"', async () => {
+    const { buildBoqKeyboard } = await import('@/lib/bot-keyboards');
+    const items = makeBoqItems(1); // plannedQty='500', approvedQty='100' → remaining=400
+    const kb = buildBoqKeyboard(items, 0);
+    const itemButton = kb.inline_keyboard[0][0];
+    // Label should contain unit and "kaldı" (D-24)
+    expect(itemButton.text).toContain('m');
+    expect(itemButton.text).toContain('kaldı');
+    // Label should show remaining/planned format
+    expect(itemButton.text).toContain('400');
+  });
+
+  it('buildBoqKeyboard item button callback_data matches boq:select:<id>', async () => {
+    const { buildBoqKeyboard } = await import('@/lib/bot-keyboards');
+    const items = makeBoqItems(3);
+    const kb = buildBoqKeyboard(items, 0);
+    const itemButton = kb.inline_keyboard[0][0];
+    expect(itemButton.callback_data).toBe('boq:select:item-1');
+  });
+
+  it('buildProjectKeyboard page 0 of 8 projects yields 6 project rows + next button', async () => {
+    const { buildProjectKeyboard } = await import('@/lib/bot-keyboards');
+    const projects = makeProjects(8);
+    const kb = buildProjectKeyboard(projects, 0);
+    const rows = kb.inline_keyboard;
+
+    expect(rows).toHaveLength(7);
+    const navRow = rows[6];
+    expect(navRow[0].text).toBe('Sonraki ›');
+    expect(navRow[0].callback_data).toBe('project:page:1');
+  });
+
+  it('buildProjectKeyboard item button callback_data matches project:select:<id>', async () => {
+    const { buildProjectKeyboard } = await import('@/lib/bot-keyboards');
+    const projects = makeProjects(2);
+    const kb = buildProjectKeyboard(projects, 0);
+    const itemButton = kb.inline_keyboard[0][0];
+    expect(itemButton.callback_data).toBe('project:select:project-1');
+  });
+
+  it('buildBoqKeyboard with exactly PAGE_SIZE items has no nav row', async () => {
+    const { buildBoqKeyboard } = await import('@/lib/bot-keyboards');
+    const items = makeBoqItems(6); // exactly 1 page
+    const kb = buildBoqKeyboard(items, 0);
+    // Only 6 item rows, no nav row
+    expect(kb.inline_keyboard).toHaveLength(6);
+  });
+});
+
 describeIfDb('submission persistence & idempotency (SC4)', () => {
   let testDb: Awaited<ReturnType<typeof getTestDb>>;
 
