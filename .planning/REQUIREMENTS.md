@@ -36,7 +36,7 @@ Requirements for the initial release. Each maps to roadmap phases.
 
 ### Audit Loop
 
-- [ ] **AUDIT-01**: When a worker confirms, every assigned auditor for that project receives a Telegram message with the photo, location/map link, selected BOQ item, quantity, and notes
+- [x] **AUDIT-01**: When a worker confirms, every assigned auditor for that project receives a Telegram message with the photo, location/map link, selected BOQ item, quantity, and notes
 - [x] **AUDIT-02**: The auditor message includes inline [✅ Approve] and [❌ Reject] buttons
 - [x] **AUDIT-03**: Only an auditor assigned to that project can act on the buttons (authorization enforced server-side)
 - [x] **AUDIT-04**: On Approve, the submission becomes `approved` and the selected BOQ line item decrements by the submitted quantity — atomically, with no double-deduction on duplicate callbacks
@@ -128,7 +128,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | LOG-09 | Phase 2 | Complete |
 | LOG-10 | Phase 2 | Complete |
 | I18N-01 | Phase 2 | Complete |
-| AUDIT-01 | Phase 3 | Pending |
+| AUDIT-01 | Phase 3 | Complete |
 | AUDIT-02 | Phase 3 | Complete |
 | AUDIT-03 | Phase 3 | Complete |
 | AUDIT-04 | Phase 3 | Complete |
