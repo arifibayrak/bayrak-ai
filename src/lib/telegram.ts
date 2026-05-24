@@ -467,6 +467,27 @@ async function dispatchCallbackQuery(
   db: any,
   telegramUserId: number
 ): Promise<void> {
+  // ── Phase 3 audit: callback branches (MUST be before the conversation_state load)
+  // Audit callbacks are authorized server-side and do NOT require a worker FSM row (D-36).
+  // Auditors have no conversation_state row — this guard must be skipped for audit: prefixes.
+  if (data.startsWith('audit:approve:') || data.startsWith('audit:reject:')) {
+    const parts = data.split(':');
+    const submissionId = parts.slice(2).join(':'); // join in case UUID contains ':'
+    const action = data.startsWith('audit:approve:') ? 'approve' : 'reject';
+    const { handleAuditDecision } = await import('@/lib/bot-audit');
+    await handleAuditDecision(ctx, action as 'approve' | 'reject', submissionId, db);
+    return;
+  }
+
+  if (data.startsWith('audit:reason:')) {
+    // Parse reason: data.slice('audit:reason:'.length) includes the 'free' sentinel
+    // and may contain ':' or '/' in canned reasons — slice, don't split, to preserve them.
+    const reason = data.slice('audit:reason:'.length);
+    const { handleAuditReasonSelect } = await import('@/lib/bot-audit');
+    await handleAuditReasonSelect(ctx, reason, db);
+    return;
+  }
+
   const { conversationState } = await import('@/db/schema/conversation-state');
   const { eq } = await import('drizzle-orm');
   const { MESSAGES } = await import('@/lib/bot-messages');
@@ -614,6 +635,15 @@ bot.on('message', async (ctx) => {
     case STEPS.CONFIRM:
       await handleStepConfirm(ctx, conversationData, db);
       break;
+    // Phase 3: auditor free-text reject reason (D-32)
+    // The auditor's conversation_state row is keyed by their telegram_user_id,
+    // same table/pattern as worker FSM (D-32 reuses D-12). The state data shape is:
+    //   { submissionId, auditorPersonId, workerPersonId }
+    case STEPS.AWAITING_REJECT_REASON: {
+      const { handleAuditRejectFreeText } = await import('@/lib/bot-audit');
+      await handleAuditRejectFreeText(ctx, conversationData, db);
+      break;
+    }
     default:
       await ctx.reply(MESSAGES.noActiveFlow);
   }
