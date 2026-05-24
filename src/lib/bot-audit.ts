@@ -23,6 +23,10 @@
 // Copied exactly from the pattern in src/lib/telegram.ts (lines 1156-1175).
 // The default @/db (neon-http) throws "cannot use database transaction on a HTTP
 // connection" — this Pool driver is the only correct driver for .transaction().
+//
+// CR-04: Returns { db, cleanup } so callers MUST call cleanup() in a finally
+// block. This ensures the Pool is closed after each transaction, preventing
+// connection exhaustion on Neon's serverless tier under sustained load.
 // ---------------------------------------------------------------------------
 
 async function getTxDb() {
@@ -42,7 +46,8 @@ async function getTxDb() {
   }
 
   const pool = new Pool({ connectionString: process.env.DATABASE_URL! });
-  return drizzle(pool);
+  // CR-04: expose cleanup so the caller can end() the pool in a finally block.
+  return { db: drizzle(pool), cleanup: () => pool.end() };
 }
 
 // ---------------------------------------------------------------------------
@@ -399,7 +404,7 @@ export async function handleAuditDecision(
     const { boqItems } = await import('@/db/schema/boq-items');
     const { sql } = await import('drizzle-orm');
 
-    const txDb = await getTxDb();
+    const { db: txDb, cleanup: txCleanup } = await getTxDb();
 
     let approvedQuantity: string | number = 0;
     let boqItemId = '';
@@ -450,6 +455,9 @@ export async function handleAuditDecision(
       console.error('[handleAuditDecision] approve transaction failed for submissionId', submissionId, ':', err);
       await ctx.answerCallbackQuery({ text: MESSAGES.genericError, show_alert: true });
       return;
+    } finally {
+      // CR-04: always close the Pool to prevent connection exhaustion on Neon
+      await txCleanup();
     }
 
     // Post-commit: edit all sibling messages FIRST (D-34).
@@ -610,7 +618,7 @@ export async function commitRejection(
   // Get auditor's display name for post-commit caption (already resolved above)
   const auditorDisplayName = callerRows[0].displayName ?? 'Denetçi';
 
-  const txDb = await getTxDb();
+  const { db: txDb, cleanup: txCleanup } = await getTxDb();
   let workerPersonId: string | null = null;
 
   try {
@@ -648,6 +656,9 @@ export async function commitRejection(
     console.error('[commitRejection] transaction failed for submissionId', submissionId, ':', err);
     await ctx.answerCallbackQuery({ text: MESSAGES.genericError, show_alert: true });
     return;
+  } finally {
+    // CR-04: always close the Pool to prevent connection exhaustion on Neon
+    await txCleanup();
   }
 
   // Clear auditor's conversation_state (reject flow complete)
