@@ -585,16 +585,14 @@ describe('/start + cancel', () => {
   it('registered worker /start with active non-stale flow replies startInProgress with Devam + Baştan buttons', async () => {
     const WORKER_ID = 55002;
     const PERSON_ID = 'person-uuid-002';
-    const activeState = {
-      id: 'state-uuid-002',
-      telegramUserId: BigInt(WORKER_ID),
-      personId: PERSON_ID,
-      flowId: 'flow-uuid-002',
-      currentStep: 'photo',
-      data: { step: 'photo' },
-      updatedAt: new Date(), // fresh — not stale
-    };
+    // Build activeState with a deterministic fresh Date (not stale)
+    const freshDate = new Date(Date.now() - 1000); // 1 second ago — well within TTL
 
+    // Use call-order approach: 3 selects happen in /start for a registered + active-flow user
+    // Select 1: people lookup (resolveWorker) → person row
+    // Select 2: assignments+projects innerJoin (resolveWorker) → projects (uses innerJoin, not direct where)
+    // Select 3: conversation_state lookup → active state row
+    let selectCount = 0;
     vi.doMock('@/db', () => ({
       db: {
         insert: vi.fn().mockReturnValue({
@@ -604,25 +602,39 @@ describe('/start + cancel', () => {
             }),
           }),
         }),
-        select: vi.fn().mockImplementation(() => ({
-          from: vi.fn().mockImplementation(() => ({
-            where: vi.fn().mockImplementation((cond: unknown) => {
-              // people table lookup
-              if (String(cond).includes('telegram_user_id') || true) {
+        select: vi.fn().mockImplementation(() => {
+          selectCount++;
+          const n = selectCount;
+          return {
+            from: vi.fn().mockReturnValue({
+              where: vi.fn().mockImplementation(() => {
+                if (n === 1) {
+                  // people lookup → person found
+                  return Promise.resolve([{
+                    id: PERSON_ID,
+                    telegramUserId: BigInt(WORKER_ID),
+                    telegramName: 'Mehmet',
+                    displayName: 'Mehmet Kaya',
+                  }]);
+                }
+                // n === 3: conversation_state lookup → active non-stale state
                 return Promise.resolve([{
-                  id: PERSON_ID,
+                  id: 'state-002',
                   telegramUserId: BigInt(WORKER_ID),
-                  telegramName: 'Mehmet',
-                  displayName: 'Mehmet Kaya',
+                  personId: PERSON_ID,
+                  flowId: 'flow-002',
+                  currentStep: 'photo',
+                  data: { step: 'photo' },
+                  updatedAt: freshDate,
                 }]);
-              }
-              return Promise.resolve([]);
+              }),
+              innerJoin: vi.fn().mockReturnValue({
+                // n === 2: assignments+projects join
+                where: vi.fn().mockResolvedValue([{ id: 'proj-1', name: 'Proje 1' }]),
+              }),
             }),
-            innerJoin: vi.fn().mockReturnValue({
-              where: vi.fn().mockResolvedValue([{ id: 'proj-1', name: 'Proje 1' }]),
-            }),
-          })),
-        })),
+          };
+        }),
         update: vi.fn().mockReturnValue({
           set: vi.fn().mockReturnValue({
             where: vi.fn().mockReturnValue({
@@ -632,56 +644,6 @@ describe('/start + cancel', () => {
         }),
       },
     }));
-
-    // The resolveWorker inner join returns projects; state row returns active state
-    // We need a smarter mock that differentiates people vs conversationState selects.
-    // Use a simpler approach: override the db.select to track call order.
-    vi.resetModules();
-    vi.doMock('@/db', () => {
-      let selectCallCount = 0;
-      return {
-        db: {
-          insert: vi.fn().mockReturnValue({
-            values: vi.fn().mockReturnValue({
-              onConflictDoNothing: vi.fn().mockReturnValue({
-                returning: vi.fn().mockResolvedValue([{ id: BigInt(2) }]),
-              }),
-            }),
-          }),
-          select: vi.fn().mockImplementation(() => {
-            selectCallCount++;
-            const callNum = selectCallCount;
-            return {
-              from: vi.fn().mockReturnValue({
-                where: vi.fn().mockImplementation(() => {
-                  if (callNum === 1) {
-                    // First select: people lookup (resolveWorker)
-                    return Promise.resolve([{
-                      id: PERSON_ID,
-                      telegramUserId: BigInt(WORKER_ID),
-                      telegramName: 'Mehmet',
-                      displayName: 'Mehmet Kaya',
-                    }]);
-                  }
-                  // Second select: conversation_state → return active state
-                  return Promise.resolve([activeState]);
-                }),
-                innerJoin: vi.fn().mockReturnValue({
-                  where: vi.fn().mockResolvedValue([{ id: 'proj-1', name: 'Proje 1' }]),
-                }),
-              }),
-            };
-          }),
-          update: vi.fn().mockReturnValue({
-            set: vi.fn().mockReturnValue({
-              where: vi.fn().mockReturnValue({
-                returning: vi.fn().mockResolvedValue([]),
-              }),
-            }),
-          }),
-        },
-      };
-    });
 
     const bot = await setupBotForTest();
     const replies: Array<{ text: string; replyMarkup?: unknown }> = [];
@@ -700,7 +662,7 @@ describe('/start + cancel', () => {
     const { MESSAGES } = await import('@/lib/bot-messages');
     // Must show the "in progress" message
     expect(replies.some(r => r.text.includes(MESSAGES.startInProgress))).toBe(true);
-    // Must have exactly two inline buttons: Devam et + Baştan başla (D-15)
+    // Must have inline buttons with flow:resume and flow:restart callbacks (D-15)
     const replyWithButtons = replies.find(r => r.replyMarkup);
     expect(replyWithButtons).toBeDefined();
     const kb = replyWithButtons!.replyMarkup as { inline_keyboard: Array<Array<{ callback_data: string; text: string }>> };
@@ -751,6 +713,147 @@ describe('/start + cancel', () => {
     expect(replies.some(r => r.includes(MESSAGES.cancelled))).toBe(true);
     // Must have called delete
     expect(mockDelete).toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// (h) Pure unit tests — cold-start resume (SC5) + TTL eviction (D-22)
+//
+// Verify the FSM dispatcher loads state from DB, enforces TTL, and reprompts.
+// These replace the it.todo placeholders from the Wave 0 scaffold.
+// ---------------------------------------------------------------------------
+
+describe('cold-start resume (SC5) + TTL (D-22)', () => {
+  /** Build a mock DB with a given conversation_state row (or null for no row) */
+  function buildDbMock(stateRow: Record<string, unknown> | null) {
+    return {
+      insert: vi.fn().mockReturnValue({
+        values: vi.fn().mockReturnValue({
+          onConflictDoNothing: vi.fn().mockReturnValue({
+            returning: vi.fn().mockResolvedValue([{ id: BigInt(1) }]),
+          }),
+        }),
+      }),
+      select: vi.fn().mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue(stateRow ? [stateRow] : []),
+        }),
+      }),
+      update: vi.fn().mockReturnValue({
+        set: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            returning: vi.fn().mockResolvedValue([]),
+          }),
+        }),
+      }),
+    };
+  }
+
+  beforeEach(() => {
+    process.env.TELEGRAM_BOT_TOKEN = 'TEST:fake_token_resume';
+    process.env.TELEGRAM_WEBHOOK_SECRET = 'test-secret-resume';
+    vi.resetModules();
+  });
+
+  afterEach(() => {
+    delete process.env.TELEGRAM_BOT_TOKEN;
+    delete process.env.TELEGRAM_WEBHOOK_SECRET;
+    vi.restoreAllMocks();
+    vi.resetModules();
+  });
+
+  it('cold-start resume at PHOTO step reprompts with resumePrefix + photo prompt (D-14, SC5)', async () => {
+    const WORKER_ID = 66001;
+
+    // Seed a fresh (non-stale) conversation_state at PHOTO step
+    const freshState = {
+      id: 'state-photo-001',
+      telegramUserId: BigInt(WORKER_ID),
+      personId: 'person-001',
+      flowId: 'flow-001',
+      currentStep: 'photo',
+      data: { step: 'photo' },
+      updatedAt: new Date(), // fresh — not stale
+    };
+
+    vi.doMock('@/db', () => ({ db: buildDbMock(freshState) }));
+
+    const bot = await setupBotForTest();
+    const replies: string[] = [];
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    bot.api.config.use(async (_prev: any, method: any, payload: any) => {
+      if (method === 'sendMessage') replies.push(payload.text);
+      return Promise.resolve({ ok: true, result: {} as never });
+    });
+
+    // Deliver an arbitrary message (simulates cold-start — new serverless invocation)
+    await bot.handleUpdate(makeTextUpdate(WORKER_ID, 'some message', WORKER_ID + 1000));
+
+    expect(replies.length).toBeGreaterThan(0);
+    const { MESSAGES } = await import('@/lib/bot-messages');
+    // Must contain the resume prefix (D-14)
+    expect(replies.some(r => r.startsWith(MESSAGES.resumePrefix))).toBe(true);
+    // Must contain the photo prompt
+    expect(replies.some(r => r.includes(MESSAGES.promptPhoto))).toBe(true);
+  });
+
+  it('stale conversation_state (>TTL) yields noActiveFlow and does NOT resume (D-22)', async () => {
+    const WORKER_ID = 66002;
+    const { CONVERSATION_TTL_MS } = await import('@/lib/bot-fsm');
+
+    // Seed a STALE state (updatedAt is older than TTL)
+    const staleState = {
+      id: 'state-stale-001',
+      telegramUserId: BigInt(WORKER_ID),
+      personId: 'person-002',
+      flowId: 'flow-002',
+      currentStep: 'photo',
+      data: { step: 'photo' },
+      updatedAt: new Date(Date.now() - CONVERSATION_TTL_MS - 1000), // 1 second past TTL
+    };
+
+    vi.doMock('@/db', () => ({ db: buildDbMock(staleState) }));
+
+    const bot = await setupBotForTest();
+    const replies: string[] = [];
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    bot.api.config.use(async (_prev: any, method: any, payload: any) => {
+      if (method === 'sendMessage') replies.push(payload.text);
+      return Promise.resolve({ ok: true, result: {} as never });
+    });
+
+    await bot.handleUpdate(makeTextUpdate(WORKER_ID, 'some message', WORKER_ID + 2000));
+
+    expect(replies.length).toBeGreaterThan(0);
+    const { MESSAGES } = await import('@/lib/bot-messages');
+    // Must reply noActiveFlow (stale state treated as absent — D-22)
+    expect(replies.some(r => r.includes(MESSAGES.noActiveFlow))).toBe(true);
+    // Must NOT contain the resume prefix (stale flow is NOT resumed)
+    expect(replies.every(r => !r.startsWith(MESSAGES.resumePrefix))).toBe(true);
+  });
+
+  it('no conversation_state row yields noActiveFlow', async () => {
+    const WORKER_ID = 66003;
+
+    // No state row — null
+    vi.doMock('@/db', () => ({ db: buildDbMock(null) }));
+
+    const bot = await setupBotForTest();
+    const replies: string[] = [];
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    bot.api.config.use(async (_prev: any, method: any, payload: any) => {
+      if (method === 'sendMessage') replies.push(payload.text);
+      return Promise.resolve({ ok: true, result: {} as never });
+    });
+
+    await bot.handleUpdate(makeTextUpdate(WORKER_ID, 'some message', WORKER_ID + 3000));
+
+    expect(replies.length).toBeGreaterThan(0);
+    const { MESSAGES } = await import('@/lib/bot-messages');
+    expect(replies.some(r => r.includes(MESSAGES.noActiveFlow))).toBe(true);
   });
 });
 
