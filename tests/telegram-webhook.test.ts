@@ -6,33 +6,70 @@
  * Test groups:
  *   (a) describeIfDb — /start handler inserts one pending_people row; replay leaves
  *       exactly one row (idempotency via ON CONFLICT DO NOTHING).
- *   (b) pure unit test — POST with wrong / missing X-Telegram-Bot-Api-Secret-Token
- *       is rejected 401-class; NO pending_people insert is attempted (spy on db.insert).
+ *   (b) pure unit tests — POST with wrong / missing X-Telegram-Bot-Api-Secret-Token
+ *       is rejected 401-class; NO pending_people insert is attempted.
+ *
+ * Environment notes:
+ *   - No live DATABASE_URL is available in this environment (plan 01-02b pushes the DB).
+ *   - The pure unit tests mock @/db and grammy's bot.init() to avoid network calls.
+ *   - The DB integration tests use describeIfDb and skip without TEST_DATABASE_URL.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { describeIfDb, getTestDb, truncateAllTables } from './fixtures/db';
 
 // ---------------------------------------------------------------------------
-// (b) Secret-token verification — pure unit tests (no DB needed)
+// (b) Secret-token verification — pure unit tests (no DB, no network)
+//
+// Strategy:
+//   1. vi.doMock('@/db') — stub the Drizzle client so Neon never initialises.
+//   2. Import the route's POST handler after the mock is installed.
+//   3. Spy on bot.init (via @/lib/telegram) to prevent the network call to
+//      Telegram's getMe API that grammY makes on the first webhook invocation.
+//   4. Send a POST with a wrong / missing secret token and assert 401-class.
+//   5. Assert the mocked db.insert was NOT called (handler never ran).
 // ---------------------------------------------------------------------------
 
 describe('webhook secret-token verification (T-04-01)', () => {
+  // Mocked insert chain — lets us assert no insert was attempted
+  const mockOnConflictDoNothing = vi.fn().mockResolvedValue([]);
+  const mockValues = vi.fn().mockReturnValue({ onConflictDoNothing: mockOnConflictDoNothing });
+  const mockInsert = vi.fn().mockReturnValue({ values: mockValues });
+
+  beforeEach(() => {
+    // Provide fake env BEFORE any module is imported so both telegram.ts and
+    // route.ts see the values at module-evaluation time.
+    process.env.TELEGRAM_BOT_TOKEN = 'TEST:fake_token_for_unit_tests';
+    process.env.TELEGRAM_WEBHOOK_SECRET = 'test-webhook-secret-value';
+
+    // Clear mocked call history
+    mockInsert.mockClear();
+    mockValues.mockClear();
+    mockOnConflictDoNothing.mockClear();
+
+    // Fresh module registry per test so doMock applies cleanly
+    vi.resetModules();
+
+    // Stub @/db to prevent neon() from throwing (no DATABASE_URL set here)
+    vi.doMock('@/db', () => ({ db: { insert: mockInsert } }));
+  });
+
+  afterEach(() => {
+    delete process.env.TELEGRAM_BOT_TOKEN;
+    delete process.env.TELEGRAM_WEBHOOK_SECRET;
+    vi.restoreAllMocks();
+    vi.resetModules();
+  });
+
   /**
-   * Build a minimal grammY-compatible update payload for a /start command from
-   * Telegram user id `userId` named `name`.
+   * Build a minimal Telegram /start update payload.
    */
   function makeStartUpdate(userId: number, name: string) {
     return {
       update_id: 100000 + userId,
       message: {
         message_id: userId,
-        from: {
-          id: userId,
-          is_bot: false,
-          first_name: name,
-          language_code: 'tr',
-        },
+        from: { id: userId, is_bot: false, first_name: name, language_code: 'tr' },
         chat: { id: userId, type: 'private' },
         date: Math.floor(Date.now() / 1000),
         text: '/start',
@@ -42,14 +79,11 @@ describe('webhook secret-token verification (T-04-01)', () => {
   }
 
   /**
-   * Build a Request that mimics what Telegram sends to the webhook.
-   * If `secret` is provided it is placed in the X-Telegram-Bot-Api-Secret-Token header;
-   * otherwise the header is omitted (simulating a spoofed / unauthenticated call).
+   * Build a Request mimicking a Telegram webhook delivery.
+   * Omit `secret` to simulate a spoofed / unauthenticated call.
    */
   function buildWebhookRequest(update: object, secret?: string): Request {
-    const headers: Record<string, string> = {
-      'content-type': 'application/json',
-    };
+    const headers: Record<string, string> = { 'content-type': 'application/json' };
     if (secret !== undefined) {
       headers['x-telegram-bot-api-secret-token'] = secret;
     }
@@ -60,50 +94,45 @@ describe('webhook secret-token verification (T-04-01)', () => {
     });
   }
 
-  beforeEach(() => {
-    // Provide a fake bot token so the module loads without throwing.
-    process.env.TELEGRAM_BOT_TOKEN = 'TEST:fake_token_for_unit_tests';
-    // Provide a known secret we can test with.
-    process.env.TELEGRAM_WEBHOOK_SECRET = 'test-webhook-secret-value';
-  });
+  /**
+   * Get the POST handler with bot.init() stubbed to avoid network calls.
+   * grammY calls bot.init() (getMe) on the FIRST webhook invocation.
+   * We stub it to resolve immediately so the secret-token comparison runs.
+   */
+  async function getPostHandler() {
+    // Import bot first (after mocks are installed) so we can stub init()
+    const { bot } = await import('@/lib/telegram');
 
-  afterEach(() => {
-    delete process.env.TELEGRAM_BOT_TOKEN;
-    delete process.env.TELEGRAM_WEBHOOK_SECRET;
-    vi.restoreAllMocks();
-    // Reset module registry so re-import picks up fresh env on each test
-    vi.resetModules();
-  });
+    // Stub bot.init() to a no-op so no getMe call reaches Telegram's API
+    vi.spyOn(bot, 'init').mockResolvedValue();
+
+    // Now import the route — it uses the same bot instance
+    const { POST } = await import('@/app/api/telegram/webhook/route');
+    return { POST, bot };
+  }
 
   it('rejects a POST with wrong X-Telegram-Bot-Api-Secret-Token (401-class)', async () => {
-    // Import the route handler under the faked env
-    const { POST } = await import('@/app/api/telegram/webhook/route');
-
-    // Spy on db to confirm the /start handler did NOT run (no insert attempted)
-    const dbModule = await import('@/db');
-    const insertSpy = vi.spyOn(dbModule.db, 'insert');
+    const { POST } = await getPostHandler();
 
     const update = makeStartUpdate(999, 'Spy Test User');
     const req = buildWebhookRequest(update, 'WRONG_SECRET');
 
     const response = await POST(req);
 
-    // grammY returns 401 for a bad secret token
+    // grammY returns 401 for a bad secret token (unauthorized handler returns
+    // a response with the '\"unauthorized\"' body and 401-class status)
     expect(response.status).toBeGreaterThanOrEqual(400);
     expect(response.status).toBeLessThan(500);
 
     // The /start handler must NOT have run — no DB insert attempted
-    expect(insertSpy).not.toHaveBeenCalled();
-  });
+    expect(mockInsert).not.toHaveBeenCalled();
+  }, 10000);
 
   it('rejects a POST with missing X-Telegram-Bot-Api-Secret-Token header (401-class)', async () => {
-    const { POST } = await import('@/app/api/telegram/webhook/route');
-
-    const dbModule = await import('@/db');
-    const insertSpy = vi.spyOn(dbModule.db, 'insert');
+    const { POST } = await getPostHandler();
 
     const update = makeStartUpdate(998, 'No Header User');
-    // No secret header at all
+    // No secret header — simulates a spoofed/unauthenticated request
     const req = buildWebhookRequest(update);
 
     const response = await POST(req);
@@ -111,8 +140,8 @@ describe('webhook secret-token verification (T-04-01)', () => {
     expect(response.status).toBeGreaterThanOrEqual(400);
     expect(response.status).toBeLessThan(500);
 
-    expect(insertSpy).not.toHaveBeenCalled();
-  });
+    expect(mockInsert).not.toHaveBeenCalled();
+  }, 10000);
 });
 
 // ---------------------------------------------------------------------------
@@ -120,76 +149,52 @@ describe('webhook secret-token verification (T-04-01)', () => {
 // ---------------------------------------------------------------------------
 
 describeIfDb('/start handler — pending_people upsert idempotency (AUTH-02)', () => {
-  let db: Awaited<ReturnType<typeof getTestDb>>;
+  let testDb: Awaited<ReturnType<typeof getTestDb>>;
 
   beforeEach(async () => {
-    db = await getTestDb();
-    await truncateAllTables(db);
+    testDb = await getTestDb();
+    await truncateAllTables(testDb);
 
-    // Provide fake env so the telegram modules load cleanly.
+    // Provide fake env so the telegram modules load cleanly
     process.env.TELEGRAM_BOT_TOKEN = 'TEST:fake_token_for_db_tests';
-    process.env.TELEGRAM_WEBHOOK_SECRET = 'db-test-secret';
+    process.env.TELEGRAM_WEBHOOK_SECRET = 'db-test-secret-value';
 
     vi.resetModules();
+
+    // Point @/db at the test database so the /start handler writes to the test DB
+    vi.doMock('@/db', () => ({ db: testDb }));
   });
 
   afterEach(async () => {
-    await truncateAllTables(db);
+    await truncateAllTables(testDb);
     delete process.env.TELEGRAM_BOT_TOKEN;
     delete process.env.TELEGRAM_WEBHOOK_SECRET;
     vi.restoreAllMocks();
+    vi.resetModules();
   });
 
   /**
-   * Exercise the /start command handler logic directly against the test DB.
-   * We mock db to point to our test DB so the handler writes to the right place.
+   * Fire the bot's /start handler via handleUpdate with a fake update.
+   * @/db is mocked to testDb, so the insert goes to the test database.
    */
-  async function triggerStart(userId: number, firstName: string) {
-    // Re-import fresh modules (vi.resetModules ensures each test is clean)
-    const dbModule = await import('@/db');
-
-    // Patch the db export to point at the test database connection
-    (dbModule as { db: typeof db }).db = db;
-
-    // Now import the bot (which depends on @/db at module scope)
+  async function triggerStart(userId: number, firstName: string): Promise<void> {
+    // Import bot AFTER mock is installed (fresh module from vi.resetModules)
     const { bot } = await import('@/lib/telegram');
 
-    // Build a fake context for /start
-    const fakeCtx = {
-      from: {
-        id: userId,
-        first_name: firstName,
-        username: undefined,
-        is_bot: false,
-        language_code: 'tr',
-      },
-      reply: vi.fn().mockResolvedValue({}),
-      message: {
-        text: '/start',
-      },
-    } as unknown as Parameters<Parameters<typeof bot.command>[1]>[0];
+    // Stub bot.init() to prevent getMe network call
+    vi.spyOn(bot, 'init').mockResolvedValue();
 
-    // Fire the /start command handler(s)
-    // Access the internal router to find command handlers
-    // We call handleUpdate with a fake update to trigger the registered handler.
     await bot.handleUpdate({
-      update_id: 1,
+      update_id: userId,
       message: {
-        message_id: 1,
-        from: {
-          id: userId,
-          first_name: firstName,
-          is_bot: false,
-          language_code: 'tr',
-        },
+        message_id: userId,
+        from: { id: userId, first_name: firstName, is_bot: false, language_code: 'tr' },
         chat: { id: userId, type: 'private' as const },
         date: Math.floor(Date.now() / 1000),
         text: '/start',
         entities: [{ offset: 0, length: 6, type: 'bot_command' as const }],
       },
     });
-
-    return fakeCtx;
   }
 
   it('first /start from new user creates exactly one pending_people row', async () => {
@@ -198,12 +203,12 @@ describeIfDb('/start handler — pending_people upsert idempotency (AUTH-02)', (
 
     await triggerStart(123456789, 'Ahmet');
 
-    const rows = await db.select().from(pendingPeople)
+    const rows = await testDb.select().from(pendingPeople)
       .where(eq(pendingPeople.telegramUserId, BigInt(123456789)));
 
     expect(rows).toHaveLength(1);
     expect(rows[0].telegramName).toBe('Ahmet');
-  });
+  }, 15000);
 
   it('replaying /start (same user) leaves exactly one row (idempotent)', async () => {
     const { pendingPeople } = await import('@/db/schema/pending-people');
@@ -211,13 +216,12 @@ describeIfDb('/start handler — pending_people upsert idempotency (AUTH-02)', (
 
     // First /start
     await triggerStart(987654321, 'Mehmet');
-
-    // Second /start (same user id)
+    // Second /start — same user id
     await triggerStart(987654321, 'Mehmet');
 
-    const rows = await db.select().from(pendingPeople)
+    const rows = await testDb.select().from(pendingPeople)
       .where(eq(pendingPeople.telegramUserId, BigInt(987654321)));
 
     expect(rows).toHaveLength(1);
-  });
+  }, 15000);
 });
