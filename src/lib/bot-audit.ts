@@ -403,7 +403,7 @@ export async function handleAuditDecision(
 
     let approvedQuantity: string | number = 0;
     let boqItemId = '';
-    let workerPersonId = submission.personId;
+    const workerPersonId = submission.personId;
 
     try {
       await txDb.transaction(async (tx) => {
