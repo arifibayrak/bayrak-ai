@@ -28,6 +28,12 @@ export const STEPS = {
   QUANTITY: 'quantity',
   NOTES:    'notes',
   CONFIRM:  'confirm',
+  // Phase 3 additions (D-32 auditor reject-reason FSM)
+  // These reuse the D-12 DB-row FSM pattern. The auditor state data shape is:
+  // { submissionId: string, auditorPersonId: string, workerPersonId: string }
+  // NOT added to ConversationData interface — that type describes worker flow data only.
+  AWAITING_REJECT_REASON:      'awaiting_reject_reason',
+  AWAITING_REJECT_REASON_FREE: 'awaiting_reject_reason_free',
 } as const;
 
 export type Step = typeof STEPS[keyof typeof STEPS];
