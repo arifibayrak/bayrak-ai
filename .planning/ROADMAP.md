@@ -110,7 +110,24 @@ Plans:
   4. Tapping Reject prompts the auditor for a text reason, sets the submission to `rejected`, and the worker receives the reason via Telegram
   5. When two auditors tap simultaneously, exactly one action succeeds and the other receives "already resolved" without any double-deduction
 
-**Plans**: TBD
+**Plans**: 5 plans
+Plans:
+**Wave 1**
+
+- [ ] 03-01-PLAN.md — Schema additions (submissions decided_* + audit_notifications table), reject-reason FSM steps, test truncation order + Wave 0 audit test scaffold
+- [ ] 03-03-PLAN.md — Pure libs: buildAuditKeyboard + buildRejectReasonKeyboard, Turkish auditor/worker decision message strings
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 03-02-PLAN.md — [BLOCKING] generate + apply Phase 3 migration (closes the false-positive verification trap)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 03-04-PLAN.md — Auditor fan-out service (fanOutToAuditors + editAllSiblingMessages) + non-blocking after() wiring (AUDIT-01/02)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 03-05-PLAN.md — Decision handlers: server-side authz, atomic first-wins approve + approved_qty increment, two-tier mandatory reject reason FSM, worker notify, dispatcher wiring (AUDIT-03/04/05/06)
 
 ### Phase 4: Spatial Layer
 
@@ -165,7 +182,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 |-------|----------------|--------|-----------|
 | 1. Foundation | 7/7 | Complete | 2026-05-24 |
 | 2. Worker Bot | 6/6 | Complete   | 2026-05-24 |
-| 3. Audit Loop | 0/TBD | Not started | - |
+| 3. Audit Loop | 0/5 | Planned | - |
 | 4. Spatial Layer | 0/TBD | Not started | - |
 | 5. Dashboard & Map | 0/TBD | Not started | - |
 | 6. AI Vision Assist | 0/TBD | Not started | - |
