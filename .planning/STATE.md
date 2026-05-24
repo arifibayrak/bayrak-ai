@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 05 Plan 03 — MapView + RouteTab wiring complete; paused at human-verify checkpoint (map render)
-last_updated: "2026-05-25T00:00:00.000Z"
-last_activity: 2026-05-25
+stopped_at: Completed Phase 05 Plan 05 — BoqTable % Tamamlanan column + Progress bar (DASH-04 / D-50)
+last_updated: "2026-05-24T23:29:43.990Z"
+last_activity: 2026-05-24
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 28
-  completed_plans: 26
+  completed_plans: 27
   percent: 67
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-23)
 ## Current Position
 
 Phase: 05 (dashboard-map) — EXECUTING
-Plan: 5 of 6
+Plan: 6 of 6
 Status: Ready to execute
 Last activity: 2026-05-24
 
-Progress: [█████████░] 93%
+Progress: [██████████] 96%
 
 ## Performance Metrics
 
@@ -76,6 +76,7 @@ Progress: [█████████░] 93%
 | Phase 05 P02 | 580 | 2 tasks | 3 files |
 | Phase 05 P05-05 | 5 | 1 tasks | 1 files |
 | Phase 05 P04 | 20 | 2 tasks | 2 files |
+| Phase 05-dashboard-map P03 | 30 | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -114,6 +115,9 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 05-02]: VALID_STATUSES whitelist at module scope in submissions.ts, throws on non-whitelisted status (T-05-IV / V5)
 - [Phase ?]: [Phase 05-02]: flow_id test INSERTs must use valid UUIDs — uuid() column type rejects non-UUID strings (Rule 1 fix, deterministic UUIDs applied)
 - [Phase ?]: [Phase 05-05]: progressColorClass for completion direction — >=90% success, >0&&<=10% warning, else empty; formula matches boq.test.ts assertions exactly
+- [Phase ?]: [Phase 05-03]: react-map-gl v8 exports MapMouseEvent (not MapLayerMouseEvent) for onClick handler type
+- [Phase ?]: [Phase 05-03]: MapView reads boqPaletteSlot from Plan 02 GeoJSON feature.properties — no client-side BOQ lookup needed
+- [Phase ?]: [Phase 05-03]: Non-Turbopack dev server required for all map work (mapbox-gl worker breaks under Turbopack)
 
 ### Pending Todos
 
@@ -135,6 +139,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-24T23:22:40.202Z
+Last session: 2026-05-24T23:29:43.982Z
 Stopped at: Completed Phase 05 Plan 05 — BoqTable % Tamamlanan column + Progress bar (DASH-04 / D-50)
 Resume file: None
