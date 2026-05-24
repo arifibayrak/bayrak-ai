@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 1 Plan 02a complete — schema authored, ready for 01-02b (live DB push)
-last_updated: "2026-05-24T00:45:49.062Z"
+stopped_at: Phase 1 Plan 04 complete — /start webhook with secret-token verification shipped; ready for 01-05 (people approval Server Actions)
+last_updated: "2026-05-24T00:56:48.687Z"
 last_activity: 2026-05-24
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 7
-  completed_plans: 3
+  completed_plans: 4
   percent: 0
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-23)
 ## Current Position
 
 Phase: 01 (foundation) — EXECUTING
-Plan: 4 of 7 (02b next)
+Plan: 5 of 7 (02b next)
 Status: Ready to execute
 Last activity: 2026-05-24
 
-Progress: [████░░░░░░] 43%
+Progress: [██████░░░░] 57%
 
 ## Performance Metrics
 
@@ -53,6 +53,7 @@ Progress: [████░░░░░░] 43%
 
 *Updated after each plan completion*
 | Phase 01-foundation P03 | 45 | - tasks | - files |
+| Phase 01-foundation P04 | 7 minutes | 1 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -70,6 +71,8 @@ Recent decisions affecting current work:
 - [Phase 01-03]: signIn callback blocks both verificationRequest and link-click (Pitfall 2, T-03-01 mitigated)
 - [Phase 01-03]: LanguageToggle sets locale cookie then page reloads for server-side getRequestConfig to pick up new locale
 - [Phase 01-03]: TopNav sign-out uses Server Action form to keep signOut call server-side
+- [Phase ?]: Lazy @/db import inside /start handler prevents neon() at module load — pure unit tests runnable without DATABASE_URL
+- [Phase ?]: grammY webhookCallback secretToken option explicitly passed (does not auto-read env); bot.init() spy pattern prevents Telegram getMe network call in unit tests
 
 ### Pending Todos
 
@@ -91,6 +94,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-24T00:45:49.049Z
-Stopped at: Phase 1 Plan 02a complete — schema authored, ready for 01-02b (live DB push)
+Last session: 2026-05-24T00:56:48.680Z
+Stopped at: Phase 1 Plan 04 complete — /start webhook with secret-token verification shipped; ready for 01-05 (people approval Server Actions)
 Resume file: None
