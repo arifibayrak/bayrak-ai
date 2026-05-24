@@ -474,6 +474,15 @@ async function dispatchCallbackQuery(
     const parts = data.split(':');
     const submissionId = parts.slice(2).join(':'); // join in case UUID contains ':'
     const action = data.startsWith('audit:approve:') ? 'approve' : 'reject';
+    // WR-04: validate the submission ID is a well-formed UUID before any DB query.
+    // An empty string or malformed value would throw "invalid input syntax for type uuid"
+    // in Postgres — surface a generic toast instead of an unhandled error.
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!UUID_RE.test(submissionId)) {
+      const { MESSAGES: MSG } = await import('@/lib/bot-messages');
+      await ctx.answerCallbackQuery({ text: MSG.genericError, show_alert: true });
+      return;
+    }
     const { handleAuditDecision } = await import('@/lib/bot-audit');
     await handleAuditDecision(ctx, action as 'approve' | 'reject', submissionId, db);
     return;
