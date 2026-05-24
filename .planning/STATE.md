@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed Phase 05 Plan 02 — data layer actions (DASH-01/02/03) GREEN
-last_updated: "2026-05-24T23:08:42.632Z"
+stopped_at: Completed Phase 05 Plan 05 — BoqTable % Tamamlanan column + Progress bar (DASH-04 / D-50)
+last_updated: "2026-05-24T23:13:45.963Z"
 last_activity: 2026-05-24
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 28
-  completed_plans: 24
+  completed_plans: 25
   percent: 67
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-23)
 ## Current Position
 
 Phase: 05 (dashboard-map) — EXECUTING
-Plan: 3 of 6
+Plan: 4 of 6
 Status: Ready to execute
 Last activity: 2026-05-24
 
-Progress: [█████████░] 86%
+Progress: [█████████░] 89%
 
 ## Performance Metrics
 
@@ -74,6 +74,7 @@ Progress: [█████████░] 86%
 | Phase 04-spatial-layer P04 | 5 | 3 tasks | 3 files |
 | Phase 05-dashboard-map P05-01 | 60 | 4 tasks | 7 files |
 | Phase 05 P02 | 580 | 2 tasks | 3 files |
+| Phase 05 P05-05 | 5 | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -111,6 +112,7 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 05-02]: getRouteGeoJSON exported from both submissions.ts and routes.ts — test imports from submissions, plan artifacts spec includes routes
 - [Phase ?]: [Phase 05-02]: VALID_STATUSES whitelist at module scope in submissions.ts, throws on non-whitelisted status (T-05-IV / V5)
 - [Phase ?]: [Phase 05-02]: flow_id test INSERTs must use valid UUIDs — uuid() column type rejects non-UUID strings (Rule 1 fix, deterministic UUIDs applied)
+- [Phase ?]: [Phase 05-05]: progressColorClass for completion direction — >=90% success, >0&&<=10% warning, else empty; formula matches boq.test.ts assertions exactly
 
 ### Pending Todos
 
@@ -132,6 +134,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-24T23:08:42.625Z
-Stopped at: Completed Phase 05 Plan 02 — data layer actions (DASH-01/02/03) GREEN
+Last session: 2026-05-24T23:13:45.957Z
+Stopped at: Completed Phase 05 Plan 05 — BoqTable % Tamamlanan column + Progress bar (DASH-04 / D-50)
 Resume file: None
