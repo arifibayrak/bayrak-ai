@@ -4,30 +4,106 @@
       "heading": "bayrak.ai",
       "subheading": "Office Sign In",
       "email_label": "Email",
-      "cta": "Send Sign-in Link",
-      "helper": "A sign-in link will be sent to your authorised email address.",
-      "success": "Link sent to your email. Please check your inbox.",
-      "error_not_allowed": "This email address is not authorised. Contact your administrator.",
+      "cta": "Send Sign-In Link",
+      "helper": "A sign-in link will be sent to your authorized email address.",
+      "success": "Sign-in link sent. Check your inbox.",
+      "error_not_allowed": "This email address is not authorized. Contact your administrator.",
       "sending": "Sending..."
     }
   },
+  "nav": {
+    "wordmark": "bayrak.ai",
+    "sign_out": "Sign Out",
+    "language_toggle_label": "Switch language"
+  },
   "dashboard": {
+    "projects": {
+      "title": "Projects",
+      "create_project": "Create Project",
+      "new": "New Project",
+      "empty_state": "No projects yet. Create a project to get started.",
+      "edit": "Edit",
+      "delete": "Delete",
+      "back_to_projects": "Back to Projects",
+      "back_to_project": "Back to Project",
+      "project_name_label": "Project Name",
+      "description_label": "Description",
+      "save_changes": "Save Changes",
+      "name_required": "Project name is required."
+    },
     "boq": {
+      "title": "Bill of Quantities",
       "add_item": "Add Item",
       "import_excel": "Import from Excel",
       "download_template": "Download Template",
-      "confirm_import": "Confirm & Import"
+      "confirm_import": "Confirm & Import",
+      "empty_state": "No BOQ items yet. Add an item or import from Excel.",
+      "col_number": "#",
+      "col_material": "Material",
+      "col_unit": "Unit",
+      "col_contracted_qty": "Contracted Qty",
+      "col_approved_qty": "Approved Qty",
+      "col_remaining": "Remaining Balance",
+      "col_actions": "Actions",
+      "remove_item": "Remove BOQ Item",
+      "remove_item_confirm": "Are you sure you want to remove this BOQ item?",
+      "remove_item_cta": "Yes, Remove",
+      "validating": "Validating...",
+      "import_count": "{count} items will be imported",
+      "excel_not_xlsx": "Only .xlsx format is supported.",
+      "row_parse_error": "Row {row}: {fieldName} {requirement}. Fix and re-upload."
     },
-    "projects": {
-      "title": "Projects",
-      "new": "New Project",
-      "no_projects": "No projects yet."
+    "route": {
+      "title": "Project Route",
+      "upload_label": "Upload GeoJSON route",
+      "upload_sublabel": ".geojson format · Single LineString · WGS84 coordinates",
+      "choose_file": "Choose File",
+      "save_route": "Save Route",
+      "replace_route": "Replace Route",
+      "replace_route_confirm": "The existing route will be deleted and replaced. Continue?",
+      "replace_route_cta": "Yes, Replace",
+      "valid_route": "Valid LineString route. {count} coordinate points",
+      "error_not_json": "Invalid file. Upload a valid GeoJSON file.",
+      "error_not_geojson": "Invalid GeoJSON format. Ensure the file contains a FeatureCollection or Feature.",
+      "error_not_linestring": "Route geometry must be a LineString. The uploaded file contains {actualType} geometry.",
+      "validating": "Validating..."
     },
     "people": {
+      "pending_title": "Pending Approvals",
+      "active_title": "Active People",
+      "add_manually": "Add Person Manually",
+      "approve": "Approve Person",
+      "reject": "Reject Person",
       "pending": "Pending Approval",
       "active": "Active People",
-      "approve": "Approve",
-      "reject": "Reject"
+      "empty_active": "No active people on this project. People will appear in the pending queue when they use /start in the bot.",
+      "col_telegram_name": "Telegram Name",
+      "col_telegram_id": "Telegram ID",
+      "col_joined": "Joined",
+      "col_name": "Name",
+      "col_role": "Role",
+      "col_project": "Project",
+      "col_actions": "Actions",
+      "role_worker": "Worker",
+      "role_auditor": "Auditor",
+      "name_required": "Enter a name before approving.",
+      "role_required": "Select a role: Worker or Auditor.",
+      "remove_assignment": "Remove Assignment",
+      "remove_assignment_confirm": "Are you sure you want to remove {personName}'s assignment?",
+      "remove_assignment_cta": "Yes, Remove"
     }
+  },
+  "common": {
+    "edit": "Edit",
+    "delete": "Delete",
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "back": "Back",
+    "loading": "Loading...",
+    "error_generic": "Could not save. Check your connection and try again.",
+    "yes_delete": "Yes, Delete",
+    "yes_remove": "Yes, Remove",
+    "delete_project_confirm": "Are you sure you want to delete '{projectName}'? This cannot be undone."
   }
 }

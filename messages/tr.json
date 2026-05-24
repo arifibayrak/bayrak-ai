@@ -11,23 +11,99 @@
       "sending": "Gönderiliyor..."
     }
   },
+  "nav": {
+    "wordmark": "bayrak.ai",
+    "sign_out": "Çıkış",
+    "language_toggle_label": "Dil değiştir"
+  },
   "dashboard": {
+    "projects": {
+      "title": "Projeler",
+      "create_project": "Proje Oluştur",
+      "new": "Yeni Proje",
+      "empty_state": "Henüz proje yok. Başlamak için bir proje oluşturun.",
+      "edit": "Düzenle",
+      "delete": "Sil",
+      "back_to_projects": "Projelere Dön",
+      "back_to_project": "Projeye Dön",
+      "project_name_label": "Proje Adı",
+      "description_label": "Açıklama",
+      "save_changes": "Değişiklikleri Kaydet",
+      "name_required": "Proje adı zorunludur."
+    },
     "boq": {
+      "title": "Metraj Kalemleri",
       "add_item": "Kalem Ekle",
       "import_excel": "Excel'den İçe Aktar",
       "download_template": "Şablon İndir",
-      "confirm_import": "Onayla ve İçe Aktar"
+      "confirm_import": "Onayla ve İçe Aktar",
+      "empty_state": "Bu projeye henüz metraj kalemi eklenmedi. Kalem Ekle veya Excel'den içe aktarın.",
+      "col_number": "#",
+      "col_material": "Malzeme",
+      "col_unit": "Birim",
+      "col_contracted_qty": "Sözleşme Miktarı",
+      "col_approved_qty": "Onaylanan Miktar",
+      "col_remaining": "Kalan Bakiye",
+      "col_actions": "İşlemler",
+      "remove_item": "BOQ Kalemini Kaldır",
+      "remove_item_confirm": "Bu metraj kalemini kaldırmak istediğinize emin misiniz?",
+      "remove_item_cta": "Evet, Kaldır",
+      "validating": "Doğrulanıyor...",
+      "import_count": "{count} kalem içe aktarılacak",
+      "excel_not_xlsx": "Yalnızca .xlsx formatı desteklenmektedir.",
+      "row_parse_error": "Satır {row}: {fieldName} alanı {requirement}. Düzeltin ve tekrar yükleyin."
     },
-    "projects": {
-      "title": "Projeler",
-      "new": "Yeni Proje",
-      "no_projects": "Henüz proje yok."
+    "route": {
+      "title": "Proje Rotası",
+      "upload_label": "GeoJSON rotasını yükleyin",
+      "upload_sublabel": ".geojson formatı · Tek LineString · WGS84 koordinatları",
+      "choose_file": "Dosya Seç",
+      "save_route": "Rotayı Kaydet",
+      "replace_route": "Rotayı Değiştir",
+      "replace_route_confirm": "Mevcut rota silinecek ve yeni dosya yüklenecek. Devam etmek istiyor musunuz?",
+      "replace_route_cta": "Evet, Değiştir",
+      "valid_route": "Geçerli LineString rota. {count} koordinat noktası",
+      "error_not_json": "Geçersiz dosya. JSON formatında bir GeoJSON dosyası yükleyin.",
+      "error_not_geojson": "GeoJSON formatı geçersiz. Dosyanın bir FeatureCollection veya Feature içerdiğinden emin olun.",
+      "error_not_linestring": "Rota geometrisi LineString olmalı. Yüklenen dosya {actualType} tipinde geometri içeriyor.",
+      "validating": "Doğrulanıyor..."
     },
     "people": {
+      "pending_title": "Bekleyen Onaylar",
+      "active_title": "Aktif Personel",
+      "add_manually": "Manuel Personel Ekle",
+      "approve": "Personeli Onayla",
+      "reject": "Personeli Reddet",
       "pending": "Onay Bekleyenler",
       "active": "Aktif Kişiler",
-      "approve": "Onayla",
-      "reject": "Reddet"
+      "empty_active": "Bu projede aktif personel yok. Personel bot üzerinden /start komutunu kullandığında onay kuyruğunda belirecek.",
+      "col_telegram_name": "Telegram Adı",
+      "col_telegram_id": "Telegram ID",
+      "col_joined": "/start zamanı",
+      "col_name": "Ad",
+      "col_role": "Rol",
+      "col_project": "Proje Ataması",
+      "col_actions": "İşlemler",
+      "role_worker": "İşçi",
+      "role_auditor": "Denetçi",
+      "name_required": "Onaylamadan önce bir ad girin.",
+      "role_required": "Bir rol seçin: İşçi veya Denetçi.",
+      "remove_assignment": "Görevi Kaldır",
+      "remove_assignment_confirm": "'{personName}' kişisinin proje atamasını kaldırmak istediğinize emin misiniz?",
+      "remove_assignment_cta": "Evet, Kaldır"
     }
+  },
+  "common": {
+    "edit": "Düzenle",
+    "delete": "Sil",
+    "save": "Kaydet",
+    "cancel": "İptal",
+    "confirm": "Onayla",
+    "back": "Geri",
+    "loading": "Yükleniyor...",
+    "error_generic": "Kaydedilemedi. Bağlantınızı kontrol edin ve tekrar deneyin.",
+    "yes_delete": "Evet, Sil",
+    "yes_remove": "Evet, Kaldır",
+    "delete_project_confirm": "'{projectName}' projesini silmek istediğinize emin misiniz? Bu işlem geri alınamaz."
   }
 }
