@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Phase 1 Plan 05 complete — project CRUD + people approval + tabbed detail shell; 49/49 tests green; ready for 01-06 (BOQ CRUD + Excel import + GeoJSON route upload)
-last_updated: "2026-05-24T02:10:00.000Z"
+status: phase_complete
+stopped_at: Phase 1 Plan 06 complete — BOQ CRUD + Excel import + GeoJSON route upload; 69/69 tests green; Phase 1 foundation complete
+last_updated: "2026-05-24T04:00:00.000Z"
 last_activity: 2026-05-24
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 7
-  completed_plans: 5
-  percent: 0
+  completed_plans: 7
+  percent: 100
 ---
 
 # Project State
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-05-23)
 
 ## Current Position
 
-Phase: 01 (foundation) — EXECUTING
-Plan: 7 of 7 (01-06 next)
-Status: Ready to execute
+Phase: 01 (foundation) — COMPLETE
+Plan: 7 of 7 (all plans complete)
+Status: Phase complete — ready for Phase 2 planning
 Last activity: 2026-05-24
 
-Progress: [████████░░] 86%
+Progress: [██████████] 100% (Phase 1)
 
 ## Performance Metrics
 
@@ -56,6 +56,7 @@ Progress: [████████░░] 86%
 | Phase 01-foundation P04 | 7 minutes | 1 tasks | 3 files |
 | Phase 01-foundation P02b | 35 | 2 tasks | 9 files |
 | Phase 01-foundation P05 | 21 | 2 tasks | 15 files |
+| Phase 01-foundation P06 | 90 | 2 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -83,6 +84,10 @@ Recent decisions affecting current work:
 - [Phase 01-05]: vi.mock('next/cache') required in Server Action tests — revalidatePath throws 'static generation store missing' outside Next.js rendering context
 - [Phase 01-05]: Base UI Select onValueChange callback is (value: string | null, ...) — all setState callers must null-coalesce with ?? ''
 - [Phase 01-05]: Zod v4 z.enum() parameter is 'error' not 'errorMap'
+- [Phase 01-06]: Zod v4 z.record() requires 2 arguments: z.record(z.string(), z.unknown()) not z.record(z.unknown())
+- [Phase 01-06]: ExcelJS Buffer typing — Node 24 Buffer<ArrayBufferLike> not assignable to ExcelJS's ArrayBuffer-based Buffer; use buffer.buffer.slice(byteOffset, byteOffset+byteLength) to extract underlying ArrayBuffer
+- [Phase 01-06]: NextResponse body must be BodyInit — use new Uint8Array(buffer) not Buffer directly for xlsx download routes
+- [Phase 01-06]: Base UI DropdownMenuTrigger uses render prop for polymorphism (no asChild — consistent with Button pattern from 01-05)
 
 ### Pending Todos
 
@@ -104,6 +109,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-24T02:10:00.000Z
-Stopped at: Phase 1 Plan 05 complete — project CRUD + people approval + tabbed detail shell; 49/49 tests green; ready for 01-06
+Last session: 2026-05-24T04:00:00.000Z
+Stopped at: Phase 1 Plan 06 complete — BOQ CRUD + Excel import + GeoJSON route upload; 69/69 tests green; Phase 1 fully complete
 Resume file: None
