@@ -44,33 +44,8 @@ describe('Turkish decimal normalization (Pitfall-4 guard)', () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// (b) Pure unit tests — step input enforcement (LOG-04, LOG-05, LOG-06)
-//
-// These will be filled in during Wave 4 when the FSM handlers are implemented.
-// Placeholders ensure the describe block exists as an anchor.
-// ---------------------------------------------------------------------------
-
-describe('step input enforcement', () => {
-  beforeEach(() => {
-    process.env.TELEGRAM_BOT_TOKEN = 'TEST:fake_token_for_unit_tests';
-    process.env.TELEGRAM_WEBHOOK_SECRET = 'test-webhook-secret-value';
-    vi.resetModules();
-    vi.doMock('@/db', () => ({ db: { insert: vi.fn(), select: vi.fn() } }));
-  });
-
-  afterEach(() => {
-    delete process.env.TELEGRAM_BOT_TOKEN;
-    delete process.env.TELEGRAM_WEBHOOK_SECRET;
-    vi.restoreAllMocks();
-    vi.resetModules();
-  });
-
-  it.todo('LOG-04: photo step rejects text message (must send photo)');
-  it.todo('LOG-05: location step rejects text message (must share native location)');
-  it.todo('LOG-06: quantity step rejects non-numeric input');
-  it.todo('LOG-06: quantity step accepts Turkish comma decimal (e.g. "25,5")');
-});
+// Note: step input enforcement (LOG-04/05/06) is covered by the live
+// "photo + location enforcement" and "quantity + notes" describe blocks below.
 
 // ---------------------------------------------------------------------------
 // Test harness helpers
