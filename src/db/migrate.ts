@@ -14,7 +14,8 @@ async function main() {
     path.join(process.cwd(), 'src/db/migrations/0000_enable_postgis.sql'),
     'utf-8'
   );
-  await sql(postgisSql);
+  // neon-http `sql` is a tagged-template fn; use `.query()` to run a raw SQL string.
+  await sql.query(postgisSql);
 
   // Step 2: Run Drizzle-generated migrations
   await migrate(db, { migrationsFolder: 'src/db/migrations' });

@@ -38,8 +38,8 @@ function AuthErrorContent({ errorType }: { errorType?: string }) {
             </AlertDescription>
           </Alert>
 
-          <Button asChild variant="outline" className="w-full">
-            <Link href="/auth/signin">{t('cta')}</Link>
+          <Button render={<Link href="/auth/signin" />} variant="outline" className="w-full">
+            {t('cta')}
           </Button>
         </CardContent>
       </Card>
