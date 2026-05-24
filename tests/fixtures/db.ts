@@ -52,6 +52,10 @@ export async function truncateAllTables(db: Awaited<ReturnType<typeof getTestDb>
 
   // Truncate in reverse FK dependency order (most dependent first)
   const tables = [
+    // Phase 2 tables (most dependent — references people/projects/boq_items/tenants)
+    "submissions",
+    "conversation_state",
+    "processed_updates",
     "assignments",
     "pending_people",
     "people",
