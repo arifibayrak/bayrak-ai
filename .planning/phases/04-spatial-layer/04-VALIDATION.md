@@ -1,8 +1,8 @@
 ---
 phase: 4
 slug: spatial-layer
-status: draft
-nyquist_compliant: false
+status: planned
+nyquist_compliant: true
 wave_0_complete: false
 created: 2026-05-24
 ---
@@ -40,7 +40,17 @@ created: 2026-05-24
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| _TBD by planner_ | | | GEO-01 / GEO-02 | | | unit/integration | `npx vitest run tests/spatial.test.ts` | ❌ W0 | ⬜ pending |
+| 04-01-T1 (schema cols + GiST) | 04-01 | 1 | GEO-01, GEO-02 | T-04-01 | location_match enum schema-guards three-state integrity | type-check | `npx tsc --noEmit` | ❌ W0 | ⬜ pending |
+| 04-01-T2 (seedSpatialFixture) | 04-01 | 1 | GEO-01, GEO-02 | — | parameterized ST_GeomFromGeoJSON seed | type-check | `npx tsc --noEmit` | ❌ W0 | ⬜ pending |
+| 04-01-T3 (test scaffold + D-48) | 04-01 | 1 | GEO-01, GEO-02 (D-48) | T-04-01 | coordinate-order guard (lng-first) | integration (DB) | `npx vitest run tests/spatial.test.ts` | ❌ W0 | ⬜ pending |
+| 04-02-T1 (generate + hand-verify) | 04-02 | 2 | GEO-01, GEO-02 | T-04-01, T-04-03 | location_match CHECK constraint present | grep gate | `grep -Eq 'location_match.*CHECK' <migration>` | ❌ W0 | ⬜ pending |
+| 04-02-T2 [BLOCKING] live push | 04-02 | 2 | GEO-01, GEO-02 | T-04-01 | live columns + CHECK + GiST exist (no false-positive) | live DB query | information_schema check (node script) | ❌ W0 | ⬜ pending |
+| 04-03-T1 (spatial.ts snapToRoute) | 04-03 | 3 | GEO-01, GEO-02 | T-04-04, T-04-05, T-04-06, T-04-07 | parameterized lon/lat bindings; ::geography; best-effort never drops warning | type-check + grep | `npx tsc --noEmit` | ❌ W0 | ⬜ pending |
+| 04-03-T2 (wire into handleConfirmSubmit) | 04-03 | 3 | GEO-01, GEO-02 | T-04-06 | in-tx snap (D-41), submission never lost (D-42) | type-check | `npx tsc --noEmit` | ❌ W0 | ⬜ pending |
+| 04-03-T3 (GEO-01/GEO-02 integration tests) | 04-03 | 3 | GEO-01, GEO-02 | T-04-05, T-04-06 | near/far/no_route classification + best-effort persistence | integration (DB) | `npx vitest run tests/spatial.test.ts` | ❌ W0 | ⬜ pending |
+| 04-04-T1 (D-47 caption line) | 04-04 | 4 | GEO-02 | T-04-06 | far/no_route surfaced; warning never silently dropped | type-check + grep | `npx tsc --noEmit` | ❌ W0 | ⬜ pending |
+| 04-04-T2 (D-47 caption unit tests) | 04-04 | 4 | GEO-02 (D-47) | T-04-06 | three-state caption decision asserted (no-DB unit) | unit | `npx vitest run tests/spatial.test.ts` | ❌ W0 | ⬜ pending |
+| 04-04-T3 (human-verify live notification) | 04-04 | 4 | GEO-02 | T-04-06, T-04-08 | live auditor anomaly line render | manual (checkpoint) | manual Telegram E2E | — | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -75,4 +85,4 @@ created: 2026-05-24
 - [ ] Feedback latency < 60s
 - [ ] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** planned — every task has an automated <verify> or is a Wave 0 dependency; GEO-01 and GEO-02 both covered by `npx vitest run tests/spatial.test.ts`; one manual-only checkpoint (live Telegram delivery).

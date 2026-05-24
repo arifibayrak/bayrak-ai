@@ -140,7 +140,23 @@ Plans:
   2. When a worker shares location more than 500 m from the route, the submission is persisted with `location_warning = true` and the auditor's Telegram notification includes a distance-anomaly flag
   3. A unit test verifies coordinate order: storing an Istanbul coordinate (lng 28.9, lat 41.0) reads back with longitude first in GeoJSON output
 
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+**Wave 1**
+
+- [ ] 04-01-PLAN.md — Add 5 spatial columns + snapped_point GiST index to submissions; Wave 0 test scaffold (D-48) + seedSpatialFixture
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 04-02-PLAN.md — [BLOCKING] generate + hand-verify (location_match CHECK + GiST) + live drizzle-kit push (closes the false-positive verification trap)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 04-03-PLAN.md — spatial.ts guarded in-tx PostGIS snap (D-41/D-42) + wire into handleConfirmSubmit + GEO-01/GEO-02 integration tests
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 04-04-PLAN.md — D-47 auditor caption anomaly line in fanOutToAuditors + caption unit tests + live-notification human-verify checkpoint
 
 ### Phase 5: Dashboard & Map
 
@@ -183,6 +199,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 1. Foundation | 7/7 | Complete | 2026-05-24 |
 | 2. Worker Bot | 6/6 | Complete   | 2026-05-24 |
 | 3. Audit Loop | 5/5 | Complete   | 2026-05-24 |
-| 4. Spatial Layer | 0/TBD | Not started | - |
+| 4. Spatial Layer | 0/4 | Not started | - |
 | 5. Dashboard & Map | 0/TBD | Not started | - |
 | 6. AI Vision Assist | 0/TBD | Not started | - |
