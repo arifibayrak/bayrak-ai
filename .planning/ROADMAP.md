@@ -43,7 +43,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 01-02a-PLAN.md — Author Drizzle/PostGIS schema + 0000 PostGIS migration + migrate runner + seed + tenant/balance helpers
+- [x] 01-02a-PLAN.md — Author Drizzle/PostGIS schema + 0000 PostGIS migration + migrate runner + seed + tenant/balance helpers
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -142,7 +142,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 1/7 | In Progress|  |
+| 1. Foundation | 2/7 | In Progress|  |
 | 2. Worker Bot | 0/TBD | Not started | - |
 | 3. Audit Loop | 0/TBD | Not started | - |
 | 4. Spatial Layer | 0/TBD | Not started | - |

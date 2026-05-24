@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 1 UI-SPEC approved
-last_updated: "2026-05-24T00:25:21.801Z"
+stopped_at: Phase 1 Plan 02a complete — schema authored
+last_updated: "2026-05-24T00:35:00.000Z"
 last_activity: 2026-05-24
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 7
-  completed_plans: 1
-  percent: 0
+  completed_plans: 2
+  percent: 28
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-23)
 ## Current Position
 
 Phase: 01 (foundation) — EXECUTING
-Plan: 2 of 7
+Plan: 3 of 7 (02b next)
 Status: Ready to execute
 Last activity: 2026-05-24
 
-Progress: [█░░░░░░░░░] 14%
+Progress: [██░░░░░░░░] 28%
 
 ## Performance Metrics
 
@@ -63,6 +63,8 @@ Recent decisions affecting current work:
 - Roadmap: BOQ line item selected by worker via inline keyboard (State 2.5) between photo and location; AI parses notes to auto-suggest classification (advisory)
 - Roadmap: Multiple auditors per project; first action wins; race-safe via SELECT FOR UPDATE + status guard
 - Roadmap: AI flags are advisory only; eval harness with acceptance criteria required before flags shown to auditors (AI-05)
+- Schema (01-02a): geometry(LineString,4326) generated correctly by drizzle-kit customType — Pitfall 1 hand-edit did not trigger for drizzle-kit 0.31.x
+- Schema (01-02a): getDefaultTenantId() pattern established — all app code MUST supply tenant_id on insert (Pitfall 3 prevention)
 
 ### Pending Todos
 
@@ -84,6 +86,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-24T00:25:21.793Z
-Stopped at: Phase 1 UI-SPEC approved
+Last session: 2026-05-24T00:35:00.000Z
+Stopped at: Phase 1 Plan 02a complete — schema authored, ready for 01-02b (live DB push)
 Resume file: None
