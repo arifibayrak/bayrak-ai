@@ -74,7 +74,28 @@ Plans:
   4. Sending the same Telegram update twice results in exactly one submission row (idempotency/replay guard verified)
   5. A mid-flow conversation survives a serverless cold start and resumes at the correct step without data loss
 
-**Plans**: TBD
+**Plans**: 6 plans
+Plans:
+**Wave 1**
+
+- [ ] 02-01-PLAN.md — Three new Drizzle schema files (conversation_state, processed_updates, submissions) + barrel + FK-safe truncate + Wave 0 test scaffold
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 02-02-PLAN.md — Pure libs: Turkish message catalog, FSM step types + TTL, paginated keyboards, photo→Blob helper
+- [ ] 02-03-PLAN.md — [BLOCKING] live `drizzle-kit push` of the three new tables (closes the false-positive verification trap)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 02-04-PLAN.md — Bot pipeline scaffold: idempotency middleware (D-13 Guard 1), identity guard, /start + Devam/Baştan, /iptal, FSM dispatcher + cold-start resume (SC5) + TTL
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 02-05-PLAN.md — Six step handlers: project, BOQ (balance + 0-balance soft warn), photo, location, quantity (Turkish decimal), notes (skip) with input enforcement
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 02-06-PLAN.md — Confirm summary + per-field edit (D-16), transactional pending_audit insert (getTxDb), Gönderildi/Yeni kayıt, [SC4 MANDATORY] duplicate-update + persistence live-DB tests
 
 ### Phase 3: Audit Loop
 
@@ -143,7 +164,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 7/7 | Complete | 2026-05-24 |
-| 2. Worker Bot | 0/TBD | Not started | - |
+| 2. Worker Bot | 0/6 | Planned | - |
 | 3. Audit Loop | 0/TBD | Not started | - |
 | 4. Spatial Layer | 0/TBD | Not started | - |
 | 5. Dashboard & Map | 0/TBD | Not started | - |
