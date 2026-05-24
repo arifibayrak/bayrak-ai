@@ -90,6 +90,7 @@ describeIfDb('submissions Server Actions (DB)', () => {
       const snappedPointJson = JSON.stringify({ type: 'Point', coordinates: [28.92, 41.02] });
 
       // Row 1: approved + snapped — should appear in result
+      // NOTE: flow_id is uuid type — must use valid UUID values (Rule 1 fix)
       await db.execute(sql`
         INSERT INTO submissions (
           tenant_id, flow_id, person_id, project_id, boq_item_id,
@@ -98,7 +99,7 @@ describeIfDb('submissions Server Actions (DB)', () => {
           location_match, location_warning, location_distance_m,
           quantity, status, submitted_at
         ) VALUES (
-          ${tenantId}, ${'flow-approved-snapped'}, ${personId}, ${projectId}, ${boqItemId},
+          ${tenantId}, ${'00000000-0000-0000-0001-000000000001'}, ${personId}, ${projectId}, ${boqItemId},
           ${'https://example.blob.vercel-storage.com/photo1.jpg'}, 41.02, 28.92,
           ST_GeomFromGeoJSON(${snappedPointJson}), 0.3,
           'near', false, 50,
@@ -114,7 +115,7 @@ describeIfDb('submissions Server Actions (DB)', () => {
           location_match, location_warning, location_distance_m,
           quantity, status, submitted_at
         ) VALUES (
-          ${tenantId}, ${'flow-approved-nosnap'}, ${personId}, ${projectId}, ${boqItemId},
+          ${tenantId}, ${'00000000-0000-0000-0001-000000000002'}, ${personId}, ${projectId}, ${boqItemId},
           ${'https://example.blob.vercel-storage.com/photo2.jpg'}, 41.01, 28.91,
           'no_route', false, null,
           5, 'approved', NOW()
@@ -130,7 +131,7 @@ describeIfDb('submissions Server Actions (DB)', () => {
           location_match, location_warning, location_distance_m,
           quantity, status, submitted_at
         ) VALUES (
-          ${tenantId}, ${'flow-pending-snapped'}, ${personId}, ${projectId}, ${boqItemId},
+          ${tenantId}, ${'00000000-0000-0000-0001-000000000003'}, ${personId}, ${projectId}, ${boqItemId},
           ${'https://example.blob.vercel-storage.com/photo3.jpg'}, 41.03, 28.93,
           ST_GeomFromGeoJSON(${snappedPointJson}), 0.6,
           'near', false, 80,
@@ -165,6 +166,7 @@ describeIfDb('submissions Server Actions (DB)', () => {
       const { tenantId, projectId, boqItemId, personId } = SPATIAL_FIXTURE_IDS;
 
       // Insert one approved and one rejected
+      // NOTE: flow_id is uuid type — must use valid UUID values (Rule 1 fix)
       await db.execute(sql`
         INSERT INTO submissions (
           tenant_id, flow_id, person_id, project_id, boq_item_id,
@@ -172,10 +174,10 @@ describeIfDb('submissions Server Actions (DB)', () => {
           location_match, location_warning,
           quantity, status, submitted_at
         ) VALUES
-          (${tenantId}, ${'flow-a'}, ${personId}, ${projectId}, ${boqItemId},
+          (${tenantId}, ${'00000000-0000-0000-0002-000000000001'}, ${personId}, ${projectId}, ${boqItemId},
            ${'https://example.blob.vercel-storage.com/a.jpg'}, 41.0, 28.9,
            'near', false, 10, 'approved', NOW()),
-          (${tenantId}, ${'flow-b'}, ${personId}, ${projectId}, ${boqItemId},
+          (${tenantId}, ${'00000000-0000-0000-0002-000000000002'}, ${personId}, ${projectId}, ${boqItemId},
            ${'https://example.blob.vercel-storage.com/b.jpg'}, 41.01, 28.91,
            'near', false, 5, 'rejected', NOW())
       `);
@@ -195,7 +197,9 @@ describeIfDb('submissions Server Actions (DB)', () => {
       const pageSize = 3;
 
       // Insert pageSize + 1 = 4 rows (all approved)
+      // NOTE: flow_id is uuid type — use padded deterministic UUIDs (Rule 1 fix)
       for (let i = 0; i < pageSize + 1; i++) {
+        const flowUuid = `00000000-0000-0000-0003-${String(i).padStart(12, '0')}`;
         await db.execute(sql`
           INSERT INTO submissions (
             tenant_id, flow_id, person_id, project_id, boq_item_id,
@@ -203,7 +207,7 @@ describeIfDb('submissions Server Actions (DB)', () => {
             location_match, location_warning,
             quantity, status, submitted_at
           ) VALUES (
-            ${tenantId}, ${'flow-page-' + i}, ${personId}, ${projectId}, ${boqItemId},
+            ${tenantId}, ${flowUuid}, ${personId}, ${projectId}, ${boqItemId},
             ${'https://example.blob.vercel-storage.com/page' + i + '.jpg'}, 41.0, 28.9,
             'near', false, ${i + 1}, 'approved', NOW()
           )
