@@ -12,7 +12,7 @@ Every unit of field work flows through one trustworthy loop — **worker submits
 
 ### Validated
 
-(None yet — ship to validate)
+- [x] PostGIS matches a submission's lat/long to the nearest pipeline segment at submission time, storing a snapped point + segment fraction; submissions beyond a configurable 500 m threshold are flagged so the auditor's Telegram notification carries a distance-anomaly line — *Validated in Phase 4: Spatial Layer (GEO-01, GEO-02). Live-Telegram render deferred to a manual smoke-test (04-HUMAN-UAT.md).*
 
 ### Active
 
@@ -26,7 +26,6 @@ Every unit of field work flows through one trustworthy loop — **worker submits
 - [ ] On Reject → bot prompts auditor for a text reason, sets `status: rejected`, notifies the worker
 - [ ] Office Engineer manages projects and Bill of Quantities (BOQ_Items) in a Next.js dashboard
 - [ ] Office Engineer uploads the pipeline route as a GeoJSON LineString
-- [ ] PostGIS matches a submission's lat/long to the nearest pipeline segment
 - [ ] Dashboard renders approved work logs as point markers / colored segments overlaying the GeoJSON route (Mapbox GL JS)
 - [ ] Office Engineer authenticates to the dashboard via email magic-link (Auth.js)
 - [ ] AI assist (vision/LLM) flags photo/location anomalies and auto-classifies submitted work to help the auditor decide
@@ -103,4 +102,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-23 after initialization*
+*Last updated: 2026-05-24 after Phase 4 (Spatial Layer) completion*
