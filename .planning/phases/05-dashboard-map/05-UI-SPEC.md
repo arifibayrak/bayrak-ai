@@ -66,9 +66,11 @@ All sizes use Geist Sans (`--font-sans`). Tailwind v4 utility classes map direct
 | Label | 14px | 600 (semibold) | 1.4 | `text-sm font-semibold` |
 | Heading | 16px | 600 (semibold) | 1.4 | `text-base font-semibold` |
 | Display | 20px | 600 (semibold) | 1.2 | `text-xl font-semibold` |
+| Map legend (mobile) | 12px | 400 (regular) | 1.4 | `text-[12px]` |
 
 Rules:
 - **Only 2 font weights in use:** 400 (regular) and 600 (semibold). No 500, no 700.
+- **12px is a layout-only map-overlay override** applied exclusively to the map legend on mobile viewports. It is not a general text role and must not be used outside that context.
 - Numbers in tables (quantities, distances, percentages): `tabular-nums` class — established pattern from BoqTable.tsx.
 - Locale formatting: `Intl.NumberFormat('tr-TR')` for quantities; `toLocaleDateString('tr-TR')` for dates — established pattern.
 - Map popup labels: Body (14px/400). Popup heading (BOQ item name): Label (14px/600).
@@ -298,6 +300,7 @@ All copy via next-intl. Key paths listed below.
 - Touch targets: filter chips and tab triggers minimum 44px height on mobile.
 - `next/image` must include descriptive `alt` text: photo thumbnails use `"[BOQ item] fotoğrafı"` pattern.
 - All new next-intl message keys follow existing namespace pattern (`dashboard.*`).
+- Dialog close button: shadcn Dialog primitive provides `aria-label="Close"` by default — no additional work required.
 
 ---
 
