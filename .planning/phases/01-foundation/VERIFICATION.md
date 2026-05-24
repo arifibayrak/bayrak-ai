@@ -8,6 +8,7 @@ human_verification:
   - test: "Sign in with an allowlisted email address via the live dashboard"
     expected: "Magic-link email received via Resend; clicking the link redirects to /dashboard/projects and shows the project list"
     why_human: "Real email delivery via Resend provider cannot be verified without a live session and real email client"
+    result: "PASSED 2026-05-24 — Resend verified for bayrak.ai; magic-link sent from no-reply@bayrak.ai to allowlisted mailbox; clicking the link reached /dashboard/projects signed in (AUTH-01 confirmed live)"
   - test: "Send /start to the live Telegram bot from a real phone"
     expected: "A pending_people row appears in the database; bot replies in Turkish with approval-pending message"
     why_human: "Requires a live bot token and public webhook URL; cannot be exercised from test environment"
