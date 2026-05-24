@@ -29,6 +29,11 @@ export const submissions = pgTable('submissions', {
     .notNull()
     .default('pending_audit'),
   submittedAt: timestamp('submitted_at', { withTimezone: true }).defaultNow().notNull(),
+  // Phase 3: audit decision trail (D-38)
+  // All three are nullable — no DEFAULT needed; backfill not required for existing pending_audit rows.
+  decidedBy: uuid('decided_by').references(() => people.id),        // null until decided
+  decidedAt: timestamp('decided_at', { withTimezone: true }),        // null until decided
+  rejectionReason: text('rejection_reason'),                         // null unless rejected
 }, (t) => [
   // D-13 Guard 2: named UNIQUE on flow_id prevents double-confirm duplicate inserts
   unique('submissions_flow_id_unique').on(t.flowId),

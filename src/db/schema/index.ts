@@ -12,3 +12,4 @@ export * from './assignments';
 export * from './conversation-state';  // references tenants, people
 export * from './processed-updates';   // no FK references
 export * from './submissions';         // references tenants, people, projects, boq-items
+export * from './audit-notifications'; // references tenants, submissions, people (D-34)
