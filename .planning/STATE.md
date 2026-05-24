@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 05 UI-SPEC approved
-last_updated: "2026-05-24T22:45:00.505Z"
+stopped_at: Completed Phase 05 Plan 02 — data layer actions (DASH-01/02/03) GREEN
+last_updated: "2026-05-24T23:08:42.632Z"
 last_activity: 2026-05-24
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 28
-  completed_plans: 23
+  completed_plans: 24
   percent: 67
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-23)
 ## Current Position
 
 Phase: 05 (dashboard-map) — EXECUTING
-Plan: 2 of 6
+Plan: 3 of 6
 Status: Ready to execute
 Last activity: 2026-05-24
 
-Progress: [████████░░] 82%
+Progress: [█████████░] 86%
 
 ## Performance Metrics
 
@@ -73,6 +73,7 @@ Progress: [████████░░] 82%
 | Phase 04-spatial-layer P03 | 30 | 3 tasks | 3 files |
 | Phase 04-spatial-layer P04 | 5 | 3 tasks | 3 files |
 | Phase 05-dashboard-map P05-01 | 60 | 4 tasks | 7 files |
+| Phase 05 P02 | 580 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -107,6 +108,9 @@ Recent decisions affecting current work:
 - [Phase 04-01]: Five Phase 4 spatial columns on submissions — all nullable; locationMatch text enum {near,far,no_route} is three-state source of truth (D-43/D-44); locationWarning bool for SC2 filtering; locationDistanceM stored to avoid re-querying PostGIS in fanOutToAuditors
 - [Phase 04-01]: SPATIAL_FIXTURE_IDS const exported alongside seedSpatialFixture so test files import UUIDs without duplicating them
 - [Phase ?]: D-49: drizzle-kit push unusable for this project — spatial_ref_sys permission error; migrate.ts (Drizzle migrate()) is the project migration runner
+- [Phase ?]: [Phase 05-02]: getRouteGeoJSON exported from both submissions.ts and routes.ts — test imports from submissions, plan artifacts spec includes routes
+- [Phase ?]: [Phase 05-02]: VALID_STATUSES whitelist at module scope in submissions.ts, throws on non-whitelisted status (T-05-IV / V5)
+- [Phase ?]: [Phase 05-02]: flow_id test INSERTs must use valid UUIDs — uuid() column type rejects non-UUID strings (Rule 1 fix, deterministic UUIDs applied)
 
 ### Pending Todos
 
@@ -128,6 +132,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-24T22:45:00.499Z
-Stopped at: Phase 05 UI-SPEC approved
+Last session: 2026-05-24T23:08:42.625Z
+Stopped at: Completed Phase 05 Plan 02 — data layer actions (DASH-01/02/03) GREEN
 Resume file: None
