@@ -83,7 +83,7 @@ Plans:
 **Wave 2** *(blocked on Wave 1 completion)*
 
 - [x] 02-02-PLAN.md — Pure libs: Turkish message catalog, FSM step types + TTL, paginated keyboards, photo→Blob helper
-- [ ] 02-03-PLAN.md — [BLOCKING] live `drizzle-kit push` of the three new tables (closes the false-positive verification trap)
+- [x] 02-03-PLAN.md — [BLOCKING] live `drizzle-kit push` of the three new tables (closes the false-positive verification trap)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -164,7 +164,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 7/7 | Complete | 2026-05-24 |
-| 2. Worker Bot | 2/6 | In Progress|  |
+| 2. Worker Bot | 3/6 | In Progress|  |
 | 3. Audit Loop | 0/TBD | Not started | - |
 | 4. Spatial Layer | 0/TBD | Not started | - |
 | 5. Dashboard & Map | 0/TBD | Not started | - |
