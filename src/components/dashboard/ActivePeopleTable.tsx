@@ -177,8 +177,8 @@ function ManualAddDialog({
     if (!displayName.trim()) newErrors.name = t('name_required');
     if (!role) newErrors.role = t('role_required');
     const tgId = parseInt(telegramUserId, 10);
-    if (!telegramUserId || isNaN(tgId) || tgId <= 0) newErrors.telegram = 'Geçerli bir Telegram ID girin.';
-    if (!projectId) newErrors.project = 'Proje seçin.';
+    if (!telegramUserId || isNaN(tgId) || tgId <= 0) newErrors.telegram = t('telegram_required');
+    if (!projectId) newErrors.project = t('project_required');
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);

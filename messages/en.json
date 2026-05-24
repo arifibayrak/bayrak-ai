@@ -88,6 +88,8 @@
       "role_auditor": "Auditor",
       "name_required": "Enter a name before approving.",
       "role_required": "Select a role: Worker or Auditor.",
+      "telegram_required": "Enter a valid Telegram ID.",
+      "project_required": "Select a project.",
       "remove_assignment": "Remove Assignment",
       "remove_assignment_confirm": "Are you sure you want to remove {personName}'s assignment?",
       "remove_assignment_cta": "Yes, Remove"

@@ -88,6 +88,8 @@
       "role_auditor": "Denetçi",
       "name_required": "Onaylamadan önce bir ad girin.",
       "role_required": "Bir rol seçin: İşçi veya Denetçi.",
+      "telegram_required": "Geçerli bir Telegram ID girin.",
+      "project_required": "Proje seçin.",
       "remove_assignment": "Görevi Kaldır",
       "remove_assignment_confirm": "'{personName}' kişisinin proje atamasını kaldırmak istediğinize emin misiniz?",
       "remove_assignment_cta": "Evet, Kaldır"
