@@ -27,9 +27,9 @@ Requirements for the initial release. Each maps to roadmap phases.
 - [x] **LOG-02**: Worker selects an active project from an inline keyboard of projects assigned to them
 - [x] **LOG-03**: Worker selects which BOQ line item / material the work applies to (inline keyboard)
 - [x] **LOG-04**: Worker uploads a photo; the bot rejects non-photo input and reprompts
-- [ ] **LOG-05**: Worker shares location via Telegram's native location feature; the bot rejects typed coordinates and reprompts
-- [ ] **LOG-06**: Worker enters a numeric quantity of material used; the bot rejects non-numeric input and reprompts
-- [ ] **LOG-07**: Worker can add optional free-text notes
+- [x] **LOG-05**: Worker shares location via Telegram's native location feature; the bot rejects typed coordinates and reprompts
+- [x] **LOG-06**: Worker enters a numeric quantity of material used; the bot rejects non-numeric input and reprompts
+- [x] **LOG-07**: Worker can add optional free-text notes
 - [x] **LOG-08**: On confirmation, the submission persists with `status: pending_audit`
 - [x] **LOG-09**: The bot guides the worker sequentially and reprompts on any skipped or out-of-order step
 - [x] **LOG-10**: A worker's in-progress multi-step submission is preserved reliably and never lost or duplicated across the bot's serverless invocations
@@ -121,9 +121,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | LOG-02 | Phase 2 | Complete |
 | LOG-03 | Phase 2 | Complete |
 | LOG-04 | Phase 2 | Complete |
-| LOG-05 | Phase 2 | Pending |
-| LOG-06 | Phase 2 | Pending |
-| LOG-07 | Phase 2 | Pending |
+| LOG-05 | Phase 2 | Complete |
+| LOG-06 | Phase 2 | Complete |
+| LOG-07 | Phase 2 | Complete |
 | LOG-08 | Phase 2 | Complete |
 | LOG-09 | Phase 2 | Complete |
 | LOG-10 | Phase 2 | Complete |
