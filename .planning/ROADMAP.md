@@ -115,7 +115,7 @@ Plans:
 **Wave 1**
 
 - [x] 03-01-PLAN.md — Schema additions (submissions decided_* + audit_notifications table), reject-reason FSM steps, test truncation order + Wave 0 audit test scaffold
-- [ ] 03-03-PLAN.md — Pure libs: buildAuditKeyboard + buildRejectReasonKeyboard, Turkish auditor/worker decision message strings
+- [x] 03-03-PLAN.md — Pure libs: buildAuditKeyboard + buildRejectReasonKeyboard, Turkish auditor/worker decision message strings
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -182,7 +182,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 |-------|----------------|--------|-----------|
 | 1. Foundation | 7/7 | Complete | 2026-05-24 |
 | 2. Worker Bot | 6/6 | Complete   | 2026-05-24 |
-| 3. Audit Loop | 1/5 | In Progress|  |
+| 3. Audit Loop | 2/5 | In Progress|  |
 | 4. Spatial Layer | 0/TBD | Not started | - |
 | 5. Dashboard & Map | 0/TBD | Not started | - |
 | 6. AI Vision Assist | 0/TBD | Not started | - |
