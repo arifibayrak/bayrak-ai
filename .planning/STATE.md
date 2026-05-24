@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed Phase 05 Plan 05 — BoqTable % Tamamlanan column + Progress bar (DASH-04 / D-50)
-last_updated: "2026-05-24T23:29:43.990Z"
-last_activity: 2026-05-24
+stopped_at: "Paused at checkpoint — Phase 05 Plan 06 (05-06): Tasks 1+2 done; awaiting human-verify checkpoint before SUMMARY"
+last_updated: "2026-05-25T00:00:00Z"
+last_activity: 2026-05-25
 progress:
   total_phases: 6
   completed_phases: 4
