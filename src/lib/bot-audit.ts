@@ -252,24 +252,31 @@ export async function editAllSiblingMessages(
     // Skip refs that were never sent (D-40: sendFailed records)
     if (ref.sendFailed) continue;
 
+    // WR-03: Strip the reply markup FIRST so a resolved submission can never keep
+    // tappable buttons, even if the caption edit subsequently fails.
+    // Each call is independently guarded per D-40 (best-effort per sibling).
+    const chatId = Number(ref.chatId);
+    const msgId = ref.messageId;
+
     try {
-      // For photo messages: editMessageCaption changes the caption.
-      // editMessageReplyMarkup strips the inline buttons.
-      // The plain text edit method 400s on photo messages (Pitfall 4).
-      await bot.api.editMessageCaption(Number(ref.chatId), ref.messageId, {
-        caption: outcomeCaption,
-      });
-      await bot.api.editMessageReplyMarkup(Number(ref.chatId), ref.messageId, {
+      await bot.api.editMessageReplyMarkup(chatId, msgId, {
         reply_markup: { inline_keyboard: [] },
       });
-    } catch (err) {
+    } catch (markupErr) {
       // Message may be >48h old or already edited — log and continue (D-40)
-      console.error(
-        '[editAllSiblingMessages] failed chatId=%s msgId=%s:',
-        ref.chatId,
-        ref.messageId,
-        err
-      );
+      console.error('[editAllSiblingMessages] markup strip failed chatId=%s msgId=%s:', chatId, msgId, markupErr);
+    }
+
+    try {
+      // For photo messages: editMessageCaption changes the caption.
+      // The plain text edit method 400s on photo messages (Pitfall 4).
+      await bot.api.editMessageCaption(chatId, msgId, {
+        caption: outcomeCaption,
+      });
+    } catch (captionErr) {
+      // Markup already stripped above — caption failure leaves a resolved-looking (buttonless)
+      // message which is acceptable. Log and continue (D-40).
+      console.error('[editAllSiblingMessages] caption edit failed chatId=%s msgId=%s:', chatId, msgId, captionErr);
     }
   }
 }
