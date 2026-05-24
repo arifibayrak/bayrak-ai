@@ -15,6 +15,13 @@
       "when": 1779625063235,
       "tag": "0001_fixed_sunspot",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1779645161811,
+      "tag": "0002_normal_mach_iv",
+      "breakpoints": true
     }
   ]
 }
