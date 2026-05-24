@@ -920,9 +920,11 @@ describeIfDb('CR-01: de-assigned auditor cannot commit a rejection after assignm
     // Step 1: tap ❌ Reddet — auditor is still assigned at this point
     await bot.handleUpdate(makeCallbackUpdate(2008, `audit:reject:${S8}`, 9501));
 
-    // Verify FSM state was written (auditor is now in AWAITING_REJECT_REASON)
+    // Verify FSM state was written (auditor is now in AWAITING_REJECT_REASON).
+    // The DB stores step values as lowercase (Postgres text column case-preserving).
     const stateAfterTap = await db.execute(sql.raw(`SELECT current_step FROM conversation_state WHERE telegram_user_id = 2008`));
-    expect(stateAfterTap.rows[0]?.current_step).toBe('AWAITING_REJECT_REASON');
+    const step = stateAfterTap.rows[0]?.current_step as string | undefined;
+    expect(step?.toUpperCase()).toBe('AWAITING_REJECT_REASON');
 
     // Step 2: REVOKE the auditor's assignment (simulates assignment removal between tap and commit)
     await db.execute(sql.raw(`DELETE FROM assignments WHERE id = '${AS8}'`));
