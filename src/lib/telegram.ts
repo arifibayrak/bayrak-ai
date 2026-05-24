@@ -1349,6 +1349,18 @@ async function handleConfirmSubmit(
         })
         .onConflictDoNothing();
 
+      // D-41/D-42: guarded spatial snap — runs inside the same transaction so
+      // snapped_point/segment_fraction/location_match are committed atomically
+      // with the submission row (D-41). snapToRoute is best-effort and never
+      // throws, so a geo failure cannot abort the transaction (D-42).
+      // Lazy import discipline (telegram.ts module comment): no top-level import.
+      if (data.locationLon != null && data.locationLon !== '' && data.locationLat != null) {
+        const { snapToRoute } = await import('@/lib/spatial');
+        const lon = data.locationLon as number;
+        const lat = data.locationLat as number;
+        await snapToRoute(tx, flowId, lon, lat);
+      }
+
       // Delete the conversation_state row — atomically with the insert
       await tx
         .delete(conversationState)
