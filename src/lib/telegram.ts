@@ -395,7 +395,7 @@ async function repromptStep(
     [STEPS.BOQ]: MESSAGES.chooseBoqItem,
     [STEPS.PHOTO]: MESSAGES.promptPhoto,
     [STEPS.LOCATION]: MESSAGES.promptLocation,
-    [STEPS.QUANTITY]: MESSAGES.promptNotes, // placeholder — Plan 05 fills real logic
+    [STEPS.QUANTITY]: MESSAGES.promptQuantity((_data.unit as string) ?? ''),
     [STEPS.NOTES]: MESSAGES.promptNotes,
     [STEPS.CONFIRM]: MESSAGES.confirmSummary,
   };
@@ -433,21 +433,22 @@ async function dispatchCallbackQuery(
     return;
   }
 
-  // Stub dispatchers for step-specific callbacks — Plan 05 fills real bodies
-  if (data.startsWith('project:select:')) {
+  // Step-specific callback dispatchers (Plan 05 real bodies)
+  if (data.startsWith('project:select:') || data.startsWith('project:page:')) {
     await handleStepProject(ctx, state.data as Record<string, unknown>, db);
     return;
   }
-  if (data.startsWith('project:page:')) {
-    await handleStepProject(ctx, state.data as Record<string, unknown>, db);
-    return;
-  }
-  if (data.startsWith('boq:select:')) {
+  if (
+    data.startsWith('boq:select:') ||
+    data.startsWith('boq:page:') ||
+    data.startsWith('boq:confirm0:') ||
+    data === 'boq:back'
+  ) {
     await handleStepBoq(ctx, state.data as Record<string, unknown>, db);
     return;
   }
-  if (data.startsWith('boq:page:')) {
-    await handleStepBoq(ctx, state.data as Record<string, unknown>, db);
+  if (data === 'notes:skip') {
+    await handleStepNotes(ctx, state.data as Record<string, unknown>, db);
     return;
   }
 
@@ -524,99 +525,462 @@ bot.on('message', async (ctx) => {
 // Plan 05 replaces each body with real input validation + state advance logic.
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Step handler implementations (Plan 05)
+//
+// Each handler enforces its expected input type:
+//   - Valid input: advances exactly one step via saveState
+//   - Invalid input: reprompts in Turkish WITHOUT advancing (LOG-09/D-19)
+//
+// Every callback_query handler calls ctx.answerCallbackQuery() FIRST (Pitfall 3)
+// before any DB work to stop Telegram's loading spinner.
+// ---------------------------------------------------------------------------
+
 /**
- * handleStepProject — stub for project selection step (LOG-02).
- * Plan 05: parse project:select:<id> callback, save projectId, advance to BOQ.
+ * handleStepProject — project selection step (LOG-02).
+ *
+ * Callback-driven. Parses project:select:<id> or project:page:<n>.
+ * On select: re-validates the project ID against the worker's assignments (V4 anti-tamper).
+ * On valid select: saves projectId, advances to STEP_BOQ, shows BOQ keyboard.
+ * On page: re-renders the project keyboard at page n without advancing.
+ * On tampered ID: reprompts chooseProject without advancing.
  */
 export async function handleStepProject(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ctx: any,
-  _data: Record<string, unknown>,
+  data: Record<string, unknown>,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  _db: any
+  db: any
 ): Promise<void> {
   const { MESSAGES } = await import('@/lib/bot-messages');
-  await ctx.reply(MESSAGES.resumePrefix + MESSAGES.chooseProject);
+  const { STEPS } = await import('@/lib/bot-fsm');
+  const { buildProjectKeyboard, buildBoqKeyboard } = await import('@/lib/bot-keyboards');
+
+  const callbackData: string = ctx.callbackQuery?.data ?? '';
+  const parts = callbackData.split(':');
+  // Expected shape: project:select:<id> or project:page:<n>
+  const action = parts[1]; // 'select' | 'page'
+  const value = parts.slice(2).join(':'); // id or page number
+
+  const telegramUserId = ctx.from?.id;
+  if (!telegramUserId) {
+    await ctx.reply(MESSAGES.noActiveFlow);
+    return;
+  }
+
+  if (action === 'page') {
+    // Re-render the project keyboard at page n — no step advance
+    const pageNum = parseInt(value, 10);
+    const workerIdentity = await resolveWorker(db, BigInt(telegramUserId));
+    if (!workerIdentity) {
+      await ctx.reply(MESSAGES.pendingApproval);
+      return;
+    }
+    await ctx.reply(MESSAGES.chooseProject, {
+      reply_markup: buildProjectKeyboard(workerIdentity.projects, isNaN(pageNum) ? 0 : pageNum),
+    });
+    return;
+  }
+
+  if (action === 'select') {
+    // V4: Re-query the worker's assigned projects — never trust the callback_data ID
+    const workerIdentity = await resolveWorker(db, BigInt(telegramUserId));
+    if (!workerIdentity) {
+      await ctx.reply(MESSAGES.pendingApproval);
+      return;
+    }
+
+    const isAssigned = workerIdentity.projects.some(p => p.id === value);
+    if (!isAssigned) {
+      // Tampered ID — reject silently and reprompt (V4)
+      await ctx.reply(MESSAGES.chooseProject, {
+        reply_markup: buildProjectKeyboard(workerIdentity.projects, (data.page as number) ?? 0),
+      });
+      return;
+    }
+
+    // Valid assigned project — load its BOQ items
+    const { boqItems } = await import('@/db/schema/boq-items');
+    const { eq } = await import('drizzle-orm');
+
+    const boqRows = await db
+      .select()
+      .from(boqItems)
+      .where(eq(boqItems.projectId, value));
+
+    // Advance to BOQ step
+    const newData = { ...data, projectId: value };
+    await saveState(
+      db,
+      BigInt(telegramUserId),
+      STEPS.BOQ,
+      newData,
+      workerIdentity.person.id
+    );
+
+    await ctx.reply(MESSAGES.chooseBoqItem, {
+      reply_markup: buildBoqKeyboard(boqRows, 0),
+    });
+    return;
+  }
+
+  // Unknown action — reprompt
+  const workerIdentity = await resolveWorker(db, BigInt(telegramUserId));
+  await ctx.reply(MESSAGES.chooseProject, {
+    reply_markup: buildProjectKeyboard(workerIdentity?.projects ?? [], (data.page as number) ?? 0),
+  });
 }
 
 /**
- * handleStepBoq — stub for BOQ item selection step (LOG-03).
- * Plan 05: parse boq:select:<id> callback, save boqItemId, advance to PHOTO.
+ * handleStepBoq — BOQ item selection step (LOG-03, D-24, D-25).
+ *
+ * Callback-driven. Parses boq:select:<id>, boq:page:<n>, boq:confirm0:<id>.
+ * On select: re-validates that the boq_item_id belongs to data.projectId's BOQ (V4).
+ * On 0-balance select: shows exhaustedBoqWarning with confirm/back keyboard (D-25 soft warning).
+ * On confirm0 callback: advances to PHOTO step regardless of balance.
+ * On valid positive-balance select: saves boqItemId + unit, advances to PHOTO.
+ * On page: re-renders without advancing.
  */
 export async function handleStepBoq(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ctx: any,
-  _data: Record<string, unknown>,
+  data: Record<string, unknown>,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  _db: any
+  db: any
 ): Promise<void> {
   const { MESSAGES } = await import('@/lib/bot-messages');
-  await ctx.reply(MESSAGES.resumePrefix + MESSAGES.chooseBoqItem);
+  const { STEPS } = await import('@/lib/bot-fsm');
+  const { buildBoqKeyboard } = await import('@/lib/bot-keyboards');
+  const { remainingBalance } = await import('@/lib/boq-balance');
+
+  const callbackData: string = ctx.callbackQuery?.data ?? '';
+  const parts = callbackData.split(':');
+  const action = parts[1]; // 'select' | 'page' | 'confirm0' | 'back'
+  const value = parts.slice(2).join(':');
+
+  const telegramUserId = ctx.from?.id;
+  if (!telegramUserId) {
+    await ctx.reply(MESSAGES.noActiveFlow);
+    return;
+  }
+
+  const projectId = data.projectId as string;
+  if (!projectId) {
+    await ctx.reply(MESSAGES.noActiveFlow);
+    return;
+  }
+
+  // Load the BOQ items for the current project (needed for page + select + back)
+  const { boqItems } = await import('@/db/schema/boq-items');
+  const { eq } = await import('drizzle-orm');
+
+  const boqRows = await db
+    .select()
+    .from(boqItems)
+    .where(eq(boqItems.projectId, projectId));
+
+  if (action === 'page') {
+    const pageNum = parseInt(value, 10);
+    await ctx.reply(MESSAGES.chooseBoqItem, {
+      reply_markup: buildBoqKeyboard(boqRows, isNaN(pageNum) ? 0 : pageNum),
+    });
+    return;
+  }
+
+  if (action === 'back') {
+    // Re-list the BOQ keyboard (worker backed out from exhausted warning)
+    await ctx.reply(MESSAGES.chooseBoqItem, {
+      reply_markup: buildBoqKeyboard(boqRows, (data.page as number) ?? 0),
+    });
+    return;
+  }
+
+  if (action === 'confirm0') {
+    // Worker confirmed they want to proceed despite 0 balance (D-25)
+    // value is the boqItemId
+    const selectedItem = boqRows.find((r: { id: string }) => r.id === value);
+    if (!selectedItem) {
+      await ctx.reply(MESSAGES.chooseBoqItem, { reply_markup: buildBoqKeyboard(boqRows, 0) });
+      return;
+    }
+
+    const workerIdentityForConfirm = await resolveWorker(db, BigInt(telegramUserId));
+    const newDataConfirm = {
+      ...data,
+      boqItemId: value,
+      unit: selectedItem.unit,
+    };
+    await saveState(
+      db,
+      BigInt(telegramUserId),
+      STEPS.PHOTO,
+      newDataConfirm,
+      workerIdentityForConfirm?.person.id ?? (data.personId as string)
+    );
+    await ctx.reply(MESSAGES.promptPhoto);
+    return;
+  }
+
+  if (action === 'select') {
+    // V4: Validate the boq_item_id belongs to the current project's BOQ
+    const selectedItem = boqRows.find((r: { id: string }) => r.id === value);
+    if (!selectedItem) {
+      // Tampered ID — reprompt
+      await ctx.reply(MESSAGES.chooseBoqItem, {
+        reply_markup: buildBoqKeyboard(boqRows, (data.page as number) ?? 0),
+      });
+      return;
+    }
+
+    const balance = remainingBalance(selectedItem.plannedQty, selectedItem.approvedQty);
+
+    if (balance <= 0) {
+      // D-25: soft warning — show confirm/back keyboard, do NOT advance step
+      const confirmKeyboard = new InlineKeyboard()
+        .text('Evet, devam et', `boq:confirm0:${value}`)
+        .text('Geri', 'boq:back');
+
+      await ctx.reply(MESSAGES.exhaustedBoqWarning, {
+        reply_markup: confirmKeyboard,
+      });
+      return;
+    }
+
+    // Positive balance — advance to PHOTO step
+    const workerIdentity = await resolveWorker(db, BigInt(telegramUserId));
+    const newData = {
+      ...data,
+      boqItemId: value,
+      unit: selectedItem.unit,
+    };
+    await saveState(
+      db,
+      BigInt(telegramUserId),
+      STEPS.PHOTO,
+      newData,
+      workerIdentity?.person.id ?? (data.personId as string)
+    );
+    await ctx.reply(MESSAGES.promptPhoto);
+    return;
+  }
+
+  // Unknown action — reprompt
+  await ctx.reply(MESSAGES.chooseBoqItem, {
+    reply_markup: buildBoqKeyboard(boqRows, (data.page as number) ?? 0),
+  });
 }
 
 /**
- * handleStepPhoto — stub for photo upload step (LOG-04).
- * Plan 05: require photo message type, upload to Blob, advance to LOCATION.
+ * handleStepPhoto — photo upload step (LOG-04, D-19, T-02-15).
+ *
+ * Message-driven. Checks for ctx.message?.photo array.
+ * On photo: calls uploadPhotoToBlob (upload-on-receipt, Q1 resolution) wrapped
+ *   in try/catch — on failure stays on the step with a Turkish error (T-02-15).
+ *   On success: stores photoUrl + photoFileId, advances to STEP_LOCATION.
+ * On non-photo: replies MESSAGES.rejectNotPhoto and does NOT advance (D-19).
  */
 export async function handleStepPhoto(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ctx: any,
-  _data: Record<string, unknown>,
+  data: Record<string, unknown>,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  _db: any
+  db: any
 ): Promise<void> {
   const { MESSAGES } = await import('@/lib/bot-messages');
-  await ctx.reply(MESSAGES.resumePrefix + MESSAGES.promptPhoto);
+  const { STEPS } = await import('@/lib/bot-fsm');
+
+  const telegramUserId = ctx.from?.id;
+  if (!telegramUserId) return;
+
+  // Check if the message contains a photo (Pitfall 5: photo is an array, use last element)
+  const photoSizes = ctx.message?.photo;
+  if (!photoSizes || photoSizes.length === 0) {
+    // Non-photo message — reject and reprompt (D-19, LOG-04)
+    await ctx.reply(MESSAGES.rejectNotPhoto);
+    return;
+  }
+
+  // Photo received — upload to Vercel Blob (upload-on-receipt, Q1)
+  const { uploadPhotoToBlob } = await import('@/lib/bot-photo');
+  const flowId = data.flowId as string;
+
+  let photoUrl: string;
+  try {
+    photoUrl = await uploadPhotoToBlob(ctx, flowId);
+  } catch (_err) {
+    // T-02-15: upload failure — stay on step with Turkish error
+    await ctx.reply(MESSAGES.photoUploadError);
+    return;
+  }
+
+  // Get the highest-res photo file_id (last element — Pitfall 5)
+  const highResPhoto = photoSizes[photoSizes.length - 1];
+  const photoFileId: string = highResPhoto.file_id;
+
+  // Advance to LOCATION step
+  const newData = { ...data, photoUrl, photoFileId };
+  await saveState(
+    db,
+    BigInt(telegramUserId),
+    STEPS.LOCATION,
+    newData,
+    data.personId as string
+  );
+  await ctx.reply(MESSAGES.promptLocation);
 }
 
 /**
- * handleStepLocation — stub for location step (LOG-05).
- * Plan 05: require native location message, save lat/lon, advance to QUANTITY.
+ * handleStepLocation — location capture step (LOG-05, D-20).
+ *
+ * Message-driven. Checks for ctx.message?.location (native Telegram location).
+ * On native location: stores lat/lon, advances to STEP_QUANTITY with promptQuantity(unit).
+ * On any other message type (text, photo, typed coordinates): replies
+ *   MESSAGES.rejectNotLocation with the 📎 → Konum hint and does NOT advance (D-20).
+ * NOTE: Phase 2 accepts ANY native location — no geofence (Phase 4 / GEO-02).
  */
 export async function handleStepLocation(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ctx: any,
-  _data: Record<string, unknown>,
+  data: Record<string, unknown>,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  _db: any
+  db: any
 ): Promise<void> {
   const { MESSAGES } = await import('@/lib/bot-messages');
-  await ctx.reply(MESSAGES.resumePrefix + MESSAGES.promptLocation);
+  const { STEPS } = await import('@/lib/bot-fsm');
+
+  const telegramUserId = ctx.from?.id;
+  if (!telegramUserId) return;
+
+  const location = ctx.message?.location;
+  if (!location) {
+    // Non-location message (including typed coordinates as text) — reject (D-20, LOG-05)
+    await ctx.reply(MESSAGES.rejectNotLocation);
+    return;
+  }
+
+  // Native location received — advance to QUANTITY step
+  const newData = {
+    ...data,
+    locationLat: location.latitude,
+    locationLon: location.longitude,
+  };
+
+  await saveState(
+    db,
+    BigInt(telegramUserId),
+    STEPS.QUANTITY,
+    newData,
+    data.personId as string
+  );
+
+  // Prompt for quantity — include the BOQ item's unit (e.g. "Kaç metre?")
+  const unit = (data.unit as string) ?? '';
+  await ctx.reply(MESSAGES.promptQuantity(unit));
 }
 
 /**
- * handleStepQuantity — stub for quantity entry step (LOG-06).
- * Plan 05: validate numeric (Turkish comma), save quantity, advance to NOTES.
+ * handleStepQuantity — quantity entry step (LOG-06, Pitfall 4).
+ *
+ * Message-driven. Reads ctx.message?.text.
+ * Normalizes Turkish comma decimal: value.replace(',', '.') BEFORE parseFloat (Pitfall 4).
+ * Validation: n must be a finite, positive number (!isNaN && n > 0).
+ * On valid: stores quantity, advances to STEP_NOTES, replies promptNotes with Atla button.
+ * On invalid: replies MESSAGES.rejectNotNumeric, does NOT advance (LOG-06).
  */
 export async function handleStepQuantity(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ctx: any,
-  _data: Record<string, unknown>,
+  data: Record<string, unknown>,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  _db: any
+  db: any
 ): Promise<void> {
   const { MESSAGES } = await import('@/lib/bot-messages');
-  await ctx.reply(MESSAGES.resumePrefix + MESSAGES.promptNotes);
+  const { STEPS } = await import('@/lib/bot-fsm');
+
+  const telegramUserId = ctx.from?.id;
+  if (!telegramUserId) return;
+
+  const rawText = ctx.message?.text ?? '';
+
+  // Pitfall 4: normalize Turkish comma decimal BEFORE parseFloat
+  // parseFloat('25,5') truncates to 25; parseFloat('25.5') gives 25.5 correctly.
+  const normalized = rawText.replace(',', '.');
+  const parsed = parseFloat(normalized);
+
+  if (isNaN(parsed) || parsed <= 0) {
+    // Invalid quantity — reprompt (LOG-06)
+    await ctx.reply(MESSAGES.rejectNotNumeric);
+    return;
+  }
+
+  // Valid quantity — advance to NOTES step
+  const newData = { ...data, quantity: parsed };
+  await saveState(
+    db,
+    BigInt(telegramUserId),
+    STEPS.NOTES,
+    newData,
+    data.personId as string
+  );
+
+  // Show notes prompt with Atla (skip) button (D-21)
+  const skipKeyboard = new InlineKeyboard().text(MESSAGES.skipNotes, 'notes:skip');
+  await ctx.reply(MESSAGES.promptNotes, { reply_markup: skipKeyboard });
 }
 
 /**
- * handleStepNotes — stub for notes step (LOG-07, D-21 skip allowed).
- * Plan 05: accept text or skip-button callback, save notes, advance to CONFIRM.
+ * handleStepNotes — notes entry step (LOG-07, D-21).
+ *
+ * Dual-path: text message OR notes:skip callback.
+ * On notes:skip callback: stores notes = null, advances to STEP_CONFIRM (D-21).
+ * On text message: stores notes string (length-capped at 1000 chars — V5 injection
+ *   surface bound), advances to STEP_CONFIRM.
+ * Notes are stored as plain data only — Drizzle parameterized inserts prevent
+ * SQL injection; the length cap bounds the free-text injection surface (V5).
+ *
+ * Called from BOTH the message dispatcher (text path) AND the callback dispatcher
+ * (notes:skip path). The callback path calls ctx.answerCallbackQuery() FIRST
+ * (already done in the top-level callback_query:data handler — Pitfall 3).
  */
 export async function handleStepNotes(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ctx: any,
-  _data: Record<string, unknown>,
+  data: Record<string, unknown>,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  _db: any
+  db: any
 ): Promise<void> {
   const { MESSAGES } = await import('@/lib/bot-messages');
-  await ctx.reply(MESSAGES.resumePrefix + MESSAGES.promptNotes);
+  const { STEPS } = await import('@/lib/bot-fsm');
+
+  const telegramUserId = ctx.from?.id;
+  if (!telegramUserId) return;
+
+  // Check if this is the notes:skip callback
+  const isSkip = ctx.callbackQuery?.data === 'notes:skip';
+
+  const notes = isSkip ? null : (ctx.message?.text ?? null);
+
+  // V5: length cap — bound free-text injection surface (D-21, notes stored via Drizzle parameterized insert)
+  const cappedNotes = notes !== null ? notes.slice(0, 1000) : null;
+
+  // Advance to CONFIRM step
+  const newData = { ...data, notes: cappedNotes };
+  await saveState(
+    db,
+    BigInt(telegramUserId),
+    STEPS.CONFIRM,
+    newData,
+    data.personId as string
+  );
+
+  // Hand off to confirm step (Plan 06 fills the confirm rendering)
+  await handleStepConfirm(ctx, newData, db);
 }
 
 /**
- * handleStepConfirm — stub for confirmation step (D-16, D-18).
- * Plan 05: render confirm summary, handle confirm/edit callbacks, insert submission.
+ * handleStepConfirm — confirmation step stub (D-16, D-18).
+ * Plan 06 fills the confirm summary rendering and submission insert.
+ * For Plan 05: reaching CONFIRM is the success state — reply a placeholder.
  */
 export async function handleStepConfirm(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -626,5 +990,5 @@ export async function handleStepConfirm(
   _db: any
 ): Promise<void> {
   const { MESSAGES } = await import('@/lib/bot-messages');
-  await ctx.reply(MESSAGES.resumePrefix + MESSAGES.confirmSummary);
+  await ctx.reply(MESSAGES.confirmSummary);
 }

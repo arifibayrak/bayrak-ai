@@ -762,7 +762,10 @@ describe('cold-start resume (SC5) + TTL (D-22)', () => {
     vi.resetModules();
   });
 
-  it('cold-start resume at PHOTO step reprompts with resumePrefix + photo prompt (D-14, SC5)', async () => {
+  it('cold-start text message at PHOTO step replies rejectNotPhoto (D-19, SC5)', async () => {
+    // D-14 resume prefix is shown via flow:resume callback (repromptStep).
+    // A direct text message at the PHOTO step triggers the real handler: rejectNotPhoto (D-19).
+    // This is the correct post-Plan-05 behavior — the stub that returned resumePrefix is replaced.
     const WORKER_ID = 66001;
 
     // Seed a fresh (non-stale) conversation_state at PHOTO step
@@ -787,15 +790,15 @@ describe('cold-start resume (SC5) + TTL (D-22)', () => {
       return Promise.resolve({ ok: true, result: {} as never });
     });
 
-    // Deliver an arbitrary message (simulates cold-start — new serverless invocation)
+    // Deliver a text message — at PHOTO step, text is invalid (D-19)
     await bot.handleUpdate(makeTextUpdate(WORKER_ID, 'some message', WORKER_ID + 1000));
 
     expect(replies.length).toBeGreaterThan(0);
     const { MESSAGES } = await import('@/lib/bot-messages');
-    // Must contain the resume prefix (D-14)
-    expect(replies.some(r => r.startsWith(MESSAGES.resumePrefix))).toBe(true);
-    // Must contain the photo prompt
-    expect(replies.some(r => r.includes(MESSAGES.promptPhoto))).toBe(true);
+    // Must contain the rejectNotPhoto message (D-19 — text at photo step is rejected)
+    expect(replies.some(r => r.includes(MESSAGES.rejectNotPhoto))).toBe(true);
+    // Must NOT have advanced the step (rejectNotPhoto does not contain resumePrefix)
+    expect(replies.every(r => !r.startsWith(MESSAGES.resumePrefix))).toBe(true);
   });
 
   it('stale conversation_state (>TTL) yields noActiveFlow and does NOT resume (D-22)', async () => {
@@ -1579,7 +1582,8 @@ describe('quantity + notes', () => {
 
     // Verify the update was called with quantity = 25.5 (not 25)
     expect(capturedUpdateData).not.toBeNull();
-    const savedQty = (capturedUpdateData as { data?: { quantity?: number } })?.data?.quantity;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const savedQty = (capturedUpdateData as any)?.data?.quantity;
     expect(savedQty).toBe(25.5);
   });
 
@@ -1672,10 +1676,12 @@ describe('quantity + notes', () => {
 
     // Verify null notes saved in data
     expect(capturedData).not.toBeNull();
-    const savedNotes = (capturedData as { data?: { notes?: null } })?.data?.notes;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const savedNotes = (capturedData as any)?.data?.notes;
     expect(savedNotes).toBeNull();
     // Should have advanced to confirm step
-    const savedStep = (capturedData as { currentStep?: string })?.currentStep;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const savedStep = (capturedData as any)?.currentStep;
     expect(savedStep).toBe('confirm');
     void bot;
     void replies;
@@ -1733,10 +1739,12 @@ describe('quantity + notes', () => {
 
     // Verify notes saved in data
     expect(capturedData).not.toBeNull();
-    const savedNotes = (capturedData as { data?: { notes?: string } })?.data?.notes;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const savedNotes = (capturedData as any)?.data?.notes;
     expect(savedNotes).toBe('Boru döşeme tamamlandı');
     // Should have advanced to confirm step
-    const savedStep = (capturedData as { currentStep?: string })?.currentStep;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const savedStep = (capturedData as any)?.currentStep;
     expect(savedStep).toBe('confirm');
     void bot;
   });
