@@ -1,8 +1,15 @@
+import { config } from 'dotenv';
 import { drizzle } from 'drizzle-orm/neon-http';
 import { migrate } from 'drizzle-orm/neon-http/migrator';
 import { neon } from '@neondatabase/serverless';
 import { readFileSync } from 'fs';
 import path from 'path';
+
+// Load .env.local so the runner has DATABASE_URL when invoked directly via
+// `tsx src/db/migrate.ts` (Next.js auto-loads .env.local, but a bare tsx run
+// does not). override: false lets an explicitly-exported DATABASE_URL (e.g. the
+// test-DB setup script targeting neondb_test) take precedence over .env.local.
+config({ path: path.resolve(process.cwd(), '.env.local'), override: false });
 
 const sql = neon(process.env.DATABASE_URL!);
 const db = drizzle(sql);
