@@ -46,7 +46,13 @@ import { describeIfDb, getTestDb, truncateAllTables } from './fixtures/db';
 async function setupBotForTest(): Promise<any> {
   const { bot } = await import('@/lib/telegram');
 
-  vi.spyOn(bot, 'init').mockResolvedValue();
+  // vi.spyOn requires the method to be an own property or be configurable.
+  // grammY Bot.init is on the prototype (not own property) and may not be directly spyable
+  // in all module reset scenarios. We define it as an own property on the instance instead.
+  // This matches the behavior of vi.spyOn(bot, 'init').mockResolvedValue() but works reliably
+  // across module resets.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (bot as any).init = vi.fn().mockResolvedValue(undefined);
 
   bot.botInfo = {
     id: 123456,
@@ -207,17 +213,21 @@ describe('AUDIT-01: fanOutToAuditors fan-out behaviors', () => {
 
     vi.doMock('@/db', () => ({ db: mockDb }));
 
-    const sentPhotos: Array<{ chatId: number; photo: string; opts: unknown }> = [];
-    vi.doMock('@/lib/telegram', () => ({
-      bot: {
-        api: {
-          sendPhoto: vi.fn().mockImplementation(async (chatId: number, photo: string, opts: unknown) => {
-            sentPhotos.push({ chatId, photo, opts });
-            return { message_id: 42 + sentPhotos.length, chat: { id: chatId } };
-          }),
-        },
-      },
-    }));
+    // Use the real bot via setupBotForTest() — intercept sendPhoto via api.config.use transformer.
+    // This avoids vi.doMock('@/lib/telegram', ...) whose factory persists across vi.resetModules()
+    // and leaks a partial mock (missing api.config) into AUDIT-03+ tests' setupBotForTest() calls.
+    const bot = await setupBotForTest();
+    const sentPhotos: Array<{ chatId: number | string; photo: unknown; opts: unknown }> = [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    bot.api.config.use(async (prev: any, method: any, payload: any, signal: any) => {
+      if (method === 'sendPhoto') {
+        const chatId = (payload as { chat_id: number | string }).chat_id;
+        const photo = (payload as { photo: unknown }).photo;
+        sentPhotos.push({ chatId, photo, opts: payload });
+        return Promise.resolve({ ok: true, result: { message_id: 42 + sentPhotos.length, chat: { id: chatId } } });
+      }
+      return prev(method, payload, signal);
+    });
 
     const { fanOutToAuditors } = await import('@/lib/bot-audit');
     await fanOutToAuditors('sub-01-1');
@@ -270,23 +280,16 @@ describe('AUDIT-01: fanOutToAuditors fan-out behaviors', () => {
 
     vi.doMock('@/db', () => ({ db: mockDb }));
 
+    // Use real bot via setupBotForTest() — no sendPhoto expected, so no interception needed.
+    // Avoid vi.doMock('@/lib/telegram', ...) to prevent factory leakage.
+    await setupBotForTest();
     const sentPhotos: unknown[] = [];
-    vi.doMock('@/lib/telegram', () => ({
-      bot: {
-        api: {
-          sendPhoto: vi.fn().mockImplementation(async (chatId: number, photo: string, opts: unknown) => {
-            sentPhotos.push({ chatId, photo, opts });
-            return { message_id: 42, chat: { id: chatId } };
-          }),
-        },
-      },
-    }));
 
     const { fanOutToAuditors } = await import('@/lib/bot-audit');
     // Must not throw
     await expect(fanOutToAuditors('sub-01-2')).resolves.toBeUndefined();
 
-    // No sendPhoto calls
+    // No sendPhoto calls (assignments empty → early return)
     expect(sentPhotos.length).toBe(0);
     // No submissions UPDATE (stays pending_audit)
     expect(mockDb.update).not.toHaveBeenCalled();
@@ -341,18 +344,20 @@ describe('AUDIT-01: fanOutToAuditors fan-out behaviors', () => {
 
     vi.doMock('@/db', () => ({ db: mockDb }));
 
+    // Use real bot via setupBotForTest() — intercept sendPhoto and simulate first-send failure.
+    // Avoid vi.doMock('@/lib/telegram', ...) to prevent factory leakage into AUDIT-03+.
+    const bot = await setupBotForTest();
     let sendCallCount = 0;
-    vi.doMock('@/lib/telegram', () => ({
-      bot: {
-        api: {
-          sendPhoto: vi.fn().mockImplementation(async (chatId: number) => {
-            sendCallCount++;
-            if (sendCallCount === 1) throw new Error('Telegram API error (simulated)');
-            return { message_id: 99, chat: { id: chatId } };
-          }),
-        },
-      },
-    }));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    bot.api.config.use(async (_prev: any, method: any, payload: any) => {
+      if (method === 'sendPhoto') {
+        sendCallCount++;
+        if (sendCallCount === 1) throw new Error('Telegram API error (simulated)');
+        const chatId = (payload as { chat_id: number }).chat_id;
+        return Promise.resolve({ ok: true, result: { message_id: 99, chat: { id: chatId } } });
+      }
+      return Promise.resolve({ ok: true, result: {} as any });
+    });
 
     const { fanOutToAuditors } = await import('@/lib/bot-audit');
     await expect(fanOutToAuditors('sub-01-3')).resolves.toBeUndefined();
@@ -383,26 +388,29 @@ describe('AUDIT-02: buildAuditKeyboard callback_data lengths', () => {
     const rows = kb.inline_keyboard;
     // Expect [✅ Onayla, ❌ Reddet] buttons on the first row
     expect(rows.length).toBeGreaterThan(0);
-    const approveBtn = rows[0].find((b: { callback_data?: string }) =>
-      b.callback_data?.startsWith('audit:approve:')
-    );
-    const rejectBtn = rows[0].find((b: { callback_data?: string }) =>
-      b.callback_data?.startsWith('audit:reject:')
-    );
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const approveBtn = rows[0].find((b: any) =>
+      (b as { callback_data?: string }).callback_data?.startsWith('audit:approve:')
+    ) as { callback_data: string } | undefined;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rejectBtn = rows[0].find((b: any) =>
+      (b as { callback_data?: string }).callback_data?.startsWith('audit:reject:')
+    ) as { callback_data: string } | undefined;
     expect(approveBtn).toBeDefined();
     expect(rejectBtn).toBeDefined();
     // Telegram max callback_data length is 64 bytes
-    expect(Buffer.byteLength(approveBtn!.callback_data!, 'utf8')).toBeLessThanOrEqual(64);
-    expect(Buffer.byteLength(rejectBtn!.callback_data!, 'utf8')).toBeLessThanOrEqual(64);
+    expect(Buffer.byteLength(approveBtn!.callback_data, 'utf8')).toBeLessThanOrEqual(64);
+    expect(Buffer.byteLength(rejectBtn!.callback_data, 'utf8')).toBeLessThanOrEqual(64);
   });
 
   it('audit:approve:<uuid> data is exactly "audit:approve:<uuid>" format', async () => {
     const { buildAuditKeyboard } = await import('@/lib/bot-keyboards');
     const submissionId = '550e8400-e29b-41d4-a716-446655440000';
     const kb = buildAuditKeyboard(submissionId);
-    const approveBtn = kb.inline_keyboard[0].find((b: { callback_data?: string }) =>
-      b.callback_data?.startsWith('audit:approve:')
-    );
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const approveBtn = kb.inline_keyboard[0].find((b: any) =>
+      (b as { callback_data?: string }).callback_data?.startsWith('audit:approve:')
+    ) as { callback_data: string } | undefined;
     expect(approveBtn?.callback_data).toBe(`audit:approve:${submissionId}`);
   });
 });
@@ -464,6 +472,10 @@ describeIfDb('AUDIT-04: approve increments boq_items.approved_qty atomically', (
   beforeEach(async () => {
     process.env.TELEGRAM_BOT_TOKEN = 'TEST:fake_token_audit_db';
     process.env.TELEGRAM_WEBHOOK_SECRET = 'test-secret-audit-db';
+    // Override any lingering vi.doMock('@/db', ...) factory from AUDIT-03 (mock-unit tests).
+    // vi.doMock factories survive vi.resetModules() — this ensures the live DB is used.
+    vi.doMock('@/db', async () => await vi.importActual('@/db'));
+    vi.resetModules();
     db = await getTestDb();
     await truncateAllTables(db);
   });
@@ -477,38 +489,39 @@ describeIfDb('AUDIT-04: approve increments boq_items.approved_qty atomically', (
   });
 
   it('approve sets submissions.status=approved + decided_by + decided_at + increments boq_items.approved_qty', async () => {
-    // This test is RED until:
-    // - Plan 03-02 migrates decided_by / decided_at / rejection_reason + audit_notifications table
-    // - Plan 03-03 implements handleAuditDecision in bot-audit.ts
-    // - Plan 03-03 wires handleAuditDecision into the telegram.ts dispatcher
-    //
     // Setup: insert tenant → project → boq_item → person → assignment → submission
+    // neon-http does not support multi-statement prepared statements — use separate execute calls
     const { sql } = await import('drizzle-orm');
 
-    // Insert prerequisite data via raw SQL for speed
-    await db.execute(sql.raw(`
-      INSERT INTO tenants (id, name) VALUES ('tenant-test-1', 'Test Tenant') ON CONFLICT DO NOTHING;
-      INSERT INTO projects (id, tenant_id, name, status) VALUES ('project-test-1', 'tenant-test-1', 'Test Project', 'active') ON CONFLICT DO NOTHING;
-      INSERT INTO boq_items (id, tenant_id, project_id, material, unit, planned_qty, approved_qty) VALUES ('boqitem-test-1', 'tenant-test-1', 'project-test-1', 'DN200 HDPE Boru', 'm', '1000.000', '0.000') ON CONFLICT DO NOTHING;
-      INSERT INTO people (id, tenant_id, telegram_user_id, name) VALUES ('person-worker-1', 'tenant-test-1', 1001, 'Test Worker') ON CONFLICT DO NOTHING;
-      INSERT INTO people (id, tenant_id, telegram_user_id, name) VALUES ('person-auditor-1', 'tenant-test-1', 2001, 'Test Auditor') ON CONFLICT DO NOTHING;
-      INSERT INTO assignments (id, tenant_id, person_id, project_id, role_on_project) VALUES ('assign-test-1', 'tenant-test-1', 'person-auditor-1', 'project-test-1', 'auditor') ON CONFLICT DO NOTHING;
-      INSERT INTO submissions (id, tenant_id, flow_id, person_id, project_id, boq_item_id, photo_url, quantity, status) VALUES ('submission-test-1', 'tenant-test-1', gen_random_uuid(), 'person-worker-1', 'project-test-1', 'boqitem-test-1', 'https://example.com/photo.jpg', '50.000', 'pending_audit') ON CONFLICT DO NOTHING;
-    `));
+    // All IDs must be valid UUIDs (PostgreSQL uuid type)
+    const T = '00000000-0000-0000-0004-000000000001'; // tenant
+    const P = '00000000-0000-0000-0004-000000000002'; // project
+    const B = '00000000-0000-0000-0004-000000000003'; // boqItem
+    const W = '00000000-0000-0000-0004-000000000004'; // worker person
+    const A = '00000000-0000-0000-0004-000000000005'; // auditor person
+    const AS = '00000000-0000-0000-0004-000000000006'; // assignment
+    const S = '00000000-0000-0000-0004-000000000007'; // submission
+
+    await db.execute(sql.raw(`INSERT INTO tenants (id, name) VALUES ('${T}', 'Test Tenant') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO projects (id, tenant_id, name) VALUES ('${P}', '${T}', 'Test Project') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO boq_items (id, tenant_id, project_id, material, unit, planned_qty, approved_qty) VALUES ('${B}', '${T}', '${P}', 'DN200 HDPE Boru', 'm', '1000.000', '0.000') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO people (id, tenant_id, telegram_user_id, display_name) VALUES ('${W}', '${T}', 1001, 'Test Worker') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO people (id, tenant_id, telegram_user_id, display_name) VALUES ('${A}', '${T}', 2001, 'Test Auditor') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO assignments (id, tenant_id, person_id, project_id, role_on_project) VALUES ('${AS}', '${T}', '${A}', '${P}', 'auditor') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO submissions (id, tenant_id, flow_id, person_id, project_id, boq_item_id, photo_url, quantity, status) VALUES ('${S}', '${T}', gen_random_uuid(), '${W}', '${P}', '${B}', 'https://example.com/photo.jpg', '50.000', 'pending_audit') ON CONFLICT DO NOTHING`));
 
     vi.resetModules();
-    // Handler invocation via bot (requires handleAuditDecision to be wired)
     const bot = await setupBotForTest();
-    await bot.handleUpdate(makeCallbackUpdate(2001, 'audit:approve:submission-test-1', 9001));
+    await bot.handleUpdate(makeCallbackUpdate(2001, `audit:approve:${S}`, 9001));
 
     // Verify submission is approved
-    const subRows = await db.execute(sql.raw(`SELECT status, decided_by, decided_at FROM submissions WHERE id = 'submission-test-1'`));
+    const subRows = await db.execute(sql.raw(`SELECT status, decided_by, decided_at FROM submissions WHERE id = '${S}'`));
     expect(subRows.rows[0].status).toBe('approved');
-    expect(subRows.rows[0].decided_by).toBe('person-auditor-1');
+    expect(subRows.rows[0].decided_by).toBe(A);
     expect(subRows.rows[0].decided_at).toBeTruthy();
 
     // Verify boq_items.approved_qty incremented by 50
-    const boqRows = await db.execute(sql.raw(`SELECT approved_qty FROM boq_items WHERE id = 'boqitem-test-1'`));
+    const boqRows = await db.execute(sql.raw(`SELECT approved_qty FROM boq_items WHERE id = '${B}'`));
     expect(Number(boqRows.rows[0].approved_qty)).toBe(50);
   });
 });
@@ -524,6 +537,9 @@ describeIfDb('AUDIT-04 SC3 — duplicate decision: second tap returns already-re
   beforeEach(async () => {
     process.env.TELEGRAM_BOT_TOKEN = 'TEST:fake_token_audit_sc3';
     process.env.TELEGRAM_WEBHOOK_SECRET = 'test-secret-audit-sc3';
+    // Override any lingering vi.doMock('@/db', ...) factory from AUDIT-03 mock-unit tests.
+    vi.doMock('@/db', async () => await vi.importActual('@/db'));
+    vi.resetModules();
     db = await getTestDb();
     await truncateAllTables(db);
   });
@@ -540,21 +556,29 @@ describeIfDb('AUDIT-04 SC3 — duplicate decision: second tap returns already-re
     // RED until Plan 03-02 (migration) + Plan 03-03 (handler)
     const { sql } = await import('drizzle-orm');
 
-    await db.execute(sql.raw(`
-      INSERT INTO tenants (id, name) VALUES ('tenant-sc3-1', 'Test Tenant SC3') ON CONFLICT DO NOTHING;
-      INSERT INTO projects (id, tenant_id, name, status) VALUES ('project-sc3-1', 'tenant-sc3-1', 'Test Project SC3', 'active') ON CONFLICT DO NOTHING;
-      INSERT INTO boq_items (id, tenant_id, project_id, material, unit, planned_qty, approved_qty) VALUES ('boqitem-sc3-1', 'tenant-sc3-1', 'project-sc3-1', 'DN200 HDPE Boru', 'm', '1000.000', '0.000') ON CONFLICT DO NOTHING;
-      INSERT INTO people (id, tenant_id, telegram_user_id, name) VALUES ('person-worker-sc3', 'tenant-sc3-1', 1002, 'Worker SC3') ON CONFLICT DO NOTHING;
-      INSERT INTO people (id, tenant_id, telegram_user_id, name) VALUES ('person-auditor-sc3', 'tenant-sc3-1', 2002, 'Auditor SC3') ON CONFLICT DO NOTHING;
-      INSERT INTO assignments (id, tenant_id, person_id, project_id, role_on_project) VALUES ('assign-sc3-1', 'tenant-sc3-1', 'person-auditor-sc3', 'project-sc3-1', 'auditor') ON CONFLICT DO NOTHING;
-      INSERT INTO submissions (id, tenant_id, flow_id, person_id, project_id, boq_item_id, photo_url, quantity, status) VALUES ('submission-sc3-1', 'tenant-sc3-1', gen_random_uuid(), 'person-worker-sc3', 'project-sc3-1', 'boqitem-sc3-1', 'https://example.com/photo.jpg', '25.000', 'pending_audit') ON CONFLICT DO NOTHING;
-    `));
+    // All IDs must be valid UUIDs (PostgreSQL uuid type)
+    const T3 = '00000000-0000-0000-0003-000000000001'; // tenant sc3
+    const P3 = '00000000-0000-0000-0003-000000000002'; // project sc3
+    const B3 = '00000000-0000-0000-0003-000000000003'; // boqItem sc3
+    const W3 = '00000000-0000-0000-0003-000000000004'; // worker sc3
+    const A3 = '00000000-0000-0000-0003-000000000005'; // auditor sc3
+    const AS3 = '00000000-0000-0000-0003-000000000006'; // assignment sc3
+    const S3 = '00000000-0000-0000-0003-000000000007'; // submission sc3
+
+    // neon-http does not support multi-statement prepared statements — use separate execute calls
+    await db.execute(sql.raw(`INSERT INTO tenants (id, name) VALUES ('${T3}', 'Test Tenant SC3') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO projects (id, tenant_id, name) VALUES ('${P3}', '${T3}', 'Test Project SC3') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO boq_items (id, tenant_id, project_id, material, unit, planned_qty, approved_qty) VALUES ('${B3}', '${T3}', '${P3}', 'DN200 HDPE Boru', 'm', '1000.000', '0.000') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO people (id, tenant_id, telegram_user_id, display_name) VALUES ('${W3}', '${T3}', 1002, 'Worker SC3') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO people (id, tenant_id, telegram_user_id, display_name) VALUES ('${A3}', '${T3}', 2002, 'Auditor SC3') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO assignments (id, tenant_id, person_id, project_id, role_on_project) VALUES ('${AS3}', '${T3}', '${A3}', '${P3}', 'auditor') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO submissions (id, tenant_id, flow_id, person_id, project_id, boq_item_id, photo_url, quantity, status) VALUES ('${S3}', '${T3}', gen_random_uuid(), '${W3}', '${P3}', '${B3}', 'https://example.com/photo.jpg', '25.000', 'pending_audit') ON CONFLICT DO NOTHING`));
 
     vi.resetModules();
     const bot = await setupBotForTest();
 
     // First tap — should approve
-    await bot.handleUpdate(makeCallbackUpdate(2002, 'audit:approve:submission-sc3-1', 9101));
+    await bot.handleUpdate(makeCallbackUpdate(2002, `audit:approve:${S3}`, 9101));
 
     // Reset modules to get fresh bot state for second tap
     vi.resetModules();
@@ -568,11 +592,11 @@ describeIfDb('AUDIT-04 SC3 — duplicate decision: second tap returns already-re
       return Promise.resolve({ ok: true, result: {} as any });
     });
 
-    // Second tap (same update_id is different here — this tests duplicate DECISION not duplicate update)
-    await bot2.handleUpdate(makeCallbackUpdate(2002, 'audit:approve:submission-sc3-1', 9102));
+    // Second tap (different update_id — tests duplicate DECISION, not duplicate update)
+    await bot2.handleUpdate(makeCallbackUpdate(2002, `audit:approve:${S3}`, 9102));
 
     // approved_qty must be 25 (incremented once)
-    const boqRows = await db.execute(sql.raw(`SELECT approved_qty FROM boq_items WHERE id = 'boqitem-sc3-1'`));
+    const boqRows = await db.execute(sql.raw(`SELECT approved_qty FROM boq_items WHERE id = '${B3}'`));
     expect(Number(boqRows.rows[0].approved_qty)).toBe(25);
 
     // Second tap should get the "already resolved" toast
@@ -591,6 +615,9 @@ describeIfDb('AUDIT-06 SC5 — double-tap race: first wins, second gets toast', 
   beforeEach(async () => {
     process.env.TELEGRAM_BOT_TOKEN = 'TEST:fake_token_audit_sc5';
     process.env.TELEGRAM_WEBHOOK_SECRET = 'test-secret-audit-sc5';
+    // Override any lingering vi.doMock('@/db', ...) factory from AUDIT-03 mock-unit tests.
+    vi.doMock('@/db', async () => await vi.importActual('@/db'));
+    vi.resetModules();
     db = await getTestDb();
     await truncateAllTables(db);
   });
@@ -607,17 +634,27 @@ describeIfDb('AUDIT-06 SC5 — double-tap race: first wins, second gets toast', 
     // RED until Plan 03-02 (migration) + Plan 03-03 (handler)
     const { sql } = await import('drizzle-orm');
 
-    await db.execute(sql.raw(`
-      INSERT INTO tenants (id, name) VALUES ('tenant-sc5-1', 'Test Tenant SC5') ON CONFLICT DO NOTHING;
-      INSERT INTO projects (id, tenant_id, name, status) VALUES ('project-sc5-1', 'tenant-sc5-1', 'Test Project SC5', 'active') ON CONFLICT DO NOTHING;
-      INSERT INTO boq_items (id, tenant_id, project_id, material, unit, planned_qty, approved_qty) VALUES ('boqitem-sc5-1', 'tenant-sc5-1', 'project-sc5-1', 'DN200 HDPE Boru', 'm', '1000.000', '0.000') ON CONFLICT DO NOTHING;
-      INSERT INTO people (id, tenant_id, telegram_user_id, name) VALUES ('person-worker-sc5', 'tenant-sc5-1', 1003, 'Worker SC5') ON CONFLICT DO NOTHING;
-      INSERT INTO people (id, tenant_id, telegram_user_id, name) VALUES ('person-auditor1-sc5', 'tenant-sc5-1', 2003, 'Auditor 1 SC5') ON CONFLICT DO NOTHING;
-      INSERT INTO people (id, tenant_id, telegram_user_id, name) VALUES ('person-auditor2-sc5', 'tenant-sc5-1', 2004, 'Auditor 2 SC5') ON CONFLICT DO NOTHING;
-      INSERT INTO assignments (id, tenant_id, person_id, project_id, role_on_project) VALUES ('assign-sc5-1', 'tenant-sc5-1', 'person-auditor1-sc5', 'project-sc5-1', 'auditor') ON CONFLICT DO NOTHING;
-      INSERT INTO assignments (id, tenant_id, person_id, project_id, role_on_project) VALUES ('assign-sc5-2', 'tenant-sc5-1', 'person-auditor2-sc5', 'project-sc5-1', 'auditor') ON CONFLICT DO NOTHING;
-      INSERT INTO submissions (id, tenant_id, flow_id, person_id, project_id, boq_item_id, photo_url, quantity, status) VALUES ('submission-sc5-1', 'tenant-sc5-1', gen_random_uuid(), 'person-worker-sc5', 'project-sc5-1', 'boqitem-sc5-1', 'https://example.com/photo.jpg', '30.000', 'pending_audit') ON CONFLICT DO NOTHING;
-    `));
+    // All IDs must be valid UUIDs (PostgreSQL uuid type)
+    const T5 = '00000000-0000-0000-0005-000000000001'; // tenant sc5
+    const P5 = '00000000-0000-0000-0005-000000000002'; // project sc5
+    const B5 = '00000000-0000-0000-0005-000000000003'; // boqItem sc5
+    const W5 = '00000000-0000-0000-0005-000000000004'; // worker sc5
+    const A5a = '00000000-0000-0000-0005-000000000005'; // auditor1 sc5
+    const A5b = '00000000-0000-0000-0005-000000000006'; // auditor2 sc5
+    const AS5a = '00000000-0000-0000-0005-000000000007'; // assignment1 sc5
+    const AS5b = '00000000-0000-0000-0005-000000000008'; // assignment2 sc5
+    const S5 = '00000000-0000-0000-0005-000000000009'; // submission sc5
+
+    // neon-http does not support multi-statement prepared statements — use separate execute calls
+    await db.execute(sql.raw(`INSERT INTO tenants (id, name) VALUES ('${T5}', 'Test Tenant SC5') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO projects (id, tenant_id, name) VALUES ('${P5}', '${T5}', 'Test Project SC5') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO boq_items (id, tenant_id, project_id, material, unit, planned_qty, approved_qty) VALUES ('${B5}', '${T5}', '${P5}', 'DN200 HDPE Boru', 'm', '1000.000', '0.000') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO people (id, tenant_id, telegram_user_id, display_name) VALUES ('${W5}', '${T5}', 1003, 'Worker SC5') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO people (id, tenant_id, telegram_user_id, display_name) VALUES ('${A5a}', '${T5}', 2003, 'Auditor 1 SC5') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO people (id, tenant_id, telegram_user_id, display_name) VALUES ('${A5b}', '${T5}', 2004, 'Auditor 2 SC5') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO assignments (id, tenant_id, person_id, project_id, role_on_project) VALUES ('${AS5a}', '${T5}', '${A5a}', '${P5}', 'auditor') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO assignments (id, tenant_id, person_id, project_id, role_on_project) VALUES ('${AS5b}', '${T5}', '${A5b}', '${P5}', 'auditor') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO submissions (id, tenant_id, flow_id, person_id, project_id, boq_item_id, photo_url, quantity, status) VALUES ('${S5}', '${T5}', gen_random_uuid(), '${W5}', '${P5}', '${B5}', 'https://example.com/photo.jpg', '30.000', 'pending_audit') ON CONFLICT DO NOTHING`));
 
     vi.resetModules();
 
@@ -637,12 +674,12 @@ describeIfDb('AUDIT-06 SC5 — double-tap race: first wins, second gets toast', 
 
     // Fire both concurrently via Promise.all — race condition test
     await Promise.all([
-      bot1.handleUpdate(makeCallbackUpdate(2003, 'audit:approve:submission-sc5-1', 9201)),
-      bot2.handleUpdate(makeCallbackUpdate(2004, 'audit:approve:submission-sc5-1', 9202)),
+      bot1.handleUpdate(makeCallbackUpdate(2003, `audit:approve:${S5}`, 9201)),
+      bot2.handleUpdate(makeCallbackUpdate(2004, `audit:approve:${S5}`, 9202)),
     ]);
 
     // approved_qty must be 30 (incremented exactly once despite two concurrent taps)
-    const boqRows = await db.execute(sql.raw(`SELECT approved_qty FROM boq_items WHERE id = 'boqitem-sc5-1'`));
+    const boqRows = await db.execute(sql.raw(`SELECT approved_qty FROM boq_items WHERE id = '${B5}'`));
     expect(Number(boqRows.rows[0].approved_qty)).toBe(30);
 
     // At least one tap should get the "already resolved" toast (the loser)
@@ -711,13 +748,16 @@ describe('AUDIT-06 / T-3-DUP: duplicate update_id callback_query is de-duped by 
     await bot.handleUpdate(makeCallbackUpdate(2005, `audit:approve:${submissionId}`, 8001));
 
     // Second delivery with SAME update_id — processed_updates insert returns [] (duplicate)
-    vi.resetModules();
-    const bot2 = await setupBotForTest();
-    await bot2.handleUpdate(makeCallbackUpdate(2005, `audit:approve:${submissionId}`, 8001));
+    // Reuse the same bot instance (same mocked DB with the callCount sentinel)
+    await bot.handleUpdate(makeCallbackUpdate(2005, `audit:approve:${submissionId}`, 8001));
 
     // The second delivery must NOT trigger submissions.update (idempotency fence blocks it)
-    // (The exact assertion depends on the handler implementation — RED state: handler not wired)
-    expect(true).toBe(true); // placeholder — real assertion added in 03-03
+    // The processed_updates fence (D-13 Guard 1) short-circuits before reaching any handler
+    // callCount is 2 (both inserts attempted), but the second returned [] blocking the handler
+    const { db: db2 } = await import('@/db');
+    // update should have been called at most once (the idempotency fence blocks the second call)
+    const updateCallCount = (db2 as any).update.mock?.calls?.length ?? 0;
+    expect(updateCallCount).toBeLessThanOrEqual(1);
   });
 });
 
@@ -732,6 +772,9 @@ describeIfDb('AUDIT-05: reject flow with and without reason', () => {
   beforeEach(async () => {
     process.env.TELEGRAM_BOT_TOKEN = 'TEST:fake_token_audit_reject';
     process.env.TELEGRAM_WEBHOOK_SECRET = 'test-secret-audit-reject';
+    // Override any lingering vi.doMock('@/db', ...) factory from AUDIT-03 mock-unit tests.
+    vi.doMock('@/db', async () => await vi.importActual('@/db'));
+    vi.resetModules();
     db = await getTestDb();
     await truncateAllTables(db);
   });
@@ -748,21 +791,32 @@ describeIfDb('AUDIT-05: reject flow with and without reason', () => {
     // RED until Plan 03-02 (migration) + Plan 03-04 (reject handler)
     const { sql } = await import('drizzle-orm');
 
-    await db.execute(sql.raw(`
-      INSERT INTO tenants (id, name) VALUES ('tenant-rej-1', 'Reject Tenant') ON CONFLICT DO NOTHING;
-      INSERT INTO projects (id, tenant_id, name, status) VALUES ('project-rej-1', 'tenant-rej-1', 'Reject Project', 'active') ON CONFLICT DO NOTHING;
-      INSERT INTO boq_items (id, tenant_id, project_id, material, unit, planned_qty, approved_qty) VALUES ('boqitem-rej-1', 'tenant-rej-1', 'project-rej-1', 'DN200 HDPE Boru', 'm', '1000.000', '0.000') ON CONFLICT DO NOTHING;
-      INSERT INTO people (id, tenant_id, telegram_user_id, name) VALUES ('person-worker-rej', 'tenant-rej-1', 1004, 'Worker Rej') ON CONFLICT DO NOTHING;
-      INSERT INTO people (id, tenant_id, telegram_user_id, name) VALUES ('person-auditor-rej', 'tenant-rej-1', 2006, 'Auditor Rej') ON CONFLICT DO NOTHING;
-      INSERT INTO assignments (id, tenant_id, person_id, project_id, role_on_project) VALUES ('assign-rej-1', 'tenant-rej-1', 'person-auditor-rej', 'project-rej-1', 'auditor') ON CONFLICT DO NOTHING;
-      INSERT INTO submissions (id, tenant_id, flow_id, person_id, project_id, boq_item_id, photo_url, quantity, status) VALUES ('submission-rej-1', 'tenant-rej-1', gen_random_uuid(), 'person-worker-rej', 'project-rej-1', 'boqitem-rej-1', 'https://example.com/photo.jpg', '10.000', 'pending_audit') ON CONFLICT DO NOTHING;
-    `));
+    // All IDs must be valid UUIDs (PostgreSQL uuid type)
+    const TR = '00000000-0000-0000-0006-000000000001'; // tenant rej
+    const PR = '00000000-0000-0000-0006-000000000002'; // project rej
+    const BR = '00000000-0000-0000-0006-000000000003'; // boqItem rej
+    const WR = '00000000-0000-0000-0006-000000000004'; // worker rej
+    const AR = '00000000-0000-0000-0006-000000000005'; // auditor rej
+    const ASR = '00000000-0000-0000-0006-000000000006'; // assignment rej
+    const SR = '00000000-0000-0000-0006-000000000007'; // submission rej
+
+    // neon-http does not support multi-statement prepared statements — use separate execute calls
+    // Also insert the default tenant used by getDefaultTenantId() → saveState() for conversation_state.
+    // saveState always uses '00000000-0000-0000-0000-000000000001' regardless of test tenant.
+    await db.execute(sql.raw(`INSERT INTO tenants (id, name) VALUES ('00000000-0000-0000-0000-000000000001', 'Default Tenant') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO tenants (id, name) VALUES ('${TR}', 'Reject Tenant') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO projects (id, tenant_id, name) VALUES ('${PR}', '${TR}', 'Reject Project') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO boq_items (id, tenant_id, project_id, material, unit, planned_qty, approved_qty) VALUES ('${BR}', '${TR}', '${PR}', 'DN200 HDPE Boru', 'm', '1000.000', '0.000') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO people (id, tenant_id, telegram_user_id, display_name) VALUES ('${WR}', '${TR}', 1004, 'Worker Rej') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO people (id, tenant_id, telegram_user_id, display_name) VALUES ('${AR}', '${TR}', 2006, 'Auditor Rej') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO assignments (id, tenant_id, person_id, project_id, role_on_project) VALUES ('${ASR}', '${TR}', '${AR}', '${PR}', 'auditor') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO submissions (id, tenant_id, flow_id, person_id, project_id, boq_item_id, photo_url, quantity, status) VALUES ('${SR}', '${TR}', gen_random_uuid(), '${WR}', '${PR}', '${BR}', 'https://example.com/photo.jpg', '10.000', 'pending_audit') ON CONFLICT DO NOTHING`));
 
     vi.resetModules();
     const bot = await setupBotForTest();
 
     // Step 1: tap ❌ Reddet → triggers reason keyboard display
-    await bot.handleUpdate(makeCallbackUpdate(2006, 'audit:reject:submission-rej-1', 9301));
+    await bot.handleUpdate(makeCallbackUpdate(2006, `audit:reject:${SR}`, 9301));
 
     // Step 2: select canned reason
     vi.resetModules();
@@ -770,7 +824,7 @@ describeIfDb('AUDIT-05: reject flow with and without reason', () => {
     await bot2.handleUpdate(makeCallbackUpdate(2006, 'audit:reason:Yetersiz iş', 9302));
 
     // Verify: submission is rejected with reason
-    const subRows = await db.execute(sql.raw(`SELECT status, rejection_reason FROM submissions WHERE id = 'submission-rej-1'`));
+    const subRows = await db.execute(sql.raw(`SELECT status, rejection_reason FROM submissions WHERE id = '${SR}'`));
     expect(subRows.rows[0].status).toBe('rejected');
     expect(subRows.rows[0].rejection_reason).toBe('Yetersiz iş');
   });
@@ -779,25 +833,35 @@ describeIfDb('AUDIT-05: reject flow with and without reason', () => {
     // RED until Plan 03-02 (migration) + Plan 03-04 (reject handler)
     const { sql } = await import('drizzle-orm');
 
-    await db.execute(sql.raw(`
-      INSERT INTO tenants (id, name) VALUES ('tenant-rej-2', 'Reject Tenant 2') ON CONFLICT DO NOTHING;
-      INSERT INTO projects (id, tenant_id, name, status) VALUES ('project-rej-2', 'tenant-rej-2', 'Reject Project 2', 'active') ON CONFLICT DO NOTHING;
-      INSERT INTO boq_items (id, tenant_id, project_id, material, unit, planned_qty, approved_qty) VALUES ('boqitem-rej-2', 'tenant-rej-2', 'project-rej-2', 'DN200 HDPE Boru', 'm', '1000.000', '0.000') ON CONFLICT DO NOTHING;
-      INSERT INTO people (id, tenant_id, telegram_user_id, name) VALUES ('person-worker-rej2', 'tenant-rej-2', 1005, 'Worker Rej2') ON CONFLICT DO NOTHING;
-      INSERT INTO people (id, tenant_id, telegram_user_id, name) VALUES ('person-auditor-rej2', 'tenant-rej-2', 2007, 'Auditor Rej2') ON CONFLICT DO NOTHING;
-      INSERT INTO assignments (id, tenant_id, person_id, project_id, role_on_project) VALUES ('assign-rej-2', 'tenant-rej-2', 'person-auditor-rej2', 'project-rej-2', 'auditor') ON CONFLICT DO NOTHING;
-      INSERT INTO submissions (id, tenant_id, flow_id, person_id, project_id, boq_item_id, photo_url, quantity, status) VALUES ('submission-rej-2', 'tenant-rej-2', gen_random_uuid(), 'person-worker-rej2', 'project-rej-2', 'boqitem-rej-2', 'https://example.com/photo.jpg', '15.000', 'pending_audit') ON CONFLICT DO NOTHING;
-    `));
+    // All IDs must be valid UUIDs (PostgreSQL uuid type)
+    const TR2 = '00000000-0000-0000-0007-000000000001'; // tenant rej2
+    const PR2 = '00000000-0000-0000-0007-000000000002'; // project rej2
+    const BR2 = '00000000-0000-0000-0007-000000000003'; // boqItem rej2
+    const WR2 = '00000000-0000-0000-0007-000000000004'; // worker rej2
+    const AR2 = '00000000-0000-0000-0007-000000000005'; // auditor rej2
+    const ASR2 = '00000000-0000-0000-0007-000000000006'; // assignment rej2
+    const SR2 = '00000000-0000-0000-0007-000000000007'; // submission rej2
+
+    // neon-http does not support multi-statement prepared statements — use separate execute calls
+    // Also insert the default tenant used by getDefaultTenantId() → saveState() for conversation_state.
+    await db.execute(sql.raw(`INSERT INTO tenants (id, name) VALUES ('00000000-0000-0000-0000-000000000001', 'Default Tenant') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO tenants (id, name) VALUES ('${TR2}', 'Reject Tenant 2') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO projects (id, tenant_id, name) VALUES ('${PR2}', '${TR2}', 'Reject Project 2') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO boq_items (id, tenant_id, project_id, material, unit, planned_qty, approved_qty) VALUES ('${BR2}', '${TR2}', '${PR2}', 'DN200 HDPE Boru', 'm', '1000.000', '0.000') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO people (id, tenant_id, telegram_user_id, display_name) VALUES ('${WR2}', '${TR2}', 1005, 'Worker Rej2') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO people (id, tenant_id, telegram_user_id, display_name) VALUES ('${AR2}', '${TR2}', 2007, 'Auditor Rej2') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO assignments (id, tenant_id, person_id, project_id, role_on_project) VALUES ('${ASR2}', '${TR2}', '${AR2}', '${PR2}', 'auditor') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO submissions (id, tenant_id, flow_id, person_id, project_id, boq_item_id, photo_url, quantity, status) VALUES ('${SR2}', '${TR2}', gen_random_uuid(), '${WR2}', '${PR2}', '${BR2}', 'https://example.com/photo.jpg', '15.000', 'pending_audit') ON CONFLICT DO NOTHING`));
 
     vi.resetModules();
     const bot = await setupBotForTest();
 
     // Tap ❌ Reddet (sets auditor FSM to AWAITING_REJECT_REASON), then abandon (no reason given)
-    await bot.handleUpdate(makeCallbackUpdate(2007, 'audit:reject:submission-rej-2', 9401));
+    await bot.handleUpdate(makeCallbackUpdate(2007, `audit:reject:${SR2}`, 9401));
     // Abandon — no reason message sent; TTL will expire the state
 
     // Verify: submission stays pending_audit (D-31)
-    const subRows = await db.execute(sql.raw(`SELECT status, rejection_reason FROM submissions WHERE id = 'submission-rej-2'`));
+    const subRows = await db.execute(sql.raw(`SELECT status, rejection_reason FROM submissions WHERE id = '${SR2}'`));
     expect(subRows.rows[0].status).toBe('pending_audit');
     expect(subRows.rows[0].rejection_reason).toBeNull();
   });
