@@ -2,7 +2,7 @@
 // status 'pending_audit' is the default — Phase 3 transitions to approved/rejected.
 // D-13 Guard 2: unique('submissions_flow_id_unique') prevents double-confirm inserts.
 // Phase 4 ready: geometry(location) column + GiST index for PostGIS nearest-segment.
-import { pgTable, uuid, text, numeric, timestamp, index, unique, geometry } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, numeric, boolean, timestamp, index, unique, geometry } from 'drizzle-orm/pg-core';
 import { tenants } from './tenants';
 import { people } from './people';
 import { projects } from './projects';
@@ -22,6 +22,24 @@ export const submissions = pgTable('submissions', {
   location: geometry('location', { type: 'point', mode: 'xy', srid: 4326 }),
   locationLat: numeric('location_lat', { precision: 10, scale: 7 }),
   locationLon: numeric('location_lon', { precision: 10, scale: 7 }),
+  // Phase 4: nearest-segment snap results (GEO-01, GEO-02)
+  // All five columns are nullable — pre-Phase-4 rows have no spatial data (backfill out of scope).
+  // snapped_point: the closest point on routes.geom to this submission's location.
+  // Null when location_match = 'no_route' (no route on project or snap failed).
+  snappedPoint: geometry('snapped_point', { type: 'point', mode: 'xy', srid: 4326 }),
+  // segment_fraction: ST_LineLocatePoint result in [0.0, 1.0].
+  // Null when location_match = 'no_route'.
+  segmentFraction: numeric('segment_fraction', { precision: 10, scale: 8 }),
+  // location_match: three-state source of truth (D-43/D-44).
+  // 'near' = within threshold | 'far' = beyond threshold | 'no_route' = no route
+  locationMatch: text('location_match', { enum: ['near', 'far', 'no_route'] }),
+  // location_warning: true ONLY when location_match = 'far' (D-44).
+  // Kept for SC2 compatibility and cheap boolean filtering.
+  locationWarning: boolean('location_warning').default(false),
+  // location_distance_m: metre distance from worker location to route.
+  // Stored so fanOutToAuditors can format the D-47 caption without re-querying PostGIS.
+  // Null when location_match = 'no_route'.
+  locationDistanceM: numeric('location_distance_m', { precision: 12, scale: 2 }),
   quantity: numeric('quantity', { precision: 12, scale: 3 }).notNull(),
   notes: text('notes'), // nullable — LOG-07 allows skip (D-21)
   // status enum: pending_audit is the default after worker confirm (LOG-08)
@@ -42,4 +60,7 @@ export const submissions = pgTable('submissions', {
   index('submissions_status_idx').on(t.status),
   // GiST index mandatory for Phase 4 spatial queries (ST_DWithin, ST_ClosestPoint)
   index('submissions_location_gist').using('gist', t.location),
+  // Phase 4: GiST index on snapped_point for Phase 5 map queries
+  // (WHERE status='approved' AND snapped_point IS NOT NULL) — D-46
+  index('submissions_snapped_point_gist').using('gist', t.snappedPoint),
 ]);
