@@ -189,7 +189,7 @@ describeIfDb('/start handler — pending_people upsert idempotency (AUTH-02)', (
       message: {
         message_id: userId,
         from: { id: userId, first_name: firstName, is_bot: false, language_code: 'tr' },
-        chat: { id: userId, type: 'private' as const },
+        chat: { id: userId, type: 'private' as const, first_name: firstName },
         date: Math.floor(Date.now() / 1000),
         text: '/start',
         entities: [{ offset: 0, length: 6, type: 'bot_command' as const }],
