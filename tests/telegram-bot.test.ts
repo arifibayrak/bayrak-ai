@@ -179,7 +179,7 @@ describe('keyboard builders', () => {
     const navRow = rows[6];
     expect(navRow).toHaveLength(1);
     expect(navRow[0].text).toBe('Sonraki ›');
-    expect(navRow[0].callback_data).toBe('boq:page:1');
+    expect((navRow[0] as { callback_data: string }).callback_data).toBe('boq:page:1');
   });
 
   it('buildBoqKeyboard page 1 of 8 items yields 2 item rows + prev button only', async () => {
@@ -194,7 +194,7 @@ describe('keyboard builders', () => {
     const navRow = rows[2];
     expect(navRow).toHaveLength(1);
     expect(navRow[0].text).toBe('‹ Önceki');
-    expect(navRow[0].callback_data).toBe('boq:page:0');
+    expect((navRow[0] as { callback_data: string }).callback_data).toBe('boq:page:0');
   });
 
   it('buildBoqKeyboard item button label contains remaining balance and unit with "kaldı"', async () => {
@@ -214,7 +214,7 @@ describe('keyboard builders', () => {
     const items = makeBoqItems(3);
     const kb = buildBoqKeyboard(items, 0);
     const itemButton = kb.inline_keyboard[0][0];
-    expect(itemButton.callback_data).toBe('boq:select:item-1');
+    expect((itemButton as { callback_data: string }).callback_data).toBe('boq:select:item-1');
   });
 
   it('buildProjectKeyboard page 0 of 8 projects yields 6 project rows + next button', async () => {
@@ -226,7 +226,7 @@ describe('keyboard builders', () => {
     expect(rows).toHaveLength(7);
     const navRow = rows[6];
     expect(navRow[0].text).toBe('Sonraki ›');
-    expect(navRow[0].callback_data).toBe('project:page:1');
+    expect((navRow[0] as { callback_data: string }).callback_data).toBe('project:page:1');
   });
 
   it('buildProjectKeyboard item button callback_data matches project:select:<id>', async () => {
@@ -234,7 +234,7 @@ describe('keyboard builders', () => {
     const projects = makeProjects(2);
     const kb = buildProjectKeyboard(projects, 0);
     const itemButton = kb.inline_keyboard[0][0];
-    expect(itemButton.callback_data).toBe('project:select:project-1');
+    expect((itemButton as { callback_data: string }).callback_data).toBe('project:select:project-1');
   });
 
   it('buildBoqKeyboard with exactly PAGE_SIZE items has no nav row', async () => {
