@@ -163,7 +163,7 @@ export function MapView({ routeGeoJSON, approvedPoints, boqLegend }: MapViewProp
   const onLoad = useCallback(() => {
     if (!routeGeoJSON || !mapRef.current) return;
     const coords = routeGeoJSON.coordinates;
-    if (coords.length === 0) return;
+    if (coords.length < 2) return;  // WR-03: LineString needs ≥ 2 points for a valid bbox
 
     let minLng = coords[0][0];
     let maxLng = coords[0][0];
