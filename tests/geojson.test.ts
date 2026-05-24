@@ -51,6 +51,7 @@ describe('validateLineStringGeoJSON', () => {
     const result = validateLineStringGeoJSON(json);
 
     expect(result.ok).toBe(false);
+    if (result.ok) return; // type narrowing
     // Coordinates [41, 200] have 200 exceeding max longitude 180 → zod range check
     // Should fail validation (may return NOT_LINESTRING or NOT_GEOJSON based on which check runs)
     expect(['NOT_LINESTRING', 'NOT_GEOJSON']).toContain(result.error);

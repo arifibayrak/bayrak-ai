@@ -1,21 +1,33 @@
 /**
- * RouteTab.tsx — STUB component.
+ * RouteTab.tsx
  *
- * This component is a file-ownership boundary stub created by plan 01-05.
- * Plan 01-06 fills the internals with GeoJSON upload, validation, and route
- * display — WITHOUT modifying [id]/page.tsx (clean plan boundary).
+ * Project Route (GeoJSON) tab — plan 01-06 replaces the stub from plan 01-05.
+ * Server Component: fetches existing route metadata; renders the upload drop zone
+ * (no route) OR saved-route metadata card + "Rotayı Değiştir" (route exists).
  *
- * Contract: exports RouteTab, accepts projectId prop.
+ * UI-SPEC #4b: GeoJSON route tab layout and interaction contract.
+ * D-07: .geojson upload, server validates WGS84 LineString.
  */
+
+import { getTranslations } from 'next-intl/server';
+import { getRoute } from '@/actions/routes';
+import { RouteTabClient } from './RouteTabClient';
 
 interface RouteTabProps {
   projectId: string;
 }
 
-export function RouteTab({ projectId: _projectId }: RouteTabProps) {
+export async function RouteTab({ projectId }: RouteTabProps) {
+  const t = await getTranslations('dashboard.route');
+  const existingRoute = await getRoute(projectId);
+
   return (
-    <div className="py-12 text-center text-muted-foreground text-sm">
-      <p>Rota içeriği yükleniyor... / Loading route contents...</p>
+    <div className="space-y-6">
+      <h2 className="text-xl font-semibold">{t('title')}</h2>
+      <RouteTabClient
+        projectId={projectId}
+        existingRoute={existingRoute}
+      />
     </div>
   );
 }
