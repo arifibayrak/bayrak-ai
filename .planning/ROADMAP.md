@@ -119,7 +119,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 03-02-PLAN.md — [BLOCKING] generate + apply Phase 3 migration (closes the false-positive verification trap)
+- [x] 03-02-PLAN.md — [BLOCKING] generate + apply Phase 3 migration (closes the false-positive verification trap)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -182,7 +182,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 |-------|----------------|--------|-----------|
 | 1. Foundation | 7/7 | Complete | 2026-05-24 |
 | 2. Worker Bot | 6/6 | Complete   | 2026-05-24 |
-| 3. Audit Loop | 2/5 | In Progress|  |
+| 3. Audit Loop | 3/5 | In Progress|  |
 | 4. Spatial Layer | 0/TBD | Not started | - |
 | 5. Dashboard & Map | 0/TBD | Not started | - |
 | 6. AI Vision Assist | 0/TBD | Not started | - |
