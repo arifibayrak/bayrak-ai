@@ -718,14 +718,14 @@ function getLinestringBounds(coords: [number, number][]): [[number, number], [nu
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Should `force-dynamic` go on `[id]/page.tsx` or on individual tab Server Components?**
+1. **Should `force-dynamic` go on `[id]/page.tsx` or on individual tab Server Components?** — **RESOLVED** (Plan 06): `export const dynamic = 'force-dynamic'` goes on the PAGE segment (`[id]/page.tsx`), not on leaf tab components. Plan 06's `<interfaces>` block locks this in (D-55 alignment).
    - What we know: `export const dynamic = 'force-dynamic'` on a page disables caching for that page and all its Server Component children.
    - What's unclear: Whether putting it on the leaf tab components (e.g., `BoqTab`) instead of the page is sufficient, or whether it needs to be on the page to affect `router.refresh()` behavior.
    - Recommendation: Put it on `[id]/page.tsx` (the page segment) — this is the most reliable location and ensures the entire page route is uncached. [ASSUMED — based on Next.js route segment config docs]
 
-2. **Filter chips: URL search param state vs. React `useState`?**
+2. **Filter chips: URL search param state vs. React `useState`?** — **RESOLVED** (Plan 04): use a URL search param (`?status=`). `KayitlarTabClient` reads `searchParams` and navigates on filter change, matching the existing `?tab=` URL-state pattern.
    - What we know: Other tabs use URL state (`?tab=`). Filter chips are within Kayıtlar tab content.
    - What's unclear: Whether the active status filter should be a URL search param (`?status=approved`) or local React state in `KayitlarTabClient`.
    - Recommendation: Use URL search param (`?status=`) so filter state survives page refresh and is shareable. This means `KayitlarTabClient` reads `searchParams` and navigates on filter change. [ASSUMED — matches existing URL-state tab pattern; planner should confirm]
