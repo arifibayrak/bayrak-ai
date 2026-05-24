@@ -818,7 +818,12 @@ export const submissions = pgTable('submissions', {
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+> All three are Claude's Discretion items, resolved by the Phase 2 plans:
+> - Q1 RESOLVED: upload-on-receipt (Plan 02 Task 3); orphaned blobs noted as ops debt.
+> - Q2 RESOLVED: `processed_updates` housekeeping deferred to Phase 3+ (no action this phase).
+> - Q3 RESOLVED: confirm summary via `replyWithPhoto` + caption + inline keyboard (Plan 06 Task 1).
 
 1. **Upload-on-receipt vs upload-on-confirm (Claude's Discretion)**
    - What we know: Both are viable. Upload-on-receipt stores the photo at the photo step; upload-on-confirm only uploads if the worker doesn't cancel. Upload-on-receipt is simpler (photo URL goes directly into conversation state); upload-on-confirm avoids orphaned Blob objects for cancelled flows.
