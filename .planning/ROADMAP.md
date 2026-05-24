@@ -152,7 +152,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 04-03-PLAN.md — spatial.ts guarded in-tx PostGIS snap (D-41/D-42) + wire into handleConfirmSubmit + GEO-01/GEO-02 integration tests
+- [x] 04-03-PLAN.md — spatial.ts guarded in-tx PostGIS snap (D-41/D-42) + wire into handleConfirmSubmit + GEO-01/GEO-02 integration tests
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
@@ -199,6 +199,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 1. Foundation | 7/7 | Complete | 2026-05-24 |
 | 2. Worker Bot | 6/6 | Complete   | 2026-05-24 |
 | 3. Audit Loop | 5/5 | Complete   | 2026-05-24 |
-| 4. Spatial Layer | 2/4 | In Progress|  |
+| 4. Spatial Layer | 3/4 | In Progress|  |
 | 5. Dashboard & Map | 0/TBD | Not started | - |
 | 6. AI Vision Assist | 0/TBD | Not started | - |
