@@ -50,11 +50,11 @@ Requirements for the initial release. Each maps to roadmap phases.
 
 ### Office Dashboard
 
-- [ ] **DASH-01**: Office Engineer sees the project's pipeline route rendered on a Mapbox map
-- [ ] **DASH-02**: Approved work logs render as point markers / colored segments overlaying the route
-- [ ] **DASH-03**: Office Engineer can view a list of submissions filterable by status (pending / approved / rejected)
-- [ ] **DASH-04**: Office Engineer sees live BOQ progress (contracted vs. remaining) per line item
-- [ ] **DASH-05**: The map and BOQ progress reflect approved submissions (refresh on load/focus)
+- [x] **DASH-01**: Office Engineer sees the project's pipeline route rendered on a Mapbox map
+- [x] **DASH-02**: Approved work logs render as point markers / colored segments overlaying the route
+- [x] **DASH-03**: Office Engineer can view a list of submissions filterable by status (pending / approved / rejected)
+- [x] **DASH-04**: Office Engineer sees live BOQ progress (contracted vs. remaining) per line item
+- [x] **DASH-05**: The map and BOQ progress reflect approved submissions (refresh on load/focus)
 
 ### AI Assist (advisory)
 
@@ -136,11 +136,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | AUDIT-06 | Phase 3 | Complete |
 | GEO-01 | Phase 4 | Complete |
 | GEO-02 | Phase 4 | Complete |
-| DASH-01 | Phase 5 | Pending |
-| DASH-02 | Phase 5 | Pending |
-| DASH-03 | Phase 5 | Pending |
-| DASH-04 | Phase 5 | Pending |
-| DASH-05 | Phase 5 | Pending |
+| DASH-01 | Phase 5 | Complete |
+| DASH-02 | Phase 5 | Complete |
+| DASH-03 | Phase 5 | Complete |
+| DASH-04 | Phase 5 | Complete |
+| DASH-05 | Phase 5 | Complete |
 | AI-01 | Phase 6 | Pending |
 | AI-02 | Phase 6 | Pending |
 | AI-03 | Phase 6 | Pending |
