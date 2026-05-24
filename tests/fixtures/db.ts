@@ -74,9 +74,30 @@ export async function truncateAllTables(db: Awaited<ReturnType<typeof getTestDb>
 
   // TRUNCATE TABLE IF EXISTS is not valid PostgreSQL syntax (IF EXISTS is only for DROP TABLE).
   // RESTART IDENTITY is only relevant for SERIAL/IDENTITY columns; all our tables use UUID PKs.
-  // truncateAllTables is only called inside describeIfDb blocks which require TEST_DATABASE_URL
-  // pointing at a fully migrated DB — all tables are guaranteed to exist at call time.
-  // Truncate all at once in dependency-safe order with CASCADE to handle FK relationships.
+  //
+  // Wave strategy: some tables in the list (e.g. audit_notifications) are registered here at
+  // schema-definition time (Plan 03-01) but not yet migrated to the test DB until Plan 03-02.
+  // To keep Phase 1/2 tests green before the migration lands, we attempt the full truncation
+  // first; if it fails with "relation does not exist" (Postgres error code 42P01), we fall back
+  // to truncating only the tables that existed before Plan 03-02.
   const tableList = tables.map(t => `"${t}"`).join(', ');
-  await db.execute(sql.raw(`TRUNCATE TABLE ${tableList} CASCADE`));
+  try {
+    await db.execute(sql.raw(`TRUNCATE TABLE ${tableList} CASCADE`));
+  } catch (err: unknown) {
+    // 42P01 = undefined_table — a Phase 3 table hasn't been migrated yet.
+    // Retry with only the pre-Phase-3 tables so existing tests stay green.
+    // NeonDbError wraps the PG code in .code; drizzle may also wrap it in .cause.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const e = err as any;
+    const pgCode = e?.code ?? e?.cause?.code ?? '';
+    const isUndefinedTable = pgCode === '42P01' ||
+      (typeof e?.message === 'string' && e.message.includes('does not exist'));
+    if (isUndefinedTable) {
+      const phase2Tables = tables.filter(t => t !== 'audit_notifications');
+      const phase2List = phase2Tables.map(t => `"${t}"`).join(', ');
+      await db.execute(sql.raw(`TRUNCATE TABLE ${phase2List} CASCADE`));
+    } else {
+      throw err;
+    }
+  }
 }
