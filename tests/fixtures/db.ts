@@ -101,3 +101,101 @@ export async function truncateAllTables(db: Awaited<ReturnType<typeof getTestDb>
     }
   }
 }
+
+/**
+ * Deterministic UUIDs for Phase 4 spatial fixture rows.
+ * Shared between seedSpatialFixture and test assertions.
+ */
+export const SPATIAL_FIXTURE_IDS = {
+  tenantId:   '00000000-0000-0000-0000-000000000001',
+  projectId:  '00000000-0000-0000-0000-000000000002',
+  routeId:    '00000000-0000-0000-0000-000000000003',
+  boqItemId:  '00000000-0000-0000-0000-000000000010',
+  personId:   '00000000-0000-0000-0000-000000000011',
+} as const;
+
+/**
+ * seedSpatialFixture — inserts the minimal fixture rows needed by Phase 4 snap tests.
+ *
+ * Inserts (all with ON CONFLICT DO NOTHING for idempotent seeding):
+ *   - tenant  (id 0000...0001)
+ *   - project (id 0000...0002, tenant_id = above)
+ *   - BOQ item (id 0000...0010, project_id = above)
+ *   - person   (id 0000...0011, tenant_id = above)
+ *   - routes row with Istanbul LineString [[28.9, 41.0], [28.95, 41.05]] (id 0000...0003)
+ *
+ * Does NOT insert a submissions row — individual tests build their own submissions
+ * so near/far/no_route fixture locations can vary independently.
+ *
+ * Returns the deterministic IDs for use in test assertions.
+ */
+export async function seedSpatialFixture(
+  db: Awaited<ReturnType<typeof getTestDb>>
+): Promise<typeof SPATIAL_FIXTURE_IDS> {
+  // Lazy import consistent with truncateAllTables pattern
+  const { sql } = await import("drizzle-orm");
+
+  const { tenantId, projectId, routeId, boqItemId, personId } = SPATIAL_FIXTURE_IDS;
+
+  // 1. Tenant
+  await db.execute(
+    sql.raw(`
+      INSERT INTO tenants (id, name)
+      VALUES ('${tenantId}', 'Spatial Test Tenant')
+      ON CONFLICT DO NOTHING
+    `)
+  );
+
+  // 2. Project
+  await db.execute(
+    sql.raw(`
+      INSERT INTO projects (id, tenant_id, name)
+      VALUES ('${projectId}', '${tenantId}', 'Spatial Test Project')
+      ON CONFLICT DO NOTHING
+    `)
+  );
+
+  // 3. BOQ item — submissions has notNull FK to boq_item_id
+  await db.execute(
+    sql.raw(`
+      INSERT INTO boq_items (id, tenant_id, project_id, material, unit, planned_qty, approved_qty, sort_order)
+      VALUES ('${boqItemId}', '${tenantId}', '${projectId}', 'DN200 HDPE Boru', 'm', 1000, 0, 1)
+      ON CONFLICT DO NOTHING
+    `)
+  );
+
+  // 4. Person — submissions has notNull FK to person_id
+  await db.execute(
+    sql.raw(`
+      INSERT INTO people (id, tenant_id, telegram_user_id, display_name)
+      VALUES ('${personId}', '${tenantId}', 999999901, 'Spatial Test Worker')
+      ON CONFLICT DO NOTHING
+    `)
+  );
+
+  // 5. Route — Istanbul LineString [[28.9, 41.0], [28.95, 41.05]]
+  // Uses parameterized sql`` (NOT string interpolation) for the GeoJSON argument,
+  // mirroring tests/postgis.test.ts line 73 — prevents any injection risk.
+  const istanbulLineString = JSON.stringify({
+    type: 'LineString',
+    coordinates: [
+      [28.9, 41.0],    // Istanbul reference point (lng first, per GeoJSON / D-48)
+      [28.95, 41.05],  // second point ~6 km northeast
+    ],
+  });
+  await db.execute(
+    sql`
+      INSERT INTO routes (id, tenant_id, project_id, geom, coordinate_count)
+      VALUES (
+        ${routeId},
+        ${tenantId},
+        ${projectId},
+        ST_GeomFromGeoJSON(${istanbulLineString}),
+        2
+      )
+      ON CONFLICT DO NOTHING
+    `
+  );
+
+  return SPATIAL_FIXTURE_IDS;
+}
