@@ -17,9 +17,11 @@
  *   Memory (512 MB) and maxDuration (55 s) are set in vercel.json, not here.
  *
  * Fail-fast:
- *   Module throws at load time if TELEGRAM_WEBHOOK_SECRET is unset so a
- *   misconfigured deploy surfaces immediately rather than serving an
- *   unauthenticated webhook.
+ *   The required secrets are validated at REQUEST time (first webhook delivery),
+ *   not at module load. Next.js imports this route during `next build` to collect
+ *   metadata with no runtime env present, so a module-load throw would break the
+ *   build. Request-time validation still surfaces a misconfigured deploy on the
+ *   first request rather than serving an unauthenticated webhook.
  */
 
 export const runtime = 'nodejs';
@@ -29,13 +31,30 @@ export const fetchCache = 'force-no-store';
 import { webhookCallback } from 'grammy';
 import { bot } from '@/lib/telegram';
 
-// Fail-fast at module load if the secret is not configured (T-04-01, T-04-03).
-const webhookSecret = process.env.TELEGRAM_WEBHOOK_SECRET;
-if (!webhookSecret) {
-  throw new Error(
-    'TELEGRAM_WEBHOOK_SECRET is not set — set it in .env.local (development) ' +
-    'or as a Vercel environment variable (production).'
-  );
+// Lazily build (and cache) the grammY webhook handler on the first request, so
+// the required secrets are validated at request time rather than module load
+// (T-04-01, T-04-03).
+let cachedHandler: ((req: Request) => Promise<Response>) | null = null;
+
+function getWebhookHandler(): (req: Request) => Promise<Response> {
+  if (cachedHandler) return cachedHandler;
+
+  const webhookSecret = process.env.TELEGRAM_WEBHOOK_SECRET;
+  if (!webhookSecret) {
+    throw new Error(
+      'TELEGRAM_WEBHOOK_SECRET is not set — set it in .env.local (development) ' +
+      'or as a Vercel environment variable (production).'
+    );
+  }
+  if (!process.env.TELEGRAM_BOT_TOKEN) {
+    throw new Error(
+      'TELEGRAM_BOT_TOKEN is not set — set it in .env.local (development) ' +
+      'or as a Vercel environment variable (production).'
+    );
+  }
+
+  cachedHandler = webhookCallback(bot, 'std/http', { secretToken: webhookSecret });
+  return cachedHandler;
 }
 
 /**
@@ -47,9 +66,9 @@ if (!webhookSecret) {
  *      If the header is wrong or missing → 401-class response; no bot handlers run.
  *   3. Dispatching the update to the bot's registered handlers (e.g. /start).
  */
-export const POST = webhookCallback(bot, 'std/http', {
-  secretToken: webhookSecret,
-});
+export async function POST(req: Request): Promise<Response> {
+  return getWebhookHandler()(req);
+}
 
 /**
  * GET — Lightweight health probe (phase marker).

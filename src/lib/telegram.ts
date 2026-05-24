@@ -24,15 +24,14 @@ import { getDefaultTenantId } from '@/lib/tenant';
 // Bot instance
 // ---------------------------------------------------------------------------
 
+// The token is validated at REQUEST time in the webhook route handler, NOT here.
+// Next.js imports route modules (and their dependencies, including this file)
+// during `next build` to collect metadata, with no runtime env present — a
+// module-load throw would break the build. When the token is absent we construct
+// a non-functional placeholder bot; the route handler fails fast on a real
+// request if TELEGRAM_BOT_TOKEN is unset (T-04-03).
 const token = process.env.TELEGRAM_BOT_TOKEN;
-if (!token) {
-  throw new Error(
-    'TELEGRAM_BOT_TOKEN is not set — set it in .env.local (development) ' +
-    'or as a Vercel environment variable (production).'
-  );
-}
-
-export const bot = new Bot(token);
+export const bot = new Bot(token || '0:TELEGRAM_BOT_TOKEN_NOT_CONFIGURED');
 
 // ---------------------------------------------------------------------------
 // /start handler (D-01, AUTH-02, AUTH-03)

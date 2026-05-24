@@ -2,7 +2,6 @@ import Link from 'next/link';
 import { FolderOpenIcon } from 'lucide-react';
 import { getTranslations } from 'next-intl/server';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
 import { ProjectCard } from '@/components/dashboard/ProjectCard';
 import { getProjects } from '@/actions/projects';
 
@@ -40,16 +39,6 @@ export default async function ProjectsPage() {
           ))}
         </div>
       )}
-    </div>
-  );
-}
-
-export function ProjectsPageSkeleton() {
-  return (
-    <div className="space-y-3">
-      {Array.from({ length: 3 }).map((_, i) => (
-        <Skeleton key={i} className="h-24 w-full rounded-xl" />
-      ))}
     </div>
   );
 }
