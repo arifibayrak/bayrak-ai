@@ -136,6 +136,241 @@ function buildAuditDbMock(opts: {
 }
 
 // ---------------------------------------------------------------------------
+// AUDIT-01 — fanOutToAuditors fan-out behaviors (unit, mock)
+// Tests: one sendPhoto per auditor, one audit_notifications insert per auditor,
+//        no-auditor case sends nothing + leaves submission pending_audit
+// ---------------------------------------------------------------------------
+
+describe('AUDIT-01: fanOutToAuditors fan-out behaviors', () => {
+  beforeEach(() => {
+    process.env.TELEGRAM_BOT_TOKEN = 'TEST:fake_token_audit01';
+    process.env.TELEGRAM_WEBHOOK_SECRET = 'test-secret-audit01';
+    vi.resetModules();
+  });
+
+  afterEach(() => {
+    delete process.env.TELEGRAM_BOT_TOKEN;
+    delete process.env.TELEGRAM_WEBHOOK_SECRET;
+    vi.restoreAllMocks();
+    vi.resetModules();
+  });
+
+  it('AUDIT-01 SC1: sends exactly one sendPhoto per assigned auditor and inserts one audit_notifications row per auditor', async () => {
+    // Mock DB: submission + boqItem + 2 auditors
+    // fanOutToAuditors does 4 selects: submission, boqItem, auditor assignments, people
+    const submissionRow = {
+      id: 'sub-01-1',
+      projectId: 'proj-01-1',
+      boqItemId: 'boq-01-1',
+      photoFileId: 'tg_file_abc',
+      photoUrl: 'https://example.com/photo.jpg',
+      quantity: '50.000',
+      notes: 'Test notes',
+      locationLat: '41.0000',
+      locationLon: '29.0000',
+      status: 'pending_audit',
+    };
+    const boqRow = {
+      id: 'boq-01-1',
+      material: 'DN200 HDPE Boru',
+      unit: 'm',
+      plannedQty: '1000.000',
+      approvedQty: '0.000',
+    };
+    const assignmentRows = [
+      { personId: 'person-aud-1' },
+      { personId: 'person-aud-2' },
+    ];
+    const auditorRows = [
+      { id: 'person-aud-1', telegramUserId: BigInt(3001), displayName: 'Auditor One' },
+      { id: 'person-aud-2', telegramUserId: BigInt(3002), displayName: 'Auditor Two' },
+    ];
+
+    let selectCallIndex = 0;
+    const insertValues = vi.fn().mockResolvedValue(undefined);
+    const mockDb = {
+      select: vi.fn().mockImplementation(() => ({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockImplementation(() => {
+            selectCallIndex++;
+            if (selectCallIndex === 1) return Promise.resolve([submissionRow]);
+            if (selectCallIndex === 2) return Promise.resolve([boqRow]);
+            if (selectCallIndex === 3) return Promise.resolve(assignmentRows);
+            return Promise.resolve(auditorRows); // people lookup
+          }),
+        }),
+      })),
+      insert: vi.fn().mockReturnValue({
+        values: insertValues,
+      }),
+    };
+
+    vi.doMock('@/db', () => ({ db: mockDb }));
+
+    const sentPhotos: Array<{ chatId: number; photo: string; opts: unknown }> = [];
+    vi.doMock('@/lib/telegram', () => ({
+      bot: {
+        api: {
+          sendPhoto: vi.fn().mockImplementation(async (chatId: number, photo: string, opts: unknown) => {
+            sentPhotos.push({ chatId, photo, opts });
+            return { message_id: 42 + sentPhotos.length, chat: { id: chatId } };
+          }),
+        },
+      },
+    }));
+
+    const { fanOutToAuditors } = await import('@/lib/bot-audit');
+    await fanOutToAuditors('sub-01-1');
+
+    // One sendPhoto per auditor
+    expect(sentPhotos.length).toBe(2);
+    expect(sentPhotos[0].photo).toBe('tg_file_abc'); // file_id preferred
+    // One audit_notifications insert per auditor
+    expect(insertValues).toHaveBeenCalledTimes(2);
+  });
+
+  it('AUDIT-01 SC2: no-auditor case — sends no photo, does not throw, submission stays pending_audit', async () => {
+    // fanOutToAuditors does: submission select, boqItem select, assignments select (empty → return early)
+    const submissionRow = {
+      id: 'sub-01-2',
+      projectId: 'proj-01-2',
+      boqItemId: 'boq-01-2',
+      photoFileId: null,
+      photoUrl: 'https://example.com/photo2.jpg',
+      quantity: '10.000',
+      notes: null,
+      locationLat: null,
+      locationLon: null,
+      status: 'pending_audit',
+    };
+    const boqRow = {
+      id: 'boq-01-2',
+      material: 'DN200 HDPE Boru',
+      unit: 'm',
+      plannedQty: '500.000',
+      approvedQty: '0.000',
+    };
+
+    let selectCallIndex = 0;
+    const updateSet = vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue([]) });
+    const mockDb = {
+      select: vi.fn().mockImplementation(() => ({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockImplementation(() => {
+            selectCallIndex++;
+            if (selectCallIndex === 1) return Promise.resolve([submissionRow]);
+            if (selectCallIndex === 2) return Promise.resolve([boqRow]);
+            return Promise.resolve([]); // no auditor assignments → early return
+          }),
+        }),
+      })),
+      insert: vi.fn().mockReturnValue({ values: vi.fn().mockResolvedValue(undefined) }),
+      update: vi.fn().mockReturnValue({ set: updateSet }),
+    };
+
+    vi.doMock('@/db', () => ({ db: mockDb }));
+
+    const sentPhotos: unknown[] = [];
+    vi.doMock('@/lib/telegram', () => ({
+      bot: {
+        api: {
+          sendPhoto: vi.fn().mockImplementation(async (chatId: number, photo: string, opts: unknown) => {
+            sentPhotos.push({ chatId, photo, opts });
+            return { message_id: 42, chat: { id: chatId } };
+          }),
+        },
+      },
+    }));
+
+    const { fanOutToAuditors } = await import('@/lib/bot-audit');
+    // Must not throw
+    await expect(fanOutToAuditors('sub-01-2')).resolves.toBeUndefined();
+
+    // No sendPhoto calls
+    expect(sentPhotos.length).toBe(0);
+    // No submissions UPDATE (stays pending_audit)
+    expect(mockDb.update).not.toHaveBeenCalled();
+  });
+
+  it('AUDIT-01 SC3: one failing send records send_failed=true but does not prevent other auditor sends', async () => {
+    // fanOutToAuditors does: submission, boqItem, assignments, people selects
+    const submissionRow = {
+      id: 'sub-01-3',
+      projectId: 'proj-01-3',
+      boqItemId: 'boq-01-3',
+      photoFileId: 'tg_file_xyz',
+      photoUrl: 'https://example.com/photo3.jpg',
+      quantity: '20.000',
+      notes: null,
+      locationLat: null,
+      locationLon: null,
+      status: 'pending_audit',
+    };
+    const boqRow = {
+      id: 'boq-01-3',
+      material: 'DN200 HDPE Boru',
+      unit: 'm',
+      plannedQty: '1000.000',
+      approvedQty: '0.000',
+    };
+    const assignmentRows = [
+      { personId: 'person-aud-3a' },
+      { personId: 'person-aud-3b' },
+    ];
+    const auditorRows = [
+      { id: 'person-aud-3a', telegramUserId: BigInt(3003), displayName: 'Auditor Three' },
+      { id: 'person-aud-3b', telegramUserId: BigInt(3004), displayName: 'Auditor Four' },
+    ];
+
+    let selectCallIndex = 0;
+    const insertValues = vi.fn().mockResolvedValue(undefined);
+    const mockDb = {
+      select: vi.fn().mockImplementation(() => ({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockImplementation(() => {
+            selectCallIndex++;
+            if (selectCallIndex === 1) return Promise.resolve([submissionRow]);
+            if (selectCallIndex === 2) return Promise.resolve([boqRow]);
+            if (selectCallIndex === 3) return Promise.resolve(assignmentRows);
+            return Promise.resolve(auditorRows); // people lookup
+          }),
+        }),
+      })),
+      insert: vi.fn().mockReturnValue({ values: insertValues }),
+    };
+
+    vi.doMock('@/db', () => ({ db: mockDb }));
+
+    let sendCallCount = 0;
+    vi.doMock('@/lib/telegram', () => ({
+      bot: {
+        api: {
+          sendPhoto: vi.fn().mockImplementation(async (chatId: number) => {
+            sendCallCount++;
+            if (sendCallCount === 1) throw new Error('Telegram API error (simulated)');
+            return { message_id: 99, chat: { id: chatId } };
+          }),
+        },
+      },
+    }));
+
+    const { fanOutToAuditors } = await import('@/lib/bot-audit');
+    await expect(fanOutToAuditors('sub-01-3')).resolves.toBeUndefined();
+
+    // Both auditors attempted (2 sendPhoto calls)
+    expect(sendCallCount).toBe(2);
+    // Both got audit_notifications rows (one with sendFailed=true, one without)
+    expect(insertValues).toHaveBeenCalledTimes(2);
+    // First insert should have sendFailed: true
+    const firstInsertCall = insertValues.mock.calls[0][0];
+    expect(firstInsertCall.sendFailed).toBe(true);
+    // Second insert should not have sendFailed set (or false)
+    const secondInsertCall = insertValues.mock.calls[1][0];
+    expect(secondInsertCall.sendFailed).toBeFalsy();
+  });
+});
+
+// ---------------------------------------------------------------------------
 // (a) AUDIT-02 — buildAuditKeyboard callback_data ≤64 bytes (unit, pure)
 // ---------------------------------------------------------------------------
 
