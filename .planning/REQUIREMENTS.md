@@ -9,17 +9,17 @@ Requirements for the initial release. Each maps to roadmap phases.
 
 ### Auth & Identity
 
-- [ ] **AUTH-01**: Office Engineer can sign in to the dashboard via an email magic-link (Auth.js)
-- [ ] **AUTH-02**: Office Engineer can register a Worker by mapping their Telegram User ID to a name
-- [ ] **AUTH-03**: Office Engineer can register an Auditor by mapping their Telegram User ID to a name
-- [ ] **AUTH-04**: Office Engineer can assign workers and auditors to specific projects
+- [x] **AUTH-01**: Office Engineer can sign in to the dashboard via an email magic-link (Auth.js)
+- [x] **AUTH-02**: Office Engineer can register a Worker by mapping their Telegram User ID to a name
+- [x] **AUTH-03**: Office Engineer can register an Auditor by mapping their Telegram User ID to a name
+- [x] **AUTH-04**: Office Engineer can assign workers and auditors to specific projects
 
 ### Project & BOQ Setup
 
-- [ ] **SETUP-01**: Office Engineer can create and edit a project
-- [ ] **SETUP-02**: Office Engineer can define Bill of Quantities line items (material, unit, contracted quantity) for a project
-- [ ] **SETUP-03**: Office Engineer can upload the project's pipeline route as a GeoJSON LineString
-- [ ] **SETUP-04**: Office Engineer can view the remaining balance per BOQ line item
+- [x] **SETUP-01**: Office Engineer can create and edit a project
+- [x] **SETUP-02**: Office Engineer can define Bill of Quantities line items (material, unit, contracted quantity) for a project
+- [x] **SETUP-03**: Office Engineer can upload the project's pipeline route as a GeoJSON LineString
+- [x] **SETUP-04**: Office Engineer can view the remaining balance per BOQ line item
 
 ### Worker Logging (Telegram bot)
 
@@ -67,7 +67,7 @@ Requirements for the initial release. Each maps to roadmap phases.
 ### Localization
 
 - [ ] **I18N-01**: The worker Telegram bot operates in Turkish
-- [ ] **I18N-02**: The office dashboard is switchable between Turkish and English
+- [x] **I18N-02**: The office dashboard is switchable between Turkish and English
 
 ## v2 Requirements
 
@@ -108,15 +108,15 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| AUTH-01 | Phase 1 | Pending |
-| AUTH-02 | Phase 1 | Pending |
-| AUTH-03 | Phase 1 | Pending |
-| AUTH-04 | Phase 1 | Pending |
-| SETUP-01 | Phase 1 | Pending |
-| SETUP-02 | Phase 1 | Pending |
-| SETUP-03 | Phase 1 | Pending |
-| SETUP-04 | Phase 1 | Pending |
-| I18N-02 | Phase 1 | Pending |
+| AUTH-01 | Phase 1 | Complete |
+| AUTH-02 | Phase 1 | Complete |
+| AUTH-03 | Phase 1 | Complete |
+| AUTH-04 | Phase 1 | Complete |
+| SETUP-01 | Phase 1 | Complete |
+| SETUP-02 | Phase 1 | Complete |
+| SETUP-03 | Phase 1 | Complete |
+| SETUP-04 | Phase 1 | Complete |
+| I18N-02 | Phase 1 | Complete |
 | LOG-01 | Phase 2 | Pending |
 | LOG-02 | Phase 2 | Pending |
 | LOG-03 | Phase 2 | Pending |
