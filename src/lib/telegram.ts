@@ -1148,8 +1148,10 @@ async function getTxDb() {
     const ws = require('ws') as { default?: unknown } | unknown;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     neonConfig.webSocketConstructor = (ws as any).default ?? ws;
-  } catch {
-    // ws not available — will use native WebSocket (browser/edge)
+  } catch (wsErr) {
+    // ws not available — will use native WebSocket (browser/edge).
+    // Log so a missing/unbundled ws is visible in runtime logs instead of failing silently.
+    console.error('[getTxDb] require("ws") failed; falling back to native WebSocket:', wsErr);
   }
 
   const pool = new Pool({ connectionString: process.env.DATABASE_URL! });
@@ -1297,9 +1299,12 @@ async function handleConfirmSubmit(
         .delete(conversationState)
         .where(eq(conversationState.telegramUserId, BigInt(telegramUserId)));
     });
-  } catch (_txErr) {
+  } catch (txErr) {
     // Transaction failed — reply with a Turkish error and leave conversation_state intact
     // so the worker can tap "Onayla ve Gönder" again (CR-03).
+    // Log the real error so confirm-submit failures are diagnosable in runtime logs
+    // (previously swallowed — a Vercel-runtime failure was invisible).
+    console.error('[handleConfirmSubmit] transaction failed for flowId', flowId, ':', txErr);
     await ctx.reply(MESSAGES.genericError);
     return;
   }
