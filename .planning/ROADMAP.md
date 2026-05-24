@@ -14,7 +14,7 @@ bayrak.ai is built in six phases ordered by hard dependency chains. The data mod
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Foundation** - Database schema, Next.js scaffold, Auth.js magic-link login, and office CRUD for projects/BOQ/assignments
-- [ ] **Phase 2: Worker Bot** - grammY conversation state machine (States 0–6) with durable Postgres sessions, input enforcement, and submission persistence
+- [x] **Phase 2: Worker Bot** - grammY conversation state machine (States 0–6) with durable Postgres sessions, input enforcement, and submission persistence (completed 2026-05-24)
 - [ ] **Phase 3: Audit Loop** - Auditor notification, Approve/Reject handling, atomic BOQ deduction, race-safe idempotency, and worker rejection notification
 - [ ] **Phase 4: Spatial Layer** - PostGIS nearest-segment matching, location proximity warning, and `approved_points` population
 - [ ] **Phase 5: Dashboard & Map** - Mapbox route and approved-points overlay, BOQ progress view, and submission list with status filtering
@@ -95,7 +95,7 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 02-06-PLAN.md — Confirm summary + per-field edit (D-16), transactional pending_audit insert (getTxDb), Gönderildi/Yeni kayıt, [SC4 MANDATORY] duplicate-update + persistence live-DB tests
+- [x] 02-06-PLAN.md — Confirm summary + per-field edit (D-16), transactional pending_audit insert (getTxDb), Gönderildi/Yeni kayıt, [SC4 MANDATORY] duplicate-update + persistence live-DB tests
 
 ### Phase 3: Audit Loop
 
@@ -164,7 +164,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 7/7 | Complete | 2026-05-24 |
-| 2. Worker Bot | 5/6 | In Progress|  |
+| 2. Worker Bot | 6/6 | Complete   | 2026-05-24 |
 | 3. Audit Loop | 0/TBD | Not started | - |
 | 4. Spatial Layer | 0/TBD | Not started | - |
 | 5. Dashboard & Map | 0/TBD | Not started | - |
