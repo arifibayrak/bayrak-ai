@@ -16,7 +16,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Foundation** - Database schema, Next.js scaffold, Auth.js magic-link login, and office CRUD for projects/BOQ/assignments
 - [x] **Phase 2: Worker Bot** - grammY conversation state machine (States 0–6) with durable Postgres sessions, input enforcement, and submission persistence (completed 2026-05-24)
 - [x] **Phase 3: Audit Loop** - Auditor notification, Approve/Reject handling, atomic BOQ deduction, race-safe idempotency, and worker rejection notification (completed 2026-05-24)
-- [ ] **Phase 4: Spatial Layer** - PostGIS nearest-segment matching, location proximity warning, and `approved_points` population
+- [x] **Phase 4: Spatial Layer** - PostGIS nearest-segment matching, location proximity warning, and `approved_points` population (completed 2026-05-24)
 - [ ] **Phase 5: Dashboard & Map** - Mapbox route and approved-points overlay, BOQ progress view, and submission list with status filtering
 - [ ] **Phase 6: AI Vision Assist** - Async Claude vision analysis, eval harness gate, anomaly badges on dashboard and advisory Telegram follow-up
 
@@ -156,7 +156,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 04-04-PLAN.md — D-47 auditor caption anomaly line in fanOutToAuditors + caption unit tests + live-notification human-verify checkpoint
+- [x] 04-04-PLAN.md — D-47 auditor caption anomaly line in fanOutToAuditors + caption unit tests + live-notification human-verify checkpoint
 
 ### Phase 5: Dashboard & Map
 
@@ -199,6 +199,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 1. Foundation | 7/7 | Complete | 2026-05-24 |
 | 2. Worker Bot | 6/6 | Complete   | 2026-05-24 |
 | 3. Audit Loop | 5/5 | Complete   | 2026-05-24 |
-| 4. Spatial Layer | 3/4 | In Progress|  |
+| 4. Spatial Layer | 4/4 | Complete   | 2026-05-24 |
 | 5. Dashboard & Map | 0/TBD | Not started | - |
 | 6. AI Vision Assist | 0/TBD | Not started | - |
