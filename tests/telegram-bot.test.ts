@@ -449,6 +449,311 @@ describe('unregistered user (identity guard)', () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// (g) Pure unit tests — /start greeting + Devam/Baştan (D-15), /iptal (D-17)
+// ---------------------------------------------------------------------------
+
+describe('/start + cancel', () => {
+  // DB mock helpers reused across tests in this group
+  let mockReturningProcessed: ReturnType<typeof vi.fn>;
+  let mockValuesProcessed: ReturnType<typeof vi.fn>;
+  let mockOnConflictDoNothingProcessed: ReturnType<typeof vi.fn>;
+
+  /** Build a /start update for the given userId */
+  function makeStartUpdate(userId: number, updateId: number = userId) {
+    return {
+      update_id: updateId,
+      message: {
+        message_id: userId,
+        from: { id: userId, first_name: 'Ahmet', is_bot: false, language_code: 'tr' as const },
+        chat: { id: userId, type: 'private' as const, first_name: 'Ahmet' },
+        date: Math.floor(Date.now() / 1000),
+        text: '/start',
+        entities: [{ offset: 0, length: 6, type: 'bot_command' as const }],
+      },
+    };
+  }
+
+  /** Build an /iptal update */
+  function makeIptalUpdate(userId: number, updateId: number = userId + 5000) {
+    return {
+      update_id: updateId,
+      message: {
+        message_id: userId + 1000,
+        from: { id: userId, first_name: 'Ahmet', is_bot: false, language_code: 'tr' as const },
+        chat: { id: userId, type: 'private' as const, first_name: 'Ahmet' },
+        date: Math.floor(Date.now() / 1000),
+        text: '/iptal',
+        entities: [{ offset: 0, length: 6, type: 'bot_command' as const }],
+      },
+    };
+  }
+
+  beforeEach(() => {
+    process.env.TELEGRAM_BOT_TOKEN = 'TEST:fake_token_start';
+    process.env.TELEGRAM_WEBHOOK_SECRET = 'test-secret-start';
+    vi.resetModules();
+
+    // Idempotency insert always succeeds (first delivery)
+    mockReturningProcessed = vi.fn().mockResolvedValue([{ id: BigInt(1) }]);
+    mockOnConflictDoNothingProcessed = vi.fn().mockReturnValue({ returning: mockReturningProcessed });
+    mockValuesProcessed = vi.fn().mockReturnValue({ onConflictDoNothing: mockOnConflictDoNothingProcessed });
+  });
+
+  afterEach(() => {
+    delete process.env.TELEGRAM_BOT_TOKEN;
+    delete process.env.TELEGRAM_WEBHOOK_SECRET;
+    vi.restoreAllMocks();
+    vi.resetModules();
+  });
+
+  it('registered worker /start with no state replies greeting with displayName + project keyboard', async () => {
+    const WORKER_ID = 55001;
+    const PERSON_ID = 'person-uuid-001';
+    const PROJECT_ID = 'project-uuid-001';
+
+    // Mock db.select in call-order:
+    // Call 1: people lookup (resolveWorker) → returns person row
+    // Call 2: assignments+projects innerJoin (resolveWorker) → returns projects
+    // Call 3: conversation_state lookup → returns [] (no active state)
+    let selectCallCount = 0;
+    vi.doMock('@/db', () => ({
+      db: {
+        insert: vi.fn().mockReturnValue({
+          values: vi.fn().mockReturnValue({
+            onConflictDoNothing: vi.fn().mockReturnValue({
+              returning: vi.fn().mockResolvedValue([{ id: BigInt(1) }]),
+            }),
+          }),
+        }),
+        select: vi.fn().mockImplementation(() => {
+          selectCallCount++;
+          const callNum = selectCallCount;
+          return {
+            from: vi.fn().mockReturnValue({
+              where: vi.fn().mockImplementation(() => {
+                if (callNum === 1) {
+                  // people lookup → person found
+                  return Promise.resolve([{
+                    id: PERSON_ID,
+                    telegramUserId: BigInt(WORKER_ID),
+                    telegramName: 'Ahmet',
+                    displayName: 'Ahmet Yılmaz',
+                  }]);
+                }
+                // conversation_state lookup → no active state
+                return Promise.resolve([]);
+              }),
+              innerJoin: vi.fn().mockReturnValue({
+                where: vi.fn().mockResolvedValue([{ id: PROJECT_ID, name: 'Gaziantep Boru Hattı' }]),
+              }),
+            }),
+          };
+        }),
+        update: vi.fn().mockReturnValue({
+          set: vi.fn().mockReturnValue({
+            where: vi.fn().mockReturnValue({
+              returning: vi.fn().mockResolvedValue([]),
+            }),
+          }),
+        }),
+      },
+    }));
+
+    const bot = await setupBotForTest();
+    const replies: Array<{ text: string; replyMarkup?: unknown }> = [];
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    bot.api.config.use(async (_prev: any, method: any, payload: any) => {
+      if (method === 'sendMessage') {
+        replies.push({ text: payload.text, replyMarkup: payload.reply_markup });
+      }
+      return Promise.resolve({ ok: true, result: {} as never });
+    });
+
+    await bot.handleUpdate(makeStartUpdate(WORKER_ID, WORKER_ID));
+
+    expect(replies.length).toBeGreaterThan(0);
+    const reply = replies[0];
+    // Greeting must contain the display name (SC1, LOG-01)
+    expect(reply.text).toContain('Ahmet Yılmaz');
+    // Must have an inline keyboard (project selection)
+    expect(reply.replyMarkup).toBeDefined();
+    expect((reply.replyMarkup as { inline_keyboard: unknown[][] }).inline_keyboard.length).toBeGreaterThan(0);
+  });
+
+  it('registered worker /start with active non-stale flow replies startInProgress with Devam + Baştan buttons', async () => {
+    const WORKER_ID = 55002;
+    const PERSON_ID = 'person-uuid-002';
+    const activeState = {
+      id: 'state-uuid-002',
+      telegramUserId: BigInt(WORKER_ID),
+      personId: PERSON_ID,
+      flowId: 'flow-uuid-002',
+      currentStep: 'photo',
+      data: { step: 'photo' },
+      updatedAt: new Date(), // fresh — not stale
+    };
+
+    vi.doMock('@/db', () => ({
+      db: {
+        insert: vi.fn().mockReturnValue({
+          values: vi.fn().mockReturnValue({
+            onConflictDoNothing: vi.fn().mockReturnValue({
+              returning: vi.fn().mockResolvedValue([{ id: BigInt(2) }]),
+            }),
+          }),
+        }),
+        select: vi.fn().mockImplementation(() => ({
+          from: vi.fn().mockImplementation(() => ({
+            where: vi.fn().mockImplementation((cond: unknown) => {
+              // people table lookup
+              if (String(cond).includes('telegram_user_id') || true) {
+                return Promise.resolve([{
+                  id: PERSON_ID,
+                  telegramUserId: BigInt(WORKER_ID),
+                  telegramName: 'Mehmet',
+                  displayName: 'Mehmet Kaya',
+                }]);
+              }
+              return Promise.resolve([]);
+            }),
+            innerJoin: vi.fn().mockReturnValue({
+              where: vi.fn().mockResolvedValue([{ id: 'proj-1', name: 'Proje 1' }]),
+            }),
+          })),
+        })),
+        update: vi.fn().mockReturnValue({
+          set: vi.fn().mockReturnValue({
+            where: vi.fn().mockReturnValue({
+              returning: vi.fn().mockResolvedValue([]),
+            }),
+          }),
+        }),
+      },
+    }));
+
+    // The resolveWorker inner join returns projects; state row returns active state
+    // We need a smarter mock that differentiates people vs conversationState selects.
+    // Use a simpler approach: override the db.select to track call order.
+    vi.resetModules();
+    vi.doMock('@/db', () => {
+      let selectCallCount = 0;
+      return {
+        db: {
+          insert: vi.fn().mockReturnValue({
+            values: vi.fn().mockReturnValue({
+              onConflictDoNothing: vi.fn().mockReturnValue({
+                returning: vi.fn().mockResolvedValue([{ id: BigInt(2) }]),
+              }),
+            }),
+          }),
+          select: vi.fn().mockImplementation(() => {
+            selectCallCount++;
+            const callNum = selectCallCount;
+            return {
+              from: vi.fn().mockReturnValue({
+                where: vi.fn().mockImplementation(() => {
+                  if (callNum === 1) {
+                    // First select: people lookup (resolveWorker)
+                    return Promise.resolve([{
+                      id: PERSON_ID,
+                      telegramUserId: BigInt(WORKER_ID),
+                      telegramName: 'Mehmet',
+                      displayName: 'Mehmet Kaya',
+                    }]);
+                  }
+                  // Second select: conversation_state → return active state
+                  return Promise.resolve([activeState]);
+                }),
+                innerJoin: vi.fn().mockReturnValue({
+                  where: vi.fn().mockResolvedValue([{ id: 'proj-1', name: 'Proje 1' }]),
+                }),
+              }),
+            };
+          }),
+          update: vi.fn().mockReturnValue({
+            set: vi.fn().mockReturnValue({
+              where: vi.fn().mockReturnValue({
+                returning: vi.fn().mockResolvedValue([]),
+              }),
+            }),
+          }),
+        },
+      };
+    });
+
+    const bot = await setupBotForTest();
+    const replies: Array<{ text: string; replyMarkup?: unknown }> = [];
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    bot.api.config.use(async (_prev: any, method: any, payload: any) => {
+      if (method === 'sendMessage') {
+        replies.push({ text: payload.text, replyMarkup: payload.reply_markup });
+      }
+      return Promise.resolve({ ok: true, result: {} as never });
+    });
+
+    await bot.handleUpdate(makeStartUpdate(WORKER_ID, 55010));
+
+    expect(replies.length).toBeGreaterThan(0);
+    const { MESSAGES } = await import('@/lib/bot-messages');
+    // Must show the "in progress" message
+    expect(replies.some(r => r.text.includes(MESSAGES.startInProgress))).toBe(true);
+    // Must have exactly two inline buttons: Devam et + Baştan başla (D-15)
+    const replyWithButtons = replies.find(r => r.replyMarkup);
+    expect(replyWithButtons).toBeDefined();
+    const kb = replyWithButtons!.replyMarkup as { inline_keyboard: Array<Array<{ callback_data: string; text: string }>> };
+    const allButtons = kb.inline_keyboard.flat();
+    expect(allButtons.some(b => b.callback_data === 'flow:resume')).toBe(true);
+    expect(allButtons.some(b => b.callback_data === 'flow:restart')).toBe(true);
+  });
+
+  it('/iptal deletes conversation_state and replies "İptal edildi"', async () => {
+    const WORKER_ID = 55003;
+    const mockDelete = vi.fn().mockReturnValue({
+      where: vi.fn().mockResolvedValue([]),
+    });
+
+    vi.doMock('@/db', () => ({
+      db: {
+        insert: vi.fn().mockReturnValue({
+          values: vi.fn().mockReturnValue({
+            onConflictDoNothing: vi.fn().mockReturnValue({
+              returning: vi.fn().mockResolvedValue([{ id: BigInt(3) }]),
+            }),
+          }),
+        }),
+        select: vi.fn().mockReturnValue({
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue([]),
+          }),
+        }),
+        delete: mockDelete,
+      },
+    }));
+
+    const bot = await setupBotForTest();
+    const replies: string[] = [];
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    bot.api.config.use(async (_prev: any, method: any, payload: any) => {
+      if (method === 'sendMessage') {
+        replies.push(payload.text);
+      }
+      return Promise.resolve({ ok: true, result: {} as never });
+    });
+
+    await bot.handleUpdate(makeIptalUpdate(WORKER_ID, 55003 + 5000));
+
+    // Must reply 'İptal edildi' (D-17)
+    const { MESSAGES } = await import('@/lib/bot-messages');
+    expect(replies.some(r => r.includes(MESSAGES.cancelled))).toBe(true);
+    // Must have called delete
+    expect(mockDelete).toHaveBeenCalled();
+  });
+});
+
 describeIfDb('submission persistence & idempotency (SC4)', () => {
   let testDb: Awaited<ReturnType<typeof getTestDb>>;
 
