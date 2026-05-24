@@ -34,6 +34,35 @@ export function formatDistance(distanceM: number): string {
 }
 
 /**
+ * buildLocationCaptionLine — pure helper for the D-47 auditor caption decision.
+ *
+ * Returns the location-anomaly caption line to append, or null for the silent cases.
+ * Extracted from fanOutToAuditors so it can be unit-tested without mocking grammY.
+ *
+ * Three states (D-43/D-44):
+ *   'far'      + distanceM (not null) → "⚠ Konum rotadan uzak (~X km/m)"
+ *   'no_route' (any distanceM)        → "ℹ Rota yüklenmemiş — konum doğrulanamadı"
+ *   'near'     / null                 → null (silent — no caption line)
+ *   'far'      + null distanceM       → null (cannot format without distance)
+ *
+ * @param locationMatch  - Three-state value from submissions.locationMatch (D-44)
+ * @param distanceM      - Distance in metres from submissions.locationDistanceM; null when no_route
+ */
+export function buildLocationCaptionLine(
+  locationMatch: 'near' | 'far' | 'no_route' | null,
+  distanceM: number | null
+): string | null {
+  if (locationMatch === 'far' && distanceM !== null) {
+    return `⚠ Konum rotadan uzak (${formatDistance(distanceM)})`;
+  }
+  if (locationMatch === 'no_route') {
+    return `ℹ Rota yüklenmemiş — konum doğrulanamadı`;
+  }
+  // 'near', null, or 'far' without distance → silent
+  return null;
+}
+
+/**
  * snapToRoute — runs the PostGIS nearest-segment UPDATE inside `tx`.
  *
  * Best-effort (D-42): catches all errors, sets location_match='no_route' on

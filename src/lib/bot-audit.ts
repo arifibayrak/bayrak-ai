@@ -173,20 +173,18 @@ export async function fanOutToAuditors(submissionId: string): Promise<void> {
 
   // D-47: Location anomaly flag — mirrors D-28 over-delivery pattern (show the number, D-26 Turkish tone)
   // Three states: 'far' → distance warning; 'no_route' → neutral note; 'near'/null → silent (D-43/D-44)
+  // buildLocationCaptionLine encapsulates the pure decision and is unit-tested in tests/spatial.test.ts.
   const locationMatch = submission.locationMatch as 'near' | 'far' | 'no_route' | null;
   const distanceM = submission.locationDistanceM != null
     ? parseFloat(String(submission.locationDistanceM))
     : null;
 
-  if (locationMatch === 'far' && distanceM !== null) {
-    // lazy-import formatDistance per file discipline (no top-level import of @/lib/spatial)
-    const { formatDistance } = await import('@/lib/spatial');
-    captionLines.push(`⚠ Konum rotadan uzak (${formatDistance(distanceM)})`);
-  } else if (locationMatch === 'no_route') {
-    // Neutral note — NOT an alarm (D-43/D-47); project has no route or snap failed (D-42)
-    captionLines.push(`ℹ Rota yüklenmemiş — konum doğrulanamadı`);
+  // lazy-import per file discipline (no top-level import of @/lib/spatial)
+  const { buildLocationCaptionLine } = await import('@/lib/spatial');
+  const locationLine = buildLocationCaptionLine(locationMatch, distanceM);
+  if (locationLine !== null) {
+    captionLines.push(locationLine);
   }
-  // locationMatch === 'near' or null (pre-Phase-4 rows) → no caption line (silent)
   // Google Maps link is already in captionLines above — kept in all cases (D-47)
 
   const captionText = captionLines.join('\n');
