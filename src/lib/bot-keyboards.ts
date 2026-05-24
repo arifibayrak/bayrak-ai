@@ -126,3 +126,51 @@ export function buildProjectKeyboard(
 
   return kb;
 }
+
+// ---------------------------------------------------------------------------
+// Audit keyboards (Phase 3 — D-30, D-35)
+// ---------------------------------------------------------------------------
+
+/**
+ * buildAuditKeyboard — inline [✅ Onayla] / [❌ Reddet] buttons for auditor messages.
+ *
+ * Both buttons are on the same row (D-35: a single tap is final — no confirmation dialog).
+ * callback_data format: "audit:approve:<uuid>" and "audit:reject:<uuid>"
+ *
+ * Byte budget check (T-3-CB-02 mitigation):
+ *   "audit:approve:" = 14 bytes + 36-char UUID = 50 bytes ≤ 64 (Telegram max).
+ *   "audit:reject:"  = 13 bytes + 36-char UUID = 49 bytes ≤ 64.
+ *
+ * @param submissionId - 36-character UUID of the submission row
+ */
+export function buildAuditKeyboard(submissionId: string): InlineKeyboard {
+  return new InlineKeyboard()
+    .text('✅ Onayla', `audit:approve:${submissionId}`)
+    .text('❌ Reddet', `audit:reject:${submissionId}`);
+}
+
+/**
+ * buildRejectReasonKeyboard — canned reject reasons + free-text option (D-30).
+ *
+ * Each reason is on its own row for mobile readability (mirrors buildBoqKeyboard
+ * row pattern). The dispatcher (Plan 05) parses the reason as:
+ *   data.slice('audit:reason:'.length)
+ * so reason texts containing "/" are safe.
+ *
+ * The "audit:reason:free" sentinel triggers the Başka (yaz) free-text path (D-30).
+ *
+ * Canned reason taxonomy (D-30):
+ *   - Yetersiz iş
+ *   - Yanlış konum
+ *   - Eksik/bulanık fotoğraf
+ *   - Yanlış miktar
+ *   - Başka (yaz)  → audit:reason:free
+ */
+export function buildRejectReasonKeyboard(): InlineKeyboard {
+  return new InlineKeyboard()
+    .text('Yetersiz iş',            'audit:reason:Yetersiz iş').row()
+    .text('Yanlış konum',           'audit:reason:Yanlış konum').row()
+    .text('Eksik/bulanık fotoğraf', 'audit:reason:Eksik/bulanık fotoğraf').row()
+    .text('Yanlış miktar',          'audit:reason:Yanlış miktar').row()
+    .text('Başka (yaz)',            'audit:reason:free');
+}
