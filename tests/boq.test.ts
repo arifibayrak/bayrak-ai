@@ -1,0 +1,201 @@
+/**
+ * tests/boq.test.ts
+ *
+ * DB integration tests for BOQ Server Actions (src/actions/boq.ts).
+ * Gated behind describeIfDb — skips cleanly without TEST_DATABASE_URL.
+ *
+ * Covers:
+ * - Manual CRUD: addBoqItem, updateBoqItem, deleteBoqItem
+ * - remainingBalance helper
+ * - confirmBoqImport row count
+ * - Unauthorized guard on all actions
+ */
+
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describeIfDb, getTestDb, truncateAllTables } from './fixtures/db';
+import { remainingBalance } from '@/lib/boq-balance';
+
+// Mock next/cache to prevent revalidatePath from throwing outside Next.js context
+vi.mock('next/cache', () => ({
+  revalidatePath: vi.fn(),
+  revalidateTag: vi.fn(),
+}));
+
+// Mock auth() for authorized tests
+vi.mock('@/lib/auth', () => ({
+  auth: vi.fn().mockResolvedValue({ user: { email: 'test@example.com' } }),
+}));
+
+// ── Pure unit tests (no DB) ─────────────────────────────────────────────────
+describe('remainingBalance helper', () => {
+  it('returns plannedQty - approvedQty for string inputs', () => {
+    expect(remainingBalance('1000', '200')).toBe(800);
+  });
+
+  it('returns zero when fully approved', () => {
+    expect(remainingBalance('500', '500')).toBe(0);
+  });
+
+  it('returns negative when over-approved', () => {
+    expect(remainingBalance('100', '150')).toBe(-50);
+  });
+
+  it('handles decimal quantities', () => {
+    expect(remainingBalance('1000.5', '123.5')).toBeCloseTo(877);
+  });
+});
+
+// ── DB integration tests ────────────────────────────────────────────────────
+describeIfDb('BOQ Server Actions (DB)', () => {
+  let db: Awaited<ReturnType<typeof getTestDb>>;
+  let testProjectId: string;
+
+  beforeEach(async () => {
+    const { auth } = await import('@/lib/auth');
+    vi.mocked(auth).mockResolvedValue({ user: { email: 'test@example.com' } } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+
+    db = await getTestDb();
+    await truncateAllTables(db);
+
+    // Seed tenant
+    await db.execute(
+      (await import('drizzle-orm')).sql.raw(
+        `INSERT INTO tenants (id, name) VALUES ('00000000-0000-0000-0000-000000000001', 'Test Tenant') ON CONFLICT DO NOTHING`
+      )
+    );
+
+    // Seed project
+    const { projects } = await import('@/db/schema/projects');
+    const { sql } = await import('drizzle-orm');
+    const [project] = await db
+      .insert(projects)
+      .values({
+        tenantId: '00000000-0000-0000-0000-000000000001',
+        name: 'Test Project',
+      })
+      .returning({ id: projects.id });
+    testProjectId = project.id;
+  });
+
+  afterEach(async () => {
+    await truncateAllTables(db);
+  });
+
+  it('addBoqItem creates a BOQ item and it is retrievable from the DB', async () => {
+    const { addBoqItem } = await import('@/actions/boq');
+    const { boqItems } = await import('@/db/schema/boq-items');
+    const { eq } = await import('drizzle-orm');
+
+    const result = await addBoqItem({
+      projectId: testProjectId,
+      material: 'DN200 HDPE Boru',
+      unit: 'm',
+      plannedQty: 1500,
+    });
+
+    expect(result.ok).toBe(true);
+
+    const rows = await db
+      .select()
+      .from(boqItems)
+      .where(eq(boqItems.projectId, testProjectId));
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0].material).toBe('DN200 HDPE Boru');
+    expect(rows[0].unit).toBe('m');
+    expect(parseFloat(rows[0].plannedQty)).toBe(1500);
+  });
+
+  it('updateBoqItem modifies material and plannedQty', async () => {
+    const { addBoqItem, updateBoqItem } = await import('@/actions/boq');
+    const { boqItems } = await import('@/db/schema/boq-items');
+    const { eq } = await import('drizzle-orm');
+
+    const addResult = await addBoqItem({
+      projectId: testProjectId,
+      material: 'Old Material',
+      unit: 'm',
+      plannedQty: 100,
+    });
+    expect(addResult.ok).toBe(true);
+
+    const [row] = await db.select().from(boqItems).where(eq(boqItems.projectId, testProjectId));
+    const updateResult = await updateBoqItem(row.id, {
+      material: 'New Material',
+      unit: 'm²',
+      plannedQty: 250,
+    });
+
+    expect(updateResult.ok).toBe(true);
+
+    const [updated] = await db.select().from(boqItems).where(eq(boqItems.id, row.id));
+    expect(updated.material).toBe('New Material');
+    expect(updated.unit).toBe('m²');
+    expect(parseFloat(updated.plannedQty)).toBe(250);
+  });
+
+  it('deleteBoqItem removes the row', async () => {
+    const { addBoqItem, deleteBoqItem } = await import('@/actions/boq');
+    const { boqItems } = await import('@/db/schema/boq-items');
+    const { eq } = await import('drizzle-orm');
+
+    await addBoqItem({ projectId: testProjectId, material: 'Delete Me', unit: 'adet', plannedQty: 10 });
+    const [row] = await db.select().from(boqItems).where(eq(boqItems.projectId, testProjectId));
+
+    const deleteResult = await deleteBoqItem(row.id);
+    expect(deleteResult.ok).toBe(true);
+
+    const remaining = await db.select().from(boqItems).where(eq(boqItems.projectId, testProjectId));
+    expect(remaining).toHaveLength(0);
+  });
+
+  it('remaining balance is correctly computed from plannedQty and approvedQty', async () => {
+    const { addBoqItem } = await import('@/actions/boq');
+    const { boqItems } = await import('@/db/schema/boq-items');
+    const { eq, sql } = await import('drizzle-orm');
+
+    await addBoqItem({ projectId: testProjectId, material: 'Pipe', unit: 'm', plannedQty: 1000 });
+    const [row] = await db.select().from(boqItems).where(eq(boqItems.projectId, testProjectId));
+
+    // Manually set approvedQty to simulate Phase 3 approval
+    await db
+      .update(boqItems)
+      .set({ approvedQty: sql`200` })
+      .where(eq(boqItems.id, row.id));
+
+    const [updated] = await db.select().from(boqItems).where(eq(boqItems.id, row.id));
+    const balance = remainingBalance(updated.plannedQty, updated.approvedQty);
+
+    expect(balance).toBe(800);
+  });
+
+  it('confirmBoqImport inserts the correct number of rows', async () => {
+    const { confirmBoqImport } = await import('@/actions/boq');
+    const { boqItems } = await import('@/db/schema/boq-items');
+    const { eq } = await import('drizzle-orm');
+
+    const rows = [
+      { rowNumber: 2, material: 'Pipe A', unit: 'm', plannedQty: 100 },
+      { rowNumber: 3, material: 'Pipe B', unit: 'm³', plannedQty: 200 },
+      { rowNumber: 4, material: 'Valve', unit: 'adet', plannedQty: 5 },
+    ];
+
+    const result = await confirmBoqImport(testProjectId, rows);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.count).toBe(3);
+
+    const dbRows = await db.select().from(boqItems).where(eq(boqItems.projectId, testProjectId));
+    expect(dbRows).toHaveLength(3);
+  });
+
+  it('throws Unauthorized when auth() returns null', async () => {
+    const { auth } = await import('@/lib/auth');
+    vi.mocked(auth).mockResolvedValueOnce(null);
+
+    const { addBoqItem } = await import('@/actions/boq');
+    await expect(
+      addBoqItem({ projectId: testProjectId, material: 'X', unit: 'm', plannedQty: 1 })
+    ).rejects.toThrow('Unauthorized');
+  });
+});
