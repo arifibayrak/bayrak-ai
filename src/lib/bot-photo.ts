@@ -70,10 +70,13 @@ export async function uploadPhotoToBlob(
   // Upload to Vercel Blob under a flow-scoped path for easy retrieval
   // access: 'public' — photo URL is stored in submissions table for dashboard (Phase 5)
   // addRandomSuffix: false — deterministic path, one photo per flow
+  // allowOverwrite: true — re-sending a photo within the same flow (same flowId path)
+  // should replace the prior upload rather than throwing "blob already exists".
+  // Combined with the real per-flow flowId, paths are unique per submission.
   const { url } = await put(
     `submissions/${submissionFlowId}/photo.${ext}`,
     response.body!,
-    { access: 'public', addRandomSuffix: false }
+    { access: 'public', addRandomSuffix: false, allowOverwrite: true }
   );
 
   return url;

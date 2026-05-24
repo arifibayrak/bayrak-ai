@@ -913,13 +913,29 @@ export async function handleStepPhoto(
 
   // Photo received — upload to Vercel Blob (upload-on-receipt, Q1)
   const { uploadPhotoToBlob } = await import('@/lib/bot-photo');
-  const flowId = data.flowId as string;
+  // flowId lives on the conversation_state ROW (column), NOT in the JSONB `data`.
+  // Reading `data.flowId` always yields undefined, so every photo collided at
+  // `submissions/undefined/photo.jpg` (works once, then put() throws on the existing
+  // path). Load the authoritative flowId from the row so each submission gets a unique path.
+  const { conversationState } = await import('@/db/schema/conversation-state');
+  const { eq } = await import('drizzle-orm');
+  const stateRows = await db
+    .select()
+    .from(conversationState)
+    .where(eq(conversationState.telegramUserId, BigInt(telegramUserId)));
+  const flowId = stateRows?.[0]?.flowId as string | undefined;
+  if (!flowId) {
+    await ctx.reply(MESSAGES.genericError);
+    return;
+  }
 
   let photoUrl: string;
   try {
     photoUrl = await uploadPhotoToBlob(ctx, flowId);
-  } catch (_err) {
-    // T-02-15: upload failure — stay on step with Turkish error
+  } catch (err) {
+    // T-02-15: upload failure — stay on step with Turkish error.
+    // Log the real error so upload failures are diagnosable (previously swallowed).
+    console.error('[handleStepPhoto] uploadPhotoToBlob failed for flowId', flowId, ':', err);
     await ctx.reply(MESSAGES.photoUploadError);
     return;
   }
