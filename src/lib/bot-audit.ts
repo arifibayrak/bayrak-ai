@@ -436,27 +436,37 @@ export async function handleAuditDecision(
       return;
     }
 
-    // Resolve worker telegram_user_id for notification (D-37)
-    const workerRows = await db
-      .select({ telegramUserId: people.telegramUserId })
-      .from(people)
-      .where(eq(people.id, workerPersonId));
-
-    // Post-commit: edit all sibling messages + notify worker (D-34, D-37)
+    // Post-commit: edit all sibling messages FIRST (D-34).
+    // This runs before the worker notification so a DB read failure on the
+    // notification path (CR-02) can never leave stale keyboards on auditor messages.
     const auditorDisplayName = auditorPerson.displayName;
     await editAllSiblingMessages(submissionId, MESSAGES.auditApprovedOutcome(auditorDisplayName));
 
-    if (workerRows.length) {
-      const { bot } = await import('@/lib/telegram');
-      try {
-        await bot.api.sendMessage(
-          Number(workerRows[0].telegramUserId),
-          MESSAGES.workerApproved
-        );
-      } catch (notifyErr) {
-        // D-40: best-effort — log and continue
-        console.error('[handleAuditDecision] worker notification failed:', notifyErr);
+    // CR-02: wrap the post-commit worker lookup + notification in try/catch.
+    // The decision is already committed; a transient read failure must not propagate
+    // back to the handler (D-40 best-effort semantics for post-commit side effects).
+    try {
+      const workerRows = await db
+        .select({ telegramUserId: people.telegramUserId })
+        .from(people)
+        .where(eq(people.id, workerPersonId));
+
+      if (workerRows.length) {
+        const { bot } = await import('@/lib/telegram');
+        try {
+          await bot.api.sendMessage(
+            Number(workerRows[0].telegramUserId),
+            MESSAGES.workerApproved
+          );
+        } catch (notifyErr) {
+          // D-40: best-effort — log and continue
+          console.error('[handleAuditDecision] worker notification failed:', notifyErr);
+        }
       }
+    } catch (lookupErr) {
+      // D-40: transient DB read failure on post-commit notification — log and continue.
+      // The decision is committed; the worker notification is best-effort.
+      console.error('[handleAuditDecision] worker lookup failed (notification skipped):', lookupErr);
     }
 
     return;
@@ -573,26 +583,37 @@ export async function commitRejection(
     .delete(conversationState)
     .where(eq(conversationState.telegramUserId, BigInt(ctx.from.id)));
 
-  // Post-commit: edit all sibling messages + notify worker (D-34, D-37)
+  // Post-commit: edit all sibling messages FIRST (D-34), then notify worker (D-37).
+  // Sibling edit runs before the worker lookup so a transient DB read failure on
+  // the notification path (CR-02) cannot leave stale keyboards on auditor messages.
   await editAllSiblingMessages(submissionId, MESSAGES.auditRejectedOutcome(auditorDisplayName, reason));
 
+  // CR-02: wrap the post-commit worker lookup + notification in try/catch.
+  // The decision is already committed; a transient read failure must not propagate
+  // back to the handler (D-40 best-effort semantics for post-commit side effects).
   if (workerPersonId) {
-    const workerRows = await db
-      .select({ telegramUserId: people.telegramUserId })
-      .from(people)
-      .where(eq(people.id, workerPersonId));
+    try {
+      const workerRows = await db
+        .select({ telegramUserId: people.telegramUserId })
+        .from(people)
+        .where(eq(people.id, workerPersonId));
 
-    if (workerRows.length) {
-      const { bot } = await import('@/lib/telegram');
-      try {
-        await bot.api.sendMessage(
-          Number(workerRows[0].telegramUserId),
-          MESSAGES.workerRejected(reason)
-        );
-      } catch (notifyErr) {
-        // D-40: best-effort
-        console.error('[commitRejection] worker notification failed:', notifyErr);
+      if (workerRows.length) {
+        const { bot } = await import('@/lib/telegram');
+        try {
+          await bot.api.sendMessage(
+            Number(workerRows[0].telegramUserId),
+            MESSAGES.workerRejected(reason)
+          );
+        } catch (notifyErr) {
+          // D-40: best-effort
+          console.error('[commitRejection] worker notification failed:', notifyErr);
+        }
       }
+    } catch (lookupErr) {
+      // D-40: transient DB read failure on post-commit notification — log and continue.
+      // The decision is committed; the worker notification is best-effort.
+      console.error('[commitRejection] worker lookup failed (notification skipped):', lookupErr);
     }
   }
 }
