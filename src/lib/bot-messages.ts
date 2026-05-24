@@ -135,4 +135,44 @@ export const MESSAGES = {
   /** Photo upload failed */
   photoUploadError:
     'Fotoğraf yüklenemedi. Lütfen tekrar gönderin 📷',
+
+  // ------------------------------------------------------------------
+  // Phase 3: Audit Loop (D-26 tone: respectful "siz", light emoji)
+  // ------------------------------------------------------------------
+
+  /** AUDIT-02 / D-28: over-delivery warning in auditor notification caption */
+  auditOverDelivery: (newTotal: number, planned: number, unit: string) =>
+    `⚠ Sözleşmeyi aşıyor (${newTotal}/${planned} ${unit})`,
+
+  /** AUDIT-05 / D-30: auditor canned reason prompt (shown after ❌ Reddet tap) */
+  auditRejectPrompt:
+    'Ret gerekçesini seçin:',
+
+  /** AUDIT-05 / D-30: free-text reason prompt (shown after "Başka (yaz)" selection) */
+  auditRejectFreeTextPrompt:
+    'Lütfen ret gerekçenizi yazın:',
+
+  /** AUDIT-03 / D-36: unauthorized auditor tap toast */
+  auditUnauthorized:
+    'Yetkisiz erişim',
+
+  /** AUDIT-06 / D-29: late or duplicate tap toast (already resolved) */
+  auditAlreadyResolved:
+    'Bu kayıt zaten çözüldü',
+
+  /** AUDIT-04: outcome text for sibling-message edit on approve */
+  auditApprovedOutcome: (auditorName: string) =>
+    `✅ Onaylandı — ${auditorName}`,
+
+  /** AUDIT-05: outcome text for sibling-message edit on reject */
+  auditRejectedOutcome: (auditorName: string, reason: string) =>
+    `❌ Reddedildi — ${auditorName}: ${reason}`,
+
+  /** AUDIT-04 / D-37: worker notification on approve */
+  workerApproved:
+    '✅ Kaydınız onaylandı.',
+
+  /** AUDIT-05 / D-37: worker notification on reject */
+  workerRejected: (reason: string) =>
+    `❌ Kaydınız reddedildi: ${reason}`,
 } as const;
