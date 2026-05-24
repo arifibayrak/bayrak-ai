@@ -165,7 +165,8 @@ export async function fanOutToAuditors(submissionId: string): Promise<void> {
     captionLines.push(`📝 ${submission.notes}`);
   }
 
-  if (submission.locationLat && submission.locationLon) {
+  // WR-01: use != null (not falsy) so lat/lon of 0 is not silently dropped
+  if (submission.locationLat != null && submission.locationLon != null) {
     captionLines.push(
       `📍 https://maps.google.com/?q=${submission.locationLat},${submission.locationLon}`
     );
