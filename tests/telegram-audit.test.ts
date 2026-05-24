@@ -866,3 +866,101 @@ describeIfDb('AUDIT-05: reject flow with and without reason', () => {
     expect(subRows.rows[0].rejection_reason).toBeNull();
   });
 });
+
+// ---------------------------------------------------------------------------
+// CR-01 regression test — de-assigned auditor cannot commit a rejection
+// (describeIfDb, live DB — verifies authorization re-check in commitRejection)
+// ---------------------------------------------------------------------------
+
+describeIfDb('CR-01: de-assigned auditor cannot commit a rejection after assignment is revoked', () => {
+  let db: Awaited<ReturnType<typeof getTestDb>>;
+
+  beforeEach(async () => {
+    process.env.TELEGRAM_BOT_TOKEN = 'TEST:fake_token_cr01';
+    process.env.TELEGRAM_WEBHOOK_SECRET = 'test-secret-cr01';
+    vi.doMock('@/db', async () => await vi.importActual('@/db'));
+    vi.resetModules();
+    db = await getTestDb();
+    await truncateAllTables(db);
+  });
+
+  afterEach(async () => {
+    delete process.env.TELEGRAM_BOT_TOKEN;
+    delete process.env.TELEGRAM_WEBHOOK_SECRET;
+    if (db) await truncateAllTables(db);
+    vi.restoreAllMocks();
+    vi.resetModules();
+  });
+
+  it('CR-01: auditor whose assignment is revoked between reject tap and free-text commit cannot finalize rejection', async () => {
+    const { sql } = await import('drizzle-orm');
+
+    // UUIDs for this test
+    const T8 = '00000000-0000-0000-0008-000000000001'; // tenant
+    const P8 = '00000000-0000-0000-0008-000000000002'; // project
+    const B8 = '00000000-0000-0000-0008-000000000003'; // boqItem
+    const W8 = '00000000-0000-0000-0008-000000000004'; // worker
+    const A8 = '00000000-0000-0000-0008-000000000005'; // auditor
+    const AS8 = '00000000-0000-0000-0008-000000000006'; // assignment
+    const S8 = '00000000-0000-0000-0008-000000000007'; // submission
+
+    // Seed: default tenant (for conversation_state FK), test tenant, project, boqItem, people, assignment, submission
+    await db.execute(sql.raw(`INSERT INTO tenants (id, name) VALUES ('00000000-0000-0000-0000-000000000001', 'Default Tenant') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO tenants (id, name) VALUES ('${T8}', 'CR01 Tenant') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO projects (id, tenant_id, name) VALUES ('${P8}', '${T8}', 'CR01 Project') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO boq_items (id, tenant_id, project_id, material, unit, planned_qty, approved_qty) VALUES ('${B8}', '${T8}', '${P8}', 'DN200 HDPE', 'm', '1000.000', '0.000') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO people (id, tenant_id, telegram_user_id, display_name) VALUES ('${W8}', '${T8}', 1006, 'Worker CR01') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO people (id, tenant_id, telegram_user_id, display_name) VALUES ('${A8}', '${T8}', 2008, 'Auditor CR01') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO assignments (id, tenant_id, person_id, project_id, role_on_project) VALUES ('${AS8}', '${T8}', '${A8}', '${P8}', 'auditor') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO submissions (id, tenant_id, flow_id, person_id, project_id, boq_item_id, photo_url, quantity, status) VALUES ('${S8}', '${T8}', gen_random_uuid(), '${W8}', '${P8}', '${B8}', 'https://example.com/photo.jpg', '5.000', 'pending_audit') ON CONFLICT DO NOTHING`));
+
+    vi.resetModules();
+    const bot = await setupBotForTest();
+
+    // Step 1: tap ❌ Reddet — auditor is still assigned at this point
+    await bot.handleUpdate(makeCallbackUpdate(2008, `audit:reject:${S8}`, 9501));
+
+    // Verify FSM state was written (auditor is now in AWAITING_REJECT_REASON)
+    const stateAfterTap = await db.execute(sql.raw(`SELECT current_step FROM conversation_state WHERE telegram_user_id = 2008`));
+    expect(stateAfterTap.rows[0]?.current_step).toBe('AWAITING_REJECT_REASON');
+
+    // Step 2: REVOKE the auditor's assignment (simulates assignment removal between tap and commit)
+    await db.execute(sql.raw(`DELETE FROM assignments WHERE id = '${AS8}'`));
+
+    // Step 3: auditor now sends free-text reason — commitRejection should detect revoked assignment
+    vi.resetModules();
+    const bot2 = await setupBotForTest();
+    const replies: string[] = [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    bot2.api.config.use(async (_prev: any, method: any, payload: any) => {
+      if ((method === 'sendMessage' || method === 'answerCallbackQuery') && (payload as { text?: string }).text) {
+        replies.push((payload as { text: string }).text);
+      }
+      return Promise.resolve({ ok: true, result: {} as any });
+    });
+
+    // Simulate sending a free-text message from the auditor (telegram_user_id=2008)
+    const messageUpdate = {
+      update_id: 9502,
+      message: {
+        message_id: 77,
+        from: { id: 2008, first_name: 'Auditor CR01', is_bot: false, language_code: 'tr' },
+        chat: { id: 2008, type: 'private' as const },
+        date: Math.floor(Date.now() / 1000),
+        text: 'Yetersiz kalite',
+      },
+    };
+    await bot2.handleUpdate(messageUpdate);
+
+    // Verify: submission must still be pending_audit (rejection was refused)
+    const subAfter = await db.execute(sql.raw(`SELECT status, rejection_reason FROM submissions WHERE id = '${S8}'`));
+    expect(subAfter.rows[0].status).toBe('pending_audit');
+    expect(subAfter.rows[0].rejection_reason).toBeNull();
+
+    // The de-assigned auditor should have received the unauthorized message ('Yetkisiz erişim')
+    const hasUnauthorized = replies.some(r =>
+      r.includes('Yetkisiz') || r.includes('yetkisiz') || r.includes('unauthorized') || r.includes('Unauthorized')
+    );
+    expect(hasUnauthorized).toBe(true);
+  });
+});

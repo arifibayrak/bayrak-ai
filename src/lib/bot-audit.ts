@@ -527,16 +527,72 @@ export async function commitRejection(
 ): Promise<void> {
   const { MESSAGES } = await import('@/lib/bot-messages');
   const { people } = await import('@/db/schema/people');
-  const { eq } = await import('drizzle-orm');
+  const { submissions } = await import('@/db/schema/submissions');
+  const { assignments } = await import('@/db/schema/assignments');
+  const { eq, and } = await import('drizzle-orm');
   const { conversationState } = await import('@/db/schema/conversation-state');
 
-  // Get auditor's display name + the worker's telegramUserId (need it for notify after commit)
-  const auditorRows = await db
-    .select({ displayName: people.displayName })
-    .from(people)
-    .where(eq(people.id, auditorPersonId));
+  // ── CR-01: Re-validate authorization at the mutation point ──────────────
+  // D-36: never trust FSM data alone — re-resolve the caller's identity from
+  // ctx.from.id and re-check that the caller is still an active auditor on the
+  // submission's project. An auditor whose assignment is revoked between tapping
+  // ❌ and typing a reason must NOT be able to commit the rejection.
 
-  const auditorDisplayName = auditorRows[0]?.displayName ?? 'Denetçi';
+  // Re-resolve caller identity from ctx.from.id (do NOT trust auditorPersonId from FSM data alone)
+  const callerRows = await db
+    .select({ id: people.id, displayName: people.displayName })
+    .from(people)
+    .where(eq(people.telegramUserId, BigInt(ctx.from.id)));
+
+  if (!callerRows.length || callerRows[0].id !== auditorPersonId) {
+    // The caller's identity does not match the FSM's recorded auditor — reject silently
+    await ctx.reply(MESSAGES.auditUnauthorized);
+    // Clear stale FSM state for safety
+    await db
+      .delete(conversationState)
+      .where(eq(conversationState.telegramUserId, BigInt(ctx.from.id)));
+    return;
+  }
+
+  // Re-check the auditor is still assigned to the submission's project (D-36)
+  const subForAuthRows = await db
+    .select({ projectId: submissions.projectId })
+    .from(submissions)
+    .where(eq(submissions.id, submissionId));
+
+  if (!subForAuthRows.length) {
+    // Submission not found — toast and clear state
+    await ctx.reply(MESSAGES.auditAlreadyResolved);
+    await db
+      .delete(conversationState)
+      .where(eq(conversationState.telegramUserId, BigInt(ctx.from.id)));
+    return;
+  }
+
+  const assignedRows = await db
+    .select({ id: assignments.id })
+    .from(assignments)
+    .where(
+      and(
+        eq(assignments.personId, auditorPersonId),
+        eq(assignments.projectId, subForAuthRows[0].projectId),
+        eq(assignments.roleOnProject, 'auditor')
+      )
+    );
+
+  if (!assignedRows.length) {
+    // Auditor assignment has been revoked since the reject tap — refuse the commit
+    await ctx.reply(MESSAGES.auditUnauthorized);
+    await db
+      .delete(conversationState)
+      .where(eq(conversationState.telegramUserId, BigInt(ctx.from.id)));
+    return;
+  }
+
+  // ── Authorization passed ─────────────────────────────────────────────────
+
+  // Get auditor's display name for post-commit caption (already resolved above)
+  const auditorDisplayName = callerRows[0].displayName ?? 'Denetçi';
 
   const txDb = await getTxDb();
   let workerPersonId: string | null = null;
