@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 4 context gathered
-last_updated: "2026-05-24T19:57:44.265Z"
-last_activity: 2026-05-24 -- Phase 4 planning complete
+stopped_at: "Completed 04-01-PLAN.md: schema + seed fixture + Wave 0 test scaffold"
+last_updated: "2026-05-24T20:08:53Z"
+last_activity: 2026-05-24 -- Phase 04-01 completed
 progress:
   total_phases: 6
   completed_phases: 3
   total_plans: 22
-  completed_plans: 18
+  completed_plans: 19
   percent: 50
 ---
 
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-23)
 
 **Core value:** Every unit of field work flows through one trustworthy loop — worker submits → auditor approves on-site → central project data (BOQ + map) updates automatically
-**Current focus:** Phase 4 — spatial layer
+**Current focus:** Phase 4 — Spatial Layer
 
 ## Current Position
 
-Phase: 4
-Plan: Not started
+Phase: 4 (Spatial Layer) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
-Last activity: 2026-05-24 -- Phase 4 planning complete
+Last activity: 2026-05-24
 
-Progress: [██████████] 100%
+Progress: [█████████░] 86%
 
 ## Performance Metrics
 
@@ -67,6 +67,7 @@ Progress: [██████████] 100%
 | Phase 03-audit-loop P03-03 | 8min | 2 tasks | 2 files |
 | Phase 03-audit-loop P03-04 | 20m | 2 tasks | 3 files |
 | Phase 03-audit-loop P05 | 180 | 3 tasks | 3 files |
+| Phase 04-spatial-layer P01 | 7 | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -98,6 +99,8 @@ Recent decisions affecting current work:
 - [Phase 01-06]: ExcelJS Buffer typing — Node 24 Buffer<ArrayBufferLike> not assignable to ExcelJS's ArrayBuffer-based Buffer; use buffer.buffer.slice(byteOffset, byteOffset+byteLength) to extract underlying ArrayBuffer
 - [Phase 01-06]: NextResponse body must be BodyInit — use new Uint8Array(buffer) not Buffer directly for xlsx download routes
 - [Phase 01-06]: Base UI DropdownMenuTrigger uses render prop for polymorphism (no asChild — consistent with Button pattern from 01-05)
+- [Phase 04-01]: Five Phase 4 spatial columns on submissions — all nullable; locationMatch text enum {near,far,no_route} is three-state source of truth (D-43/D-44); locationWarning bool for SC2 filtering; locationDistanceM stored to avoid re-querying PostGIS in fanOutToAuditors
+- [Phase 04-01]: SPATIAL_FIXTURE_IDS const exported alongside seedSpatialFixture so test files import UUIDs without duplicating them
 
 ### Pending Todos
 
@@ -119,6 +122,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-24T19:28:50.601Z
+Last session: 2026-05-24T20:10:27.662Z
 Stopped at: Phase 4 context gathered
-Resume file: .planning/phases/04-spatial-layer/04-CONTEXT.md
+Resume file: None

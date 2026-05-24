@@ -45,8 +45,8 @@ Requirements for the initial release. Each maps to roadmap phases.
 
 ### Geospatial
 
-- [ ] **GEO-01**: A submission's shared lat/long is matched to the nearest segment of the project's pipeline route (PostGIS)
-- [ ] **GEO-02**: A submission located beyond a configured distance threshold from the route is flagged as a location anomaly
+- [x] **GEO-01**: A submission's shared lat/long is matched to the nearest segment of the project's pipeline route (PostGIS)
+- [x] **GEO-02**: A submission located beyond a configured distance threshold from the route is flagged as a location anomaly
 
 ### Office Dashboard
 
@@ -134,8 +134,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | AUDIT-04 | Phase 3 | Complete |
 | AUDIT-05 | Phase 3 | Complete |
 | AUDIT-06 | Phase 3 | Complete |
-| GEO-01 | Phase 4 | Pending |
-| GEO-02 | Phase 4 | Pending |
+| GEO-01 | Phase 4 | Complete |
+| GEO-02 | Phase 4 | Complete |
 | DASH-01 | Phase 5 | Pending |
 | DASH-02 | Phase 5 | Pending |
 | DASH-03 | Phase 5 | Pending |
