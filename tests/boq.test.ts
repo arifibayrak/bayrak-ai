@@ -45,6 +45,32 @@ describe('remainingBalance helper', () => {
   });
 });
 
+// ── BOQ completion percentage edge cases (DASH-04) ──────────────────────────
+// Formula: planned > 0 ? Math.min((approved / planned) * 100, 100) : 0
+// All pure math — no DB required.
+describe('BOQ completion percentage', () => {
+  it('completion percentage is capped at 100 when over-approved (planned 100, approved 150 → 100)', () => {
+    const planned = 100;
+    const approved = 150;
+    const pct = Math.min((approved / planned) * 100, 100);
+    expect(pct).toBe(100);
+  });
+
+  it('completion percentage is 0 when planned is 0 (division guard)', () => {
+    const planned = 0;
+    const approved = 0;
+    const pct = planned > 0 ? Math.min((approved / planned) * 100, 100) : 0;
+    expect(pct).toBe(0);
+  });
+
+  it('completion percentage is exact for partial (planned 1000, approved 250 → 25)', () => {
+    const planned = 1000;
+    const approved = 250;
+    const pct = planned > 0 ? Math.min((approved / planned) * 100, 100) : 0;
+    expect(pct).toBe(25);
+  });
+});
+
 // ── DB integration tests ────────────────────────────────────────────────────
 describeIfDb('BOQ Server Actions (DB)', () => {
   let db: Awaited<ReturnType<typeof getTestDb>>;
