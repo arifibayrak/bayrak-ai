@@ -2223,7 +2223,33 @@ describe('confirm summary + edit (D-16)', () => {
 describeIfDb('submission persistence & idempotency (SC4)', () => {
   let testDb: Awaited<ReturnType<typeof getTestDb>>;
 
+  // Seeded fixture IDs — stable across tests in this describe block
+  const TENANT_ID = '00000000-0000-0000-0000-000000000001';
+  const WORKER_TELEGRAM_ID = 91001;
+  // These will be set after seeding (auto-generated UUIDs)
+  let personId: string;
+  let projectId: string;
+  let boqItemId: string;
+  let flowId: string;
+
   beforeEach(async () => {
+    // Reset modules FIRST — clear any vi.doMock from prior test groups
+    // (especially the '@neondatabase/serverless' mock from submission insert unit tests)
+    vi.resetModules();
+
+    // Restore the real @neondatabase/serverless so getTestDb() gets the actual
+    // neon + Pool exports (not the partial mock from submission insert unit tests).
+    // vi.doMock with importActual replaces any prior factory for this module key.
+    vi.doMock('@neondatabase/serverless', async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return await vi.importActual<any>('@neondatabase/serverless');
+    });
+    vi.doMock('drizzle-orm/neon-serverless', async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return await vi.importActual<any>('drizzle-orm/neon-serverless');
+    });
+
+    // Now getTestDb() gets a clean, un-mocked @neondatabase/serverless import
     testDb = await getTestDb();
     await truncateAllTables(testDb);
 
@@ -2231,14 +2257,72 @@ describeIfDb('submission persistence & idempotency (SC4)', () => {
     const { sql } = await import('drizzle-orm');
     await testDb.execute(sql.raw(`
       INSERT INTO tenants (id, name)
-      VALUES ('00000000-0000-0000-0000-000000000001', 'Default Tenant (test)')
+      VALUES ('${TENANT_ID}', 'Default Tenant (test)')
       ON CONFLICT DO NOTHING
+    `));
+
+    // Seed a project
+    const projResult = await testDb.execute(sql.raw(`
+      INSERT INTO projects (tenant_id, name)
+      VALUES ('${TENANT_ID}', 'Test Boru Hattı SC4')
+      RETURNING id
+    `));
+    projectId = (projResult.rows[0] as { id: string }).id;
+
+    // Seed a BOQ item
+    const boqResult = await testDb.execute(sql.raw(`
+      INSERT INTO boq_items (tenant_id, project_id, material, unit, planned_qty, approved_qty)
+      VALUES ('${TENANT_ID}', '${projectId}', 'DN200 HDPE Boru', 'm', '500', '100')
+      RETURNING id
+    `));
+    boqItemId = (boqResult.rows[0] as { id: string }).id;
+
+    // Seed a worker (people row)
+    const personResult = await testDb.execute(sql.raw(`
+      INSERT INTO people (tenant_id, telegram_user_id, telegram_name, display_name)
+      VALUES ('${TENANT_ID}', ${WORKER_TELEGRAM_ID}, 'TestWorker', 'Test Worker SC4')
+      RETURNING id
+    `));
+    personId = (personResult.rows[0] as { id: string }).id;
+
+    // Seed assignment (worker on the project)
+    await testDb.execute(sql.raw(`
+      INSERT INTO assignments (tenant_id, person_id, project_id, role_on_project)
+      VALUES ('${TENANT_ID}', '${personId}', '${projectId}', 'worker')
+    `));
+
+    // Generate a stable flowId for the tests
+    const flowResult = await testDb.execute(sql.raw(`SELECT gen_random_uuid() AS id`));
+    flowId = (flowResult.rows[0] as { id: string }).id;
+
+    // Seed a conversation_state row in CONFIRM step with all required fields
+    await testDb.execute(sql.raw(`
+      INSERT INTO conversation_state (
+        tenant_id, telegram_user_id, person_id, flow_id, current_step, data, updated_at
+      ) VALUES (
+        '${TENANT_ID}',
+        ${WORKER_TELEGRAM_ID},
+        '${personId}',
+        '${flowId}',
+        'confirm',
+        '{"step":"confirm","projectId":"${projectId}","boqItemId":"${boqItemId}","photoUrl":"https://blob.example.com/sc4-photo.jpg","photoFileId":"sc4_file_id","locationLat":41.0082,"locationLon":28.9784,"quantity":100,"unit":"m","notes":null}',
+        NOW()
+      )
     `));
 
     process.env.TELEGRAM_BOT_TOKEN = 'TEST:fake_token_for_db_tests';
     process.env.TELEGRAM_WEBHOOK_SECRET = 'db-test-secret-value';
+
+    // Reset modules again after env setup to get telegram.ts with fresh env vars
     vi.resetModules();
+
+    // Point @/db at the test database
     vi.doMock('@/db', () => ({ db: testDb }));
+
+    // Mock uploadPhotoToBlob to avoid real Telegram/Blob calls
+    vi.doMock('@/lib/bot-photo', () => ({
+      uploadPhotoToBlob: vi.fn().mockResolvedValue('https://blob.example.com/sc4-photo.jpg'),
+    }));
   });
 
   afterEach(async () => {
@@ -2249,8 +2333,153 @@ describeIfDb('submission persistence & idempotency (SC4)', () => {
     vi.resetModules();
   });
 
-  it.todo('LOG-08: confirm step inserts exactly one submissions row with status pending_audit');
-  it.todo('D-13 SC4: duplicate update_id is a no-op (processed_updates PK conflict)');
-  it.todo('D-13 SC4: duplicate flow_id (double-confirm) is a no-op (submissions_flow_id_unique)');
-  it.todo('D-22: stale conversation_state (>24h updatedAt) triggers clean restart');
+  /** Build a confirm:submit callback update with a given update_id */
+  function makeConfirmSubmitUpdate(updateId: number) {
+    return {
+      update_id: updateId,
+      callback_query: {
+        id: `cb-sc4-${updateId}`,
+        from: {
+          id: WORKER_TELEGRAM_ID,
+          first_name: 'TestWorker',
+          is_bot: false,
+          language_code: 'tr',
+        },
+        chat_instance: 'chat-inst-sc4',
+        data: 'confirm:submit',
+        message: {
+          message_id: 500 + updateId,
+          from: { id: 123456, is_bot: true, first_name: 'TestBot', username: 'testbot' },
+          chat: { id: WORKER_TELEGRAM_ID, type: 'private' as const, first_name: 'TestWorker' },
+          date: Math.floor(Date.now() / 1000),
+          text: 'confirm summary',
+        },
+      },
+    };
+  }
+
+  it('SC3 LOG-08: confirm inserts exactly one submissions row with status=pending_audit', async () => {
+    const { bot } = await import('@/lib/telegram');
+    vi.spyOn(bot, 'init').mockResolvedValue();
+    bot.botInfo = {
+      id: 123456, is_bot: true, first_name: 'TestBot', username: 'testbot',
+      can_join_groups: false, can_read_all_group_messages: false,
+      supports_inline_queries: false, can_manage_bots: false,
+      can_connect_to_business: false, has_main_web_app: false,
+      has_topics_enabled: false, allows_users_to_create_topics: false,
+    };
+    bot.api.config.use((_prev, _method, _payload, _signal) =>
+      Promise.resolve({ ok: true, result: {} as never })
+    );
+
+    // Deliver confirm:submit
+    await bot.handleUpdate(makeConfirmSubmitUpdate(910010));
+
+    // Assert exactly one submissions row with correct values
+    const { sql } = await import('drizzle-orm');
+    const result = await testDb.execute(
+      sql.raw(`SELECT * FROM submissions WHERE flow_id = '${flowId}'`)
+    );
+    expect(result.rows).toHaveLength(1);
+    const row = result.rows[0] as {
+      status: string; person_id: string; project_id: string;
+      boq_item_id: string; quantity: string; notes: string | null;
+    };
+    expect(row.status).toBe('pending_audit');
+    expect(row.person_id).toBe(personId);
+    expect(row.project_id).toBe(projectId);
+    expect(row.boq_item_id).toBe(boqItemId);
+    expect(parseFloat(row.quantity)).toBe(100);
+    expect(row.notes).toBeNull();
+
+    // Assert conversation_state row is deleted
+    const stateResult = await testDb.execute(
+      sql.raw(`SELECT * FROM conversation_state WHERE telegram_user_id = ${WORKER_TELEGRAM_ID}`)
+    );
+    expect(stateResult.rows).toHaveLength(0);
+  });
+
+  it('SC4 D-13: same update_id delivered twice yields exactly one submissions row (both guards)', async () => {
+    // Deliver confirm:submit with update_id=910020
+    const { bot } = await import('@/lib/telegram');
+    vi.spyOn(bot, 'init').mockResolvedValue();
+    bot.botInfo = {
+      id: 123456, is_bot: true, first_name: 'TestBot', username: 'testbot',
+      can_join_groups: false, can_read_all_group_messages: false,
+      supports_inline_queries: false, can_manage_bots: false,
+      can_connect_to_business: false, has_main_web_app: false,
+      has_topics_enabled: false, allows_users_to_create_topics: false,
+    };
+    bot.api.config.use((_prev, _method, _payload, _signal) =>
+      Promise.resolve({ ok: true, result: {} as never })
+    );
+
+    const UPDATE_ID = 910020;
+
+    // First delivery
+    await bot.handleUpdate(makeConfirmSubmitUpdate(UPDATE_ID));
+
+    // The conversation_state row is now deleted, so we need to not re-seed it.
+    // The second delivery should be fenced by the processed_updates dedup (D-13 Guard 1).
+    // Guard 2 (flow_id unique) provides belt-and-suspenders in case Guard 1 is bypassed.
+
+    // Second delivery of the SAME update_id
+    await bot.handleUpdate(makeConfirmSubmitUpdate(UPDATE_ID));
+
+    // Assert still exactly one submissions row for this flow_id
+    const { sql } = await import('drizzle-orm');
+    const result = await testDb.execute(
+      sql.raw(`SELECT count(*)::int AS cnt FROM submissions WHERE flow_id = '${flowId}'`)
+    );
+    const count = (result.rows[0] as { cnt: number }).cnt;
+    expect(count).toBe(1);
+  });
+
+  it('SC4 D-13 Guard 2: double-confirm with different update_ids but same flow_id yields one row', async () => {
+    // This test bypasses Guard 1 (processed_updates) by using two different update_ids,
+    // proving Guard 2 (submissions_flow_id_unique + onConflictDoNothing) works independently.
+
+    const { bot } = await import('@/lib/telegram');
+    vi.spyOn(bot, 'init').mockResolvedValue();
+    bot.botInfo = {
+      id: 123456, is_bot: true, first_name: 'TestBot', username: 'testbot',
+      can_join_groups: false, can_read_all_group_messages: false,
+      supports_inline_queries: false, can_manage_bots: false,
+      can_connect_to_business: false, has_main_web_app: false,
+      has_topics_enabled: false, allows_users_to_create_topics: false,
+    };
+    bot.api.config.use((_prev, _method, _payload, _signal) =>
+      Promise.resolve({ ok: true, result: {} as never })
+    );
+
+    // First confirm — inserts submission, deletes conversation_state
+    await bot.handleUpdate(makeConfirmSubmitUpdate(910031));
+
+    // Re-seed conversation_state with the SAME flow_id to simulate a double-confirm
+    // (e.g. the original state row was not cleaned up — tests Guard 2 in isolation)
+    const { sql } = await import('drizzle-orm');
+    await testDb.execute(sql.raw(`
+      INSERT INTO conversation_state (
+        tenant_id, telegram_user_id, person_id, flow_id, current_step, data, updated_at
+      ) VALUES (
+        '${TENANT_ID}',
+        ${WORKER_TELEGRAM_ID},
+        '${personId}',
+        '${flowId}',
+        'confirm',
+        '{"step":"confirm","projectId":"${projectId}","boqItemId":"${boqItemId}","photoUrl":"https://blob.example.com/sc4-photo.jpg","photoFileId":"sc4_file_id","locationLat":41.0082,"locationLon":28.9784,"quantity":100,"unit":"m","notes":null}',
+        NOW()
+      )
+    `));
+
+    // Second confirm with a DIFFERENT update_id (bypasses Guard 1)
+    await bot.handleUpdate(makeConfirmSubmitUpdate(910032));
+
+    // Assert still exactly one submissions row (Guard 2: onConflictDoNothing on flow_id)
+    const result = await testDb.execute(
+      sql.raw(`SELECT count(*)::int AS cnt FROM submissions WHERE flow_id = '${flowId}'`)
+    );
+    const count = (result.rows[0] as { cnt: number }).cnt;
+    expect(count).toBe(1);
+  });
 });
