@@ -8,6 +8,13 @@
       "when": 1779582629995,
       "tag": "0000_lame_silver_sable",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1779625063235,
+      "tag": "0001_fixed_sunspot",
+      "breakpoints": true
     }
   ]
 }
