@@ -246,7 +246,23 @@ Plans:
   4. Every office-engineer mutation (project create/update, BOQ edit, unit-price set, person assignment) writes a corresponding row to `office_activity_log` with actor, action type, entity reference, and timestamp
   5. `getCanonicalSubmissions()`, `getProjectMetrics()`, `getPersonMetrics()`, and `getPortfolioOverview()` are callable from the application with auth-guard and tenant scope, returning typed results
 
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+**Wave 1**
+
+- [ ] 07-01-PLAN.md — Install decimal.js + author all 4 schema changes (unit_price/currency + 3 new tables) + CanonicalSubmission type + barrel + FK-safe truncate + Wave 0 test scaffold
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 07-02-PLAN.md — [BLOCKING] generate migration + hand-edit CHECK constraint + hand-write partial-index migration + apply via tsx migrate.ts (closes the false-positive verification trap); decimal.js legitimacy gate
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 07-03-PLAN.md — logOfficeActivity() after()-deferred helper + analytics.ts (getCanonicalSubmissions, getProjectMetrics, getPersonMetrics, getPortfolioOverview, getOfficeActivityLog) — currency-grouped, money-in-Postgres, auth+tenant guarded
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 07-04-PLAN.md — setUnitPrice() + logOfficeActivity wiring across boq/projects/people/routes + BOQ dialog price/currency fields (COST-01 UI) + human-verify persistence checkpoint
 
 ### Phase 8: Admin Shell & Information Architecture
 
@@ -326,7 +342,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 4. Spatial Layer | 4/4 | Complete    | 2026-05-24 |
 | 5. Dashboard & Map | 6/6 | Complete   | 2026-05-24 |
 | 6. AI Vision Assist | 0/TBD | Not started | - |
-| 7. Data Foundation & Canonical Record | 0/TBD | Not started | - |
+| 7. Data Foundation & Canonical Record | 0/4 | Planned | - |
 | 8. Admin Shell & Information Architecture | 0/TBD | Not started | - |
 | 9. Performance Analytics & Scorecards | 0/TBD | Not started | - |
 | 10. Hakkediş Billing | 0/TBD | Not started | - |
