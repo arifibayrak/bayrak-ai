@@ -69,13 +69,58 @@ Requirements for the initial release. Each maps to roadmap phases.
 - [x] **I18N-01**: The worker Telegram bot operates in Turkish
 - [x] **I18N-02**: The office dashboard is switchable between Turkish and English
 
-## v2 Requirements
+## v2.0 Requirements — Operations Intelligence & Hakkediş
 
-Deferred to a future release. Tracked but not in the current roadmap.
+Current milestone. Admin-grade performance + cost analytics, Turkish hakkediş billing, and a restructured dashboard. **Locked decisions:** hakkediş periods anchor on approval date (`decidedAt`); multi-currency supported; deduction rates (KDV / tevkifat / stopaj / teminat) are configurable per period, never hardcoded; money math runs in Postgres / decimal.js (never raw JS floats).
 
-### Payments & Reporting
+### Performance & Scorecards
 
-- **HAK-01**: Hakkediş (interim payment certificate) PDF generation from approved quantities
+- [ ] **PERF-01**: Admin can view a worker performance scorecard (submission volume, approval rate, rejection rate, location-compliance rate, output quantity, throughput) per project and across all projects
+- [ ] **PERF-02**: Admin can view an auditor performance scorecard (decision count, approval/rejection split, mean decision turnaround `decidedAt − submittedAt`, pending backlog, SLA-breach rate)
+- [ ] **PERF-03**: Office-engineer actions (project create/edit, BOQ import, unit-price edits, person approval/assignment, hakkediş create/finalize) are recorded in an activity log and shown as an office-engineer activity scorecard
+- [ ] **PERF-04**: Admin can open a per-employee profile page showing that person's metrics, an activity timeline, and (for workers) value contribution
+- [ ] **PERF-05**: Admin can compare employees side-by-side in a leaderboard ranked by a chosen metric
+- [ ] **PERF-06**: Admin sees performance & SLA alerts on the overview (audits slower than a threshold, rejection-rate spikes, location-warning spikes, stalled progress)
+
+### Earned-Value Cost Analytics
+
+- [ ] **COST-01**: Office engineer can set a unit price (birim fiyat) and currency per BOQ line item (multi-currency; price nullable)
+- [ ] **COST-02**: System computes contracted value (BAC = Σ planned_qty × unit_price) and earned value (EV = Σ approved_qty × unit_price) per project and per BOQ item
+- [ ] **COST-03**: System shows % complete by value (EV / BAC) per project and per BOQ item
+- [ ] **COST-04**: System shows per-worker value contribution (Σ approved_qty × unit_price attributed to each worker)
+- [ ] **COST-05**: System shows rework / rejected value (Σ rejected_qty × unit_price) as a waste indicator
+
+### Hakkediş / Billing
+
+- [ ] **HAK-01**: Office engineer can create progress-payment periods (dönem) for a project with a cutoff date
+- [ ] **HAK-02**: System computes per-period line items using cumulative (yeşil defter) quantities anchored on approval date: period qty = cumulative-to-cutoff − previous-period cumulative, with a locked unit-price snapshot
+- [ ] **HAK-03**: System computes hakkediş deductions (KDV, KDV tevkifat, stopaj, teminat) using configurable per-period rates, producing gross and net payable
+- [ ] **HAK-04**: Office engineer can track payment status per period (draft → submitted → paid)
+- [ ] **HAK-05**: A finalized hakkediş period is locked as an immutable snapshot (quantities, prices, rates frozen)
+
+### Exports
+
+- [ ] **EXP-01**: Admin can export a submissions ledger to Excel using the canonical record shape, respecting active filters
+- [ ] **EXP-02**: Admin can export BOQ / hakkediş progress to Excel in bilingual TR/EN yeşil-defter format
+- [ ] **EXP-03**: Admin can export worker and auditor performance summaries to Excel
+- [ ] **EXP-04**: Office engineer can export a finalized hakkediş certificate as a PDF with correct Turkish character rendering
+
+### Experience & Information Architecture
+
+- [ ] **UX-01**: Dashboard presents an admin shell with persistent navigation (Overview · Projects · People · Analytics · Hakkediş · Exports) without breaking existing project-scoped routes
+- [ ] **UX-02**: Admin lands on a cross-project command-center overview (portfolio KPIs, alerts, recent activity)
+- [ ] **UX-03**: All analytics views support global filters: date range, project, person, status
+- [ ] **UX-04**: Analytics include trend charts (throughput, earned-value / value-complete over time, burn rate)
+- [ ] **UX-05**: Every metric drills down to the underlying filtered records, and a structured submission detail view shows the full canonical record (photo, location, decision trail)
+- [ ] **I18N-03**: All new v2.0 dashboard surfaces are localized TR/EN
+
+## Future Requirements (post-v2.0)
+
+Deferred. Tracked but not in the current roadmap.
+
+### AI Assist (carried over from v1 Phase 6)
+
+- **AI-01 … AI-05**: Async Claude vision anomaly flagging, notes classification, advisory dashboard/Telegram hints, eval-harness gate — listed under v1 Requirements above; Phase 6 deferred out of v2.0
 
 ### Drawings
 
@@ -101,6 +146,8 @@ Explicitly excluded. Documented to prevent scope creep.
 | CAD symbol auto-detection / BOQ auto-extraction from drawings | Heavy ML, low MVP value (saha ADR-0002); manual BOQ entry instead |
 | Real-time WebSocket map updates | Overkill for hourly field approvals; refresh-on-load is sufficient for v1 |
 | Offline PWA for workers | Telegram's own message buffer handles momentary signal loss |
+| Full EVM (SPI / CPI, schedule baseline, actual labor/material cost) | Inputs not captured — no schedule baseline, no actual-cost ledger; only EV/BAC/% are computable. Defer until cost-capture exists |
+| Fiyat farkı (price-escalation) auto-calculation | Requires government index/coefficient APIs; a manual per-period override field is sufficient for v2.0 |
 
 ## Traceability
 
@@ -154,4 +201,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-05-23*
-*Last updated: 2026-05-23 — traceability populated after roadmap creation*
+*Last updated: 2026-05-25 — added v2.0 milestone requirements (26 reqs: PERF, COST, HAK, EXP, UX); v2.0 traceability populated after roadmap creation*
