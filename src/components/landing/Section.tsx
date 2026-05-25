@@ -18,7 +18,7 @@ export function Section({ id, children, muted, className }: SectionProps) {
     <section
       id={id}
       className={cn(
-        'py-16',
+        'py-16 sm:py-20',
         muted ? 'bg-muted' : 'bg-background',
         className
       )}

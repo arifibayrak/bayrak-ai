@@ -13,18 +13,17 @@ export async function LandingHeader() {
   const t = await getTranslations('landing');
 
   return (
-    <header className="sticky top-0 z-40 h-14 bg-card border-b border-border">
+    <header className="sticky top-0 z-40 h-16 border-b border-border bg-card/80 backdrop-blur-md supports-[backdrop-filter]:bg-card/70">
       <div className="max-w-5xl mx-auto px-6 h-full flex items-center justify-between">
         {/* Wordmark */}
-        <span className="text-xl font-semibold">bayrak.ai</span>
+        <span className="text-xl font-bold tracking-tight">
+          bayrak<span className="text-primary">.ai</span>
+        </span>
 
         {/* Right controls */}
         <div className="flex items-center gap-3">
           <LanguageToggle currentLocale={locale} />
-          <Link
-            href="/auth/signin"
-            className={buttonVariants({ size: 'lg' })}
-          >
+          <Link href="/auth/signin" className={buttonVariants({ size: 'lg' })}>
             {t('hero.cta_primary')}
           </Link>
         </div>

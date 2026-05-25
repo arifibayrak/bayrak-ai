@@ -43,11 +43,13 @@ export default function SignInPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4 py-16">
-      <Card className="w-full max-w-sm">
-        <CardHeader className="text-center pb-2">
-          <h1 className="text-[28px] font-semibold leading-tight">{t('heading')}</h1>
-          <p className="text-xl font-semibold mt-1">{t('subheading')}</p>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-accent/50 via-background to-background px-4 py-16">
+      <Card className="w-full max-w-sm shadow-md">
+        <CardHeader className="text-center pb-2 gap-2">
+          <span className="text-sm font-bold tracking-tight text-muted-foreground">
+            {t('heading')}
+          </span>
+          <h1 className="text-2xl font-bold tracking-tight leading-tight">{t('subheading')}</h1>
         </CardHeader>
 
         <CardContent>
@@ -76,7 +78,7 @@ export default function SignInPage() {
 
               <Button
                 type="submit"
-                className="w-full"
+                className="h-10 w-full text-[0.95rem]"
                 disabled={loading || !email.trim()}
               >
                 {loading ? t('sending') : t('cta')}

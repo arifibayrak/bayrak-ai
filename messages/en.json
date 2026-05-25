@@ -137,7 +137,8 @@
       "title": "bayrak.ai",
       "tagline": "Replace WhatsApp chaos with a structured field-ops loop: workers log work, auditors approve on-site, and the office tracks a live map and BOQ automatically.",
       "cta_primary": "Sign in",
-      "cta_secondary": "Request access"
+      "cta_secondary": "Request access",
+      "eyebrow": "Field Operations Platform"
     },
     "problem": {
       "heading": "What Happens in the Field?",
