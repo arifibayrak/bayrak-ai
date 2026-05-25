@@ -20,6 +20,27 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 5: Dashboard & Map** - Mapbox route and approved-points overlay, BOQ progress view, and submission list with status filtering (completed 2026-05-24)
 - [ ] **Phase 6: AI Vision Assist** - Async Claude vision analysis, eval harness gate, anomaly badges on dashboard and advisory Telegram follow-up
 
+---
+
+## Milestone v2.0 — Operations Intelligence & Hakkediş
+
+Turn raw submission/audit data into an admin-grade operations console: role-based performance scorecards, earned-value cost analytics, and hakkediş billing documents, delivered through a restructured drill-down dashboard with standardized records and Excel/PDF export.
+
+**Locked decisions carried into all phases:**
+- Hakkediş periods anchor on approval date (`decidedAt`); cumulative yeşil-defter model (period qty = cumulative − previous)
+- Multi-currency: `unit_price` carries a `currency_code` column; aggregates are currency-aware
+- Deduction rates (KDV / tevkifat / stopaj / teminat) are configurable per period, never hardcoded
+- Money math in Postgres `numeric` aggregation and `decimal.js` for JS-side display; never raw JS float arithmetic
+- All aggregation in typed TS query functions via `db.execute(sql...)` — no materialized views (neon-http cannot refresh them)
+- Additive IA via `(admin)` route group; existing `/dashboard/projects/*` routes are preserved unchanged
+- Every new `route.ts` (export/analytics APIs) must carry an explicit `auth()` guard as its first statement (financial data)
+
+- [ ] **Phase 7: Data Foundation & Canonical Record** - Add `unit_price` + currency to BOQ items, create activity-log and hakkediş schema tables, define the CanonicalSubmission type, build the typed aggregation query layer, and wire activity logging into existing Server Actions
+- [ ] **Phase 8: Admin Shell & Information Architecture** - Build the `(admin)` route group with persistent sidebar nav (Overview · Projects · People · Analytics · Hakkediş · Exports), cross-project Overview command-center page, and all TR/EN i18n strings for new surfaces
+- [ ] **Phase 9: Performance Analytics & Scorecards** - Worker/auditor/office-engineer scorecards, global date-range and project/person filters, trend charts, drill-down submission detail page, per-employee profile pages, leaderboard, and SLA alerts
+- [ ] **Phase 10: Hakkediş Billing** - Hakkediş period CRUD, yeşil-defter computation (cumulative−previous period delta), configurable KDV/tevkifat/stopaj/teminat deductions, payment status tracking, and finalization lock
+- [ ] **Phase 11: Exports** - Multi-sheet bilingual Excel exports (submission ledger, BOQ/hakkediş yeşil defter, performance summaries), PDF hakkediş certificate with Turkish font rendering, and authenticated route handlers with Exports trigger UI
+
 ## Phase Details
 
 ### Phase 1: Foundation
@@ -208,10 +229,94 @@ Plans:
 **Plans**: TBD
 **UI hint**: yes
 
+---
+
+## Milestone v2.0 Phase Details
+
+### Phase 7: Data Foundation & Canonical Record
+
+**Goal**: Every BOQ item carries a unit price and currency; office-engineer actions are logged; hakkediş schema tables exist with the correct constraints; a single `CanonicalSubmission` type and typed aggregation functions give every downstream phase a stable, money-safe data contract
+**Depends on**: Phase 5 (v1 complete; BOQ + submission data must exist)
+**Requirements**: COST-01, COST-02, COST-03, COST-04, COST-05, PERF-03
+**Success Criteria** (what must be TRUE):
+
+  1. Office engineer can enter a unit price and currency per BOQ line item in the existing BOQ edit form, and the value persists; BOQ items with no price entered show a placeholder rather than zero
+  2. The BOQ detail view shows contracted value (BAC = plannedQty × unit_price) and earned value (EV = approvedQty × unit_price) per line item alongside existing quantity columns, computed via a Postgres `SUM` query (no JS float arithmetic)
+  3. Hakkediş schema tables (`hakedis_periods`, `hakedis_period_lines`) and `office_activity_log` are created in the database with all required columns, indexes, and constraints — including the `CHECK (cumulative_qty >= previous_cumulative_qty)` guard
+  4. Every office-engineer mutation (project create/update, BOQ edit, unit-price set, person assignment) writes a corresponding row to `office_activity_log` with actor, action type, entity reference, and timestamp
+  5. `getCanonicalSubmissions()`, `getProjectMetrics()`, `getPersonMetrics()`, and `getPortfolioOverview()` are callable from the application with auth-guard and tenant scope, returning typed results
+
+**Plans**: TBD
+
+### Phase 8: Admin Shell & Information Architecture
+
+**Goal**: The admin navigation shell is live and all new v2 pages are reachable without breaking any existing project-scoped route; the cross-project command-center Overview page shows live portfolio KPIs; all new surface strings are localized in TR and EN
+**Depends on**: Phase 7
+**Requirements**: UX-01, UX-02, I18N-03
+**Success Criteria** (what must be TRUE):
+
+  1. A persistent sidebar navigation (Overview · Projects · People · Analytics · Hakkediş · Exports) is visible on all admin pages; the active item is highlighted; navigating to `/dashboard` redirects to `/dashboard/overview`
+  2. Existing routes (`/dashboard/projects`, `/dashboard/projects/[id]`) continue to work without modification and are reachable from the Projects sidebar item
+  3. The Overview page displays total pending-audit backlog count, total approvals and rejections for the rolling 30 days, earned value vs contracted value across all projects, and active worker count — all as live data requiring no manual refresh
+  4. Every new page label, column header, button, and status string on admin surfaces appears correctly in both Turkish and English when the dashboard locale is switched
+  5. Employee profile pages at `/dashboard/people` (list) and `/dashboard/people/[personId]` (profile) are reachable and render without errors using data from `getPersonMetrics()`
+
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 9: Performance Analytics & Scorecards
+
+**Goal**: Admin can view and compare worker, auditor, and office-engineer performance through scorecards with global filters and trend charts; every metric drills down to the underlying submission records; SLA breach alerts surface on the Overview page
+**Depends on**: Phase 8
+**Requirements**: PERF-01, PERF-02, PERF-03, PERF-04, PERF-05, PERF-06, UX-03, UX-04, UX-05
+**Success Criteria** (what must be TRUE):
+
+  1. Admin can filter all analytics views by date range, project, person, and status using controls that persist in URL query parameters; changing a filter updates all scorecards and charts on the page without a full reload
+  2. Worker scorecard shows submission volume, approval rate, rejection rate, location-compliance rate, output quantity, and value contribution; auditor scorecard shows decision count, approval/rejection split, mean decision turnaround, pending backlog, and SLA-breach rate — both scoped per project and across all projects
+  3. Office-engineer scorecard displays a list of logged actions (project creates/edits, BOQ changes, unit-price sets, person assignments) with timestamps, derived from `office_activity_log`
+  4. Analytics page renders at least three trend charts — throughput over time, earned-value/value-complete progression, and rejection rate trend — as Recharts client components receiving pre-fetched server data
+  5. Clicking any metric figure navigates to the underlying filtered record list; a submission detail page shows the full canonical record (photo, location map, BOQ item, quantity, auditor decision, rejection reason, AI flags if any)
+  6. Overview page displays SLA alerts — highlighting submissions pending for more than 4 hours, rejection-rate spikes above threshold, and projects with no approved submissions in over 48 hours
+
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 10: Hakkediş Billing
+
+**Goal**: Office engineer can create, compute, and finalize progress-payment periods using the yeşil-defter cumulative model; all deduction rates are configurable per period; a finalized period is an immutable snapshot that cannot be recomputed or overwritten
+**Depends on**: Phase 9 (analytics validates aggregation queries before higher-stakes billing uses the same data)
+**Requirements**: HAK-01, HAK-02, HAK-03, HAK-04, HAK-05
+**Success Criteria** (what must be TRUE):
+
+  1. Office engineer can create a hakkediş period for a project by specifying a period label, start date, end date, and configurable deduction rates (KDV rate, tevkifat fraction, stopaj toggle, teminat rate, avans kesintisi rate); the period is created with status `draft`
+  2. For a draft period, the system computes per-BOQ-item line items using the yeşil-defter model: cumulative approved quantity up to period end date minus the previous period's cumulative quantity, multiplied by the locked unit-price snapshot — and stores both `cumulative_qty_approved` and `previous_cumulative_qty` as separate columns
+  3. The period detail page shows a summary table: gross dönem tutarı → KDV → KDV tevkifat → stopaj → teminat → avans kesintisi → net ödeme, with each intermediate value displayed to two decimal places computed in Postgres arithmetic (not JS float)
+  4. Office engineer can update a draft period's payment status through the lifecycle (`draft → submitted → paid`) and the current status is visible on the period list page
+  5. After an office engineer clicks Finalize, the period's status becomes `finalized`; all snapshot columns (material name, unit, unit price, quantities, computed values) are frozen; any attempt to recompute or edit a finalized period returns an error
+
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 11: Exports
+
+**Goal**: Admin can download submission ledger, BOQ/hakkediş, and performance data as multi-sheet bilingual Excel files, and a finalized hakkediş period as a PDF certificate with correct Turkish character rendering; all export route handlers are protected by explicit auth guards
+**Depends on**: Phase 10 (exports render validated billing data; PDF depends on finalized hakkediş data)
+**Requirements**: EXP-01, EXP-02, EXP-03, EXP-04
+**Success Criteria** (what must be TRUE):
+
+  1. Admin can trigger a submission ledger Excel download from the Exports page with active date-range and project filters applied; the resulting file contains the full canonical record shape (worker, project, BOQ item, quantity, status, timestamps, auditor, rejection reason, location flag) with bilingual TR/EN column headers
+  2. Admin can export a BOQ/hakkediş Excel file for a period that includes a yeşil defter sheet (cumulative register), a fiyat icmali sheet (period qty × unit price per line item), and a hesap özeti sheet (gross → deductions → net ödeme) — formatted as Turkish-locale currency cells
+  3. Admin can export worker and auditor performance summaries to Excel with per-person KPI columns (approval rate, throughput, turnaround, value contribution) matching the scorecard display
+  4. Office engineer can download a finalized hakkediş period as a PDF document where Turkish characters (ğ ş ı ö ü ç) render correctly using an embedded TTF font; the PDF includes cover information (project, period dates, contractor), line-item table, and payment summary
+  5. Requesting any export endpoint without a valid session returns HTTP 401; the export route handlers do not inherit layout-level auth and carry their own explicit `auth()` guard
+
+**Plans**: TBD
+**UI hint**: yes
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -221,3 +326,8 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 4. Spatial Layer | 4/4 | Complete    | 2026-05-24 |
 | 5. Dashboard & Map | 6/6 | Complete   | 2026-05-24 |
 | 6. AI Vision Assist | 0/TBD | Not started | - |
+| 7. Data Foundation & Canonical Record | 0/TBD | Not started | - |
+| 8. Admin Shell & Information Architecture | 0/TBD | Not started | - |
+| 9. Performance Analytics & Scorecards | 0/TBD | Not started | - |
+| 10. Hakkediş Billing | 0/TBD | Not started | - |
+| 11. Exports | 0/TBD | Not started | - |

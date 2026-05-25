@@ -193,12 +193,40 @@ Which phases cover which requirements. Updated during roadmap creation.
 | AI-03 | Phase 6 | Pending |
 | AI-04 | Phase 6 | Pending |
 | AI-05 | Phase 6 | Pending |
+| COST-01 | Phase 7 | Pending |
+| COST-02 | Phase 7 | Pending |
+| COST-03 | Phase 7 | Pending |
+| COST-04 | Phase 7 | Pending |
+| COST-05 | Phase 7 | Pending |
+| PERF-03 | Phase 7 | Pending |
+| UX-01 | Phase 8 | Pending |
+| UX-02 | Phase 8 | Pending |
+| I18N-03 | Phase 8 | Pending |
+| PERF-01 | Phase 9 | Pending |
+| PERF-02 | Phase 9 | Pending |
+| PERF-04 | Phase 9 | Pending |
+| PERF-05 | Phase 9 | Pending |
+| PERF-06 | Phase 9 | Pending |
+| UX-03 | Phase 9 | Pending |
+| UX-04 | Phase 9 | Pending |
+| UX-05 | Phase 9 | Pending |
+| HAK-01 | Phase 10 | Pending |
+| HAK-02 | Phase 10 | Pending |
+| HAK-03 | Phase 10 | Pending |
+| HAK-04 | Phase 10 | Pending |
+| HAK-05 | Phase 10 | Pending |
+| EXP-01 | Phase 11 | Pending |
+| EXP-02 | Phase 11 | Pending |
+| EXP-03 | Phase 11 | Pending |
+| EXP-04 | Phase 11 | Pending |
 
 **Coverage:**
 - v1 requirements: 38 total
-- Mapped to phases: 38
+- v1 mapped to phases: 38
+- v2.0 requirements: 26 total
+- v2.0 mapped to phases: 26
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-05-23*
-*Last updated: 2026-05-25 — added v2.0 milestone requirements (26 reqs: PERF, COST, HAK, EXP, UX); v2.0 traceability populated after roadmap creation*
+*Last updated: 2026-05-25 — v2.0 traceability populated (Phases 7–11, 26 requirements, 0 orphans)*

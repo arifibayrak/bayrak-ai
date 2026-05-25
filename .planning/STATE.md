@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Operations Intelligence & Hakkediş
-status: planning
+status: active
 last_updated: "2026-05-25T22:00:56.803Z"
 last_activity: 2026-05-25
 progress:
-  total_phases: 0
+  total_phases: 5
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -17,17 +17,26 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-23)
+See: .planning/PROJECT.md (updated 2026-05-25)
 
 **Core value:** Every unit of field work flows through one trustworthy loop — worker submits → auditor approves on-site → central project data (BOQ + map) updates automatically
-**Current focus:** Phase 6 — ai vision assist
+**Current focus:** Phase 7 — Data Foundation & Canonical Record
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 7 — Data Foundation & Canonical Record
 Plan: —
-Status: Defining requirements
-Last activity: 2026-05-25 — Milestone v2.0 started
+Status: Ready to plan (roadmap created; awaiting /gsd:plan-phase 7)
+Last activity: 2026-05-25 — Milestone v2.0 roadmap created (Phases 7–11)
+
+**Progress bar (v2.0 phases only):**
+```
+Phase 7  [          ] 0%
+Phase 8  [          ] 0%
+Phase 9  [          ] 0%
+Phase 10 [          ] 0%
+Phase 11 [          ] 0%
+```
 
 ## Performance Metrics
 
@@ -117,6 +126,26 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 05-03]: react-map-gl v8 exports MapMouseEvent (not MapLayerMouseEvent) for onClick handler type
 - [Phase ?]: [Phase 05-03]: MapView reads boqPaletteSlot from Plan 02 GeoJSON feature.properties — no client-side BOQ lookup needed
 - [Phase ?]: [Phase 05-03]: Non-Turbopack dev server required for all map work (mapbox-gl worker breaks under Turbopack)
+- [v2.0 Roadmap]: Money math rule — all earned-value multiplication in Postgres SUM(quantity * unit_price); decimal.js for any JS-side display; never accumulate money in a JS number loop
+- [v2.0 Roadmap]: Hakkediş period lines store both cumulative_qty_approved and previous_cumulative_qty as separate snapshot columns; CHECK (cumulative_qty >= previous_cumulative_qty) enforced at DB level
+- [v2.0 Roadmap]: KDV tevkifat fraction (4/10 vs 3/10) is an open conflict — accountant confirmation required before Phase 10 billing code is written; store as configurable per-period numeric field
+- [v2.0 Roadmap]: PDF library choice deferred to Phase 11 planning — re-verify @react-pdf/renderer issue #3074 status at implementation time; pdf-lib is the safer fallback
+- [v2.0 Roadmap]: All new analytics/hakedis/export pages use export const dynamic = 'force-dynamic' — financial data must never be statically cached
+- [v2.0 Roadmap]: (admin) route group is additive only — no existing dashboard/projects/* routes are moved or renamed
+- [v2.0 Roadmap]: Istanbul timezone in date-range filters — all date boundaries use AT TIME ZONE 'Europe/Istanbul' in Postgres or explicit +03:00 offset in UI
+- [v2.0 Roadmap]: NULL decidedAt handling — always split: AVG latency WHERE decided_at IS NOT NULL (decided), COUNT for pending backlog separately; never let NULL poison SLA averages
+- [v2.0 Roadmap]: Role lives on assignments not people — all scorecard queries join assignments table and include project_id scope
+
+### Open Questions / Conflicts (surface before relevant phases)
+
+**Phase 10 (Hakkediş Billing) — must resolve before planning:**
+- KDV tevkifat fraction: FEATURES.md cites 4/10 (multi-source verified); PITFALLS.md example used 3/10 without citation. Accountant must confirm before any billing calculation is written.
+- Stopaj applicability: 5% applies only to multi-year (yıllara yaygın) contracts. Confirm contract type with user before Phase 10 planning.
+- Avans kesintisi rate: no default — office engineer enters recovery rate per period.
+
+**Phase 11 (Exports) — must resolve before planning:**
+- PDF library: re-verify @react-pdf/renderer GitHub issue #3074 status. If still unresolved in Next.js 15 App Router route handlers, use pdf-lib + @pdf-lib/fontkit instead.
+- Turkish font coverage: confirm whether Noto Sans, Open Sans, or DejaVu has full ğ ş ı ö ü ç glyph support.
 
 ### Pending Todos
 
@@ -129,6 +158,8 @@ None yet.
 - Phase 4: PostGIS coordinate order — `ST_MakePoint(longitude, latitude)`; unit test required before merging
 - Phase 4: Geometry vs geography — use `::geography` cast for metre-accurate distance thresholds
 - Phase 1: Drizzle LineString migration requires manual SQL edit to change generated type from `geometry(point,4326)` to `geometry(linestring,4326)`
+- Phase 7: Partial index syntax not emitted by drizzle-kit generate — hand-edit migration 0007 for `WHERE status = 'pending_audit'` and `WHERE decided_by IS NOT NULL` indexes (same precedent as 0003_slippery_prowler.sql)
+- Phase 7: drizzle-kit push is unusable (D-49) — all migrations must go through tsx src/db/migrate.ts
 
 ### Quick Tasks Completed
 
@@ -141,10 +172,10 @@ None yet.
 
 | Category | Item | Status | Deferred At |
 |----------|------|--------|-------------|
-| *(none)* | | | |
+| AI Assist | Phase 6 (AI-01..AI-05) — async Claude vision, eval harness | Deferred from v1; not part of v2.0 | v1 milestone end |
 
 ## Session Continuity
 
-Last session: 2026-05-24T23:38:29.077Z
-Stopped at: Completed Phase 05 Plan 05 — BoqTable % Tamamlanan column + Progress bar (DASH-04 / D-50)
+Last session: 2026-05-25T22:00:56.803Z
+Stopped at: v2.0 roadmap creation — Phases 7–11 defined, ready to plan Phase 7
 Resume file: None
