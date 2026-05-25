@@ -132,6 +132,53 @@
       "remove_assignment_cta": "Evet, Kaldır"
     }
   },
+  "landing": {
+    "hero": {
+      "title": "bayrak.ai",
+      "tagline": "Saha çalışmalarını WhatsApp karmaşasından kurtarın: işçi kaydeder, denetçi onaylar, ofis anlık harita ve metrajı izler.",
+      "cta_primary": "Giriş Yap",
+      "cta_secondary": "İletişim"
+    },
+    "problem": {
+      "heading": "Sahada Ne Oluyor?",
+      "before_title": "Dağınık WhatsApp ve Telefon",
+      "before_body": "İş bildirimleri mesajlara gömülü kalıyor. Kim ne yaptı, ne zaman, nerede? Cevaplar WhatsApp gruplarında kayboluyor.",
+      "after_title": "Tek Güvenilir Akış",
+      "after_body": "Her iş kaydı fotoğraf, konum ve miktar içeriyor. Denetçi onaylayana kadar metraj değişmiyor; ofis her şeyi anlık görüyor."
+    },
+    "how": {
+      "heading": "Nasıl Çalışır?",
+      "step1_title": "İşçi Telegram'dan Kaydeder",
+      "step1_body": "İşçi bot üzerinden fotoğraf, konum, miktar ve notlarını Türkçe olarak girer. Sıraya alınır, onay bekler.",
+      "step2_title": "Denetçi Sahada Onaylar",
+      "step2_body": "Denetçi Telegram'daki inline tuşlarla kaydı onaylar ya da reddeder. Onay anında gerçekleşir, geriye dönük değişiklik olmaz.",
+      "step3_title": "Ofis Haritayı ve Metrajı İzler",
+      "step3_body": "Onaylanan her iş Mapbox haritasına düşer, BOQ satırından otomatik olarak düşülür. Ofis hiçbir şey sormak zorunda kalmaz."
+    },
+    "features": {
+      "heading": "Özellikler",
+      "telegram_title": "Telegram ile İş Kaydı",
+      "telegram_body": "İşçiler uygulamaya gerek kalmadan bildik Telegram botunu kullanır. Fotoğraf, konum, miktar ve not — hepsi sırayla.",
+      "audit_title": "Sahada Anlık Denetim",
+      "audit_body": "Denetçi sahadan onaylar ya da reddeder; iş akışı durmaz, belgelenmiş kalır.",
+      "map_title": "Canlı İlerleme Haritası",
+      "map_body": "Onaylanan iş noktaları Mapbox üzerinde gerçek zamanlı görünür. Projenin nerede ilerlediği tek bakışta anlaşılır.",
+      "boq_title": "Otomatik BOQ Düşümü",
+      "boq_body": "Her onay, ilgili metraj kaleminden otomatik düşülür. Manuel güncelleme gerekmez; bakiye her zaman günceldir.",
+      "geo_title": "Coğrafi Doğrulama",
+      "geo_body": "Kayıtların güzergaha yakınlığı kontrol edilir; anormal konumlar işaretlenir, ofis uyarılır.",
+      "bilingual_title": "TR / EN İki Dilli",
+      "bilingual_body": "Türkçe bot, Türkçe/İngilizce ofis paneli. Yabancı denetçiler ve uluslararası ekipler için hazır."
+    },
+    "footer": {
+      "tagline": "Saha operasyonlarını güvenilir bir döngüye taşıyın.",
+      "copyright": "© 2026 bayrak.ai"
+    },
+    "a11y": {
+      "skip_to_content": "İçeriğe geç",
+      "lang_region_label": "Dil / Region"
+    }
+  },
   "common": {
     "edit": "Düzenle",
     "delete": "Sil",

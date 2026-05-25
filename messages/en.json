@@ -132,6 +132,53 @@
       "remove_assignment_cta": "Yes, Remove"
     }
   },
+  "landing": {
+    "hero": {
+      "title": "bayrak.ai",
+      "tagline": "Replace WhatsApp chaos with a structured field-ops loop: workers log work, auditors approve on-site, and the office tracks a live map and BOQ automatically.",
+      "cta_primary": "Sign in",
+      "cta_secondary": "Request access"
+    },
+    "problem": {
+      "heading": "What Happens in the Field?",
+      "before_title": "Scattered WhatsApp and Calls",
+      "before_body": "Work updates get buried in messages. Who did what, when, and where? The answers are lost in group chats.",
+      "after_title": "One Trustworthy Loop",
+      "after_body": "Every work record includes a photo, location, and quantity. The BOQ only updates once an auditor approves; the office sees everything in real time."
+    },
+    "how": {
+      "heading": "How It Works",
+      "step1_title": "Worker Logs via Telegram",
+      "step1_body": "Workers submit a photo, location, quantity, and notes through a familiar Telegram bot — no app download required.",
+      "step2_title": "Auditor Approves On-Site",
+      "step2_body": "The auditor approves or rejects directly from Telegram using inline buttons. Decisions are instant and irreversible.",
+      "step3_title": "Office Sees the Live Map and BOQ",
+      "step3_body": "Every approved record appears on the Mapbox map and auto-deducts from the relevant BOQ line. No chasing, no manual entry."
+    },
+    "features": {
+      "heading": "Features",
+      "telegram_title": "Telegram Work Logging",
+      "telegram_body": "Workers use the Telegram bot they already know — photo, location, quantity, and notes in a guided flow.",
+      "audit_title": "On-Site Audit",
+      "audit_body": "Auditors approve or reject from the field; every decision is timestamped and documented.",
+      "map_title": "Live Progress Map",
+      "map_body": "Approved work points appear on a Mapbox map in real time. Project progress is visible at a glance.",
+      "boq_title": "Auto-Deducting BOQ",
+      "boq_body": "Each approval automatically deducts from the corresponding BOQ line item. The balance is always current — no manual update needed.",
+      "geo_title": "Geolocation Verification",
+      "geo_body": "Submission locations are checked against the project route; anomalies are flagged and the office is notified.",
+      "bilingual_title": "TR / EN Bilingual",
+      "bilingual_body": "Turkish Telegram bot, Turkish/English office dashboard. Ready for international auditors and mixed-language teams."
+    },
+    "footer": {
+      "tagline": "Move field operations into one trustworthy loop.",
+      "copyright": "© 2026 bayrak.ai"
+    },
+    "a11y": {
+      "skip_to_content": "Skip to content",
+      "lang_region_label": "Language / Region"
+    }
+  },
   "common": {
     "edit": "Edit",
     "delete": "Delete",
