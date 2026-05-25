@@ -20,7 +20,7 @@ import { uploadRoute } from '@/actions/routes';
 
 interface RouteUploadProps {
   projectId: string;
-  onSuccess?: (count: number) => void;
+  onSuccess?: (count: number, routeId: string) => void;
 }
 
 type UploadState =
@@ -120,7 +120,7 @@ export function RouteUpload({ projectId, onSuccess }: RouteUploadProps) {
       if (result.ok) {
         setUploadState({ status: 'saved', count: result.count });
         toast.success(t('valid_route', { count: result.count }));
-        onSuccess?.(result.count);
+        onSuccess?.(result.count, result.id);
       } else {
         setUploadState({
           status: 'error',

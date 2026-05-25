@@ -54,9 +54,10 @@ export function RouteTabClient({
 
   // After a successful upload, update local state and switch back to map view.
   // uploadedAt stored as ISO string (Pitfall 5).
-  function handleUploadSuccess(count: number) {
+  // WR-04: use the real route id returned by uploadRoute, not a fabricated UUID.
+  function handleUploadSuccess(count: number, routeId: string) {
     setSavedRoute({
-      id: crypto.randomUUID(),
+      id: routeId,
       coordinateCount: count,
       uploadedAt: new Date().toISOString(),
     });
