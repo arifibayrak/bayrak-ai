@@ -1,522 +1,137 @@
-# Technology Stack
+# Stack Research
 
-**Project:** bayrak.ai
-**Researched:** 2026-05-23
-**Overall confidence:** HIGH (all versions verified against npm registry and official docs)
+**Domain:** v2.0 Operations Intelligence & Hakkediş — analytics dashboards, earned-value cost, hakkediş billing, Excel/PDF export additions to an existing Next.js 15 / shadcn / Drizzle / Neon app
+**Researched:** 2026-05-25
+**Confidence:** HIGH (all versions verified against npm registry; key behaviours verified against official docs and GitHub issues)
 
----
-
-## Recommended Stack
-
-### Core Framework
-
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| Next.js | 15.x (latest: 16.2.6 — see note) | App Router monolith, server actions, route handlers | Single deploy on Vercel; saha-proven; Telegram webhook is a plain route handler |
-| TypeScript | 5.x | All code | Type safety across BOQ schema, conversation state, PostGIS geometry |
-| Tailwind CSS | 4.3.x | Styling | v4 is current; class-based, pairs perfectly with shadcn |
-| shadcn/ui | latest CLI (shadcn@4.8.x) | UI component library | Add components via CLI (`npx shadcn@latest add button`); not a dependency in package.json |
-
-**Note on Next.js version:** npm latest tag shows 16.2.6 but that is likely a pre-release canary. Stable Next.js 15 LTS is the appropriate target. Verify with `npm show next dist-tags` before initializing — use `15.x` stable unless 16 is confirmed stable at project start.
-
-### Database
-
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| Neon (PostgreSQL 16) | Managed | Primary database | Vercel marketplace, serverless-native, branchable previews |
-| PostGIS extension | Bundled with Neon | Spatial queries | Native `ST_*` functions for nearest-segment matching; pipeline route storage |
-
-**Enabling PostGIS on Neon** (run once in Neon SQL Editor or via migration):
-
-```sql
-CREATE EXTENSION IF NOT EXISTS postgis;
-```
-
-Neon supports PostGIS on all plans. No additional setup beyond the CREATE EXTENSION call. Confirmed: [Neon PostGIS docs](https://neon.com/docs/extensions/postgis).
-
-### ORM
-
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| drizzle-orm | 0.45.x | Database ORM | Typed, lightweight, proven in saha; native PostGIS `geometry()` column type |
-| drizzle-kit | 0.31.x | Migrations & codegen | Schema push + migration files; use `drizzle-kit generate` + `migrate()` for non-interactive deploys |
-
-### Telegram Bot
-
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| grammy | 1.43.x | Bot framework | Modern, typed; `webhookCallback` has native `std/http` adapter for Next.js route handlers |
-| @grammyjs/conversations | 2.1.x | Multi-step conversation state machine | Sequential step flows (photo → location → qty → notes → confirm); handles replay-based state |
-| @grammyjs/storage-psql | 2.5.x | Conversation/session persistence | Stores conversation state in Neon Postgres between serverless invocations |
-
-### Authentication
-
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| next-auth (Auth.js v5 beta) | 5.0.0-beta.31 | Web dashboard auth | Email magic-link, no password to manage; saha-proven pattern |
-| @auth/drizzle-adapter | 1.11.x | DB adapter for Auth.js | Required for magic-link verification token storage |
-| resend | 6.12.x | Email transport | Simple API, generous free tier, official Auth.js provider |
-
-### Mapping
-
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| mapbox-gl | 3.24.x | Map rendering | GeoJSON LineString route + point/segment overlays; official Mapbox recommended library |
-| react-map-gl | 8.1.x | React wrapper | Maintained by Mapbox-adjacent team; simplest React integration for App Router client components |
-
-**Fallback:** Leaflet + react-leaflet if Mapbox token or pricing becomes a blocker. API surface is similar enough that the GeoJSON layer logic is portable.
-
-### AI
-
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| ai (Vercel AI SDK) | 6.0.x | LLM orchestration | Single package for generateText/streamText; direct AI Gateway integration |
-| Vercel AI Gateway | Platform | Model routing | Single API key (`AI_GATEWAY_API_KEY`), auto-retries, cost dashboard, model fallbacks |
-
-**Model:** `anthropic/claude-sonnet-4.5` or `anthropic/claude-opus-4.7` via AI Gateway. Default to `claude-sonnet-4.5` for vision tasks (photo anomaly flagging) — best cost/capability ratio.
-
-### File Storage
-
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| @vercel/blob | 2.4.x | Photo and file storage | Native Vercel integration, public URL storage; used for submission photos |
-
-### Internationalisation
-
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| next-intl | 4.12.x | TR/EN switching | Native App Router + Server Components support; `getTranslations()` in async RSCs |
+> This file covers ONLY the net-new libraries needed for v2. The v1 stack (Next.js 15, shadcn/ui, Drizzle, Neon, grammY, Auth.js, Mapbox, next-intl, ExcelJS, @vercel/blob) is established and not repeated here.
 
 ---
 
-## Integration Patterns
+## Recommended Stack Additions
 
-### PostGIS + Drizzle: Spatial Schema
+### Charts / Data Visualisation
 
-Drizzle has a built-in `geometry()` column for `geometry(Point)`. Geography type and LineString require custom types or raw SQL workarounds. The pattern below is the recommended approach:
+| Technology | Version | Purpose | Why Recommended |
+|------------|---------|---------|-----------------|
+| recharts | 3.8.1 | Line, bar, area, pie charts for throughput / burn-rate / value-complete trend charts | shadcn's own `chart` component is a thin wrapper over Recharts v3 — no extra dep, design system stays unified, `"use client"` boundary is already the pattern for all interactive components |
 
+**How it fits this stack:** shadcn/ui does not abstract Recharts — you use `<BarChart>`, `<LineChart>` etc. directly. This means you can follow the official Recharts docs verbatim and the shadcn chart theming (CSS variables) applies automatically. Data is fetched in a Server Component or Server Action, serialised to plain arrays, and passed as props to a `'use client'` chart component — the canonical RSC pattern. No SSR penalty because charts are always client-only interactive widgets.
+
+**Bundle cost:** ~50 kB gzipped for Recharts v3 (Bundlephobia). Acceptable for a dashboard that is office-only (not public-facing).
+
+**Installation:** `npm install recharts` then `npx shadcn@latest add chart` to scaffold the themed wrapper.
+
+### Data Grid / Advanced Table
+
+| Technology | Version | Purpose | Why Recommended |
+|------------|---------|---------|-----------------|
+| @tanstack/react-table | 8.21.3 | Headless table engine for analytics drill-down, sorting, pagination, column filtering | Already implied by the shadcn data-table pattern; v1 likely uses shadcn's `DataTable` recipe which is built on TanStack Table v8; adding server-side pagination and column-filter state is a config change, not a new dep |
+
+**Pattern for v2:** Use `manualPagination: true` + `manualSorting: true` + `manualFiltering: true` and encode page/sort/filter into URL search params (Next.js `useSearchParams` + `useRouter`). Server Component reads params, queries Drizzle, passes rows + rowCount to the `'use client'` table. This keeps the table stateless and shareable by URL — important for drill-down navigation.
+
+**Note:** TanStack Table v9 is in alpha (v9.0.0-alpha.50 as of May 2026). Do NOT upgrade — v8.21.3 is stable and the shadcn data-table recipe targets v8. Pin to `^8`.
+
+**No new install needed** if v1 already has `@tanstack/react-table`; check `package.json` — it is likely already there via shadcn scaffolding. If not: `npm install @tanstack/react-table`.
+
+### PDF Generation (Hakkediş Certificate)
+
+| Technology | Version | Purpose | Why Recommended |
+|------------|---------|---------|-----------------|
+| pdf-lib | 1.17.1 | Programmatic PDF generation for hakkediş certificates in a Vercel Function | Pure JavaScript, zero native dependencies, works in any Node.js environment including Vercel Fluid Compute; supports custom TTF/OTF font embedding (Turkish chars: ş ğ ı ö ü ç) via @pdf-lib/fontkit |
+| @pdf-lib/fontkit | 1.1.1 | Font embedding engine for pdf-lib | Required companion for Unicode font support; fontkit registered once, then any TTF with Turkish coverage works |
+
+**Why pdf-lib over @react-pdf/renderer:** @react-pdf/renderer 4.x has an unresolved `PDFDocument is not a constructor` error in Next.js 15 App Router route handlers (GitHub issue #3074, filed Feb 2025, marked closed without resolution). It also has memory leak warnings on repeated `renderToBuffer()` calls. These are blockers for a Vercel Function producing hakkediş certificates on demand.
+
+**Why pdf-lib over Playwright/Puppeteer:** Playwright's Chromium binary is ~300 MB, which exceeds Vercel's 250 MB function bundle limit. Spawning subprocesses is also not supported in Vercel Functions.
+
+**Why not a PDF API service:** Adds external dependency and per-call cost. Hakkediş certificates are low-frequency (monthly per project), so the programmatic approach is worth the manual table-drawing code.
+
+**Turkish font approach:** Embed a free Turkish-compatible TTF (e.g. Noto Sans or Open Sans, both cover the full Turkish alphabet) from `public/fonts/`. Embed at server start, not per-request, to avoid the font-loading race condition known to affect @react-pdf/renderer.
+
+**Serverless memory:** pdf-lib with an embedded 200 kB font and a one-page hakkediş table uses well under 100 MB. Vercel Function default memory is 1024 MB — no issue.
+
+**Installation:** `npm install pdf-lib @pdf-lib/fontkit`
+
+### Multi-Sheet Excel Export
+
+**No new package needed.** ExcelJS 4.4.0 is already installed.
+
+Multi-sheet workbooks work by calling `workbook.addWorksheet('Sheet Name')` multiple times before `writeBuffer()`. Each sheet is independent: columns, rows, styles, tab colour.
+
+**The critical Node 24 Buffer→BodyInit gotcha** (already encountered in v1 for import — now confirmed for export too):
+
+ExcelJS `writeBuffer()` returns `ExcelJS.Buffer` which extends `ArrayBuffer`, not Node's `Buffer`. The existing v1 pattern in `src/lib/excel.ts` (lines 47–49) already solves the import side:
 ```typescript
-// schema/routes.ts
-import { geometry, pgTable, serial, text, index } from 'drizzle-orm/pg-core';
-import { sql } from 'drizzle-orm';
-
-// Pipeline route — one row per project
-export const pipeline_routes = pgTable('pipeline_routes', {
-  id: serial('id').primaryKey(),
-  project_id: integer('project_id').notNull(),
-  name: text('name').notNull(),
-  // LineString must be defined with raw string type override;
-  // Drizzle's geometry() only resolves 'point' correctly in migrations,
-  // so manually edit migration SQL from geometry(point,4326) → geometry(linestring,4326)
-  route: geometry('route', { type: 'linestring', srid: 4326 }),
-}, (t) => [
-  index('pipeline_route_gist').using('gist', t.route),
-]);
-
-// Work submission — one row per field worker submission
-export const submissions = pgTable('submissions', {
-  id: serial('id').primaryKey(),
-  project_id: integer('project_id').notNull(),
-  worker_telegram_id: bigint('worker_telegram_id', { mode: 'number' }).notNull(),
-  location: geometry('location', { type: 'point', mode: 'xy', srid: 4326 }),
-  // ... other columns
-}, (t) => [
-  index('submission_location_gist').using('gist', t.location),
-]);
+const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
 ```
 
-**Migration caveat:** `drizzle-kit generate` may emit `geometry(point, 4326)` for linestring columns. Open the generated migration SQL and change `geometry(point, 4326)` to `geometry(linestring, 4326)` for route columns before applying. This is a known Drizzle limitation for non-point geometry types. Confirmed in: [Atomic Object article](https://spin.atomicobject.com/linestring-geometry-drizzle/).
-
-### PostGIS + Drizzle: Nearest Segment Query
-
-Finding the pipeline segment nearest to a GPS submission (for auto-assigning chainage):
-
+For **export** from a Route Handler, the reverse problem applies — `Next.js Response` / `NextResponse` accepts `BodyInit` which in Node 24 is `ReadableStream | string | Blob | ArrayBuffer | Uint8Array`. `ExcelJS.Buffer` satisfies `ArrayBuffer`, so it can be passed directly without conversion:
 ```typescript
-import { sql } from 'drizzle-orm';
-
-// Find nearest route segment + distance from submission point
-async function findNearestSegment(db: DB, projectId: number, lat: number, lon: number) {
-  const submissionPoint = sql`ST_SetSRID(ST_MakePoint(${lon}, ${lat}), 4326)`;
-
-  return db
-    .select({
-      routeId: pipeline_routes.id,
-      // ST_ClosestPoint returns the point on the linestring nearest to input
-      closestPoint: sql`ST_AsGeoJSON(ST_ClosestPoint(${pipeline_routes.route}, ${submissionPoint}))`,
-      // Distance in metres using geography cast (Earth-accurate)
-      distanceMetres: sql`ST_Distance(
-        ${pipeline_routes.route}::geography,
-        ${submissionPoint}::geography
-      )`,
-    })
-    .from(pipeline_routes)
-    .where(sql`${pipeline_routes.project_id} = ${projectId}`)
-    .orderBy(sql`${pipeline_routes.route} <-> ${submissionPoint}`)
-    .limit(1);
-}
-
-// ST_DWithin: check if submission is within 500m of any route (validation gate)
-async function isNearRoute(db: DB, projectId: number, lat: number, lon: number): Promise<boolean> {
-  const submissionPoint = sql`ST_SetSRID(ST_MakePoint(${lon}, ${lat}), 4326)`;
-  const result = await db
-    .select({ exists: sql`1` })
-    .from(pipeline_routes)
-    .where(sql`
-      ${pipeline_routes.project_id} = ${projectId}
-      AND ST_DWithin(
-        ${pipeline_routes.route}::geography,
-        ${submissionPoint}::geography,
-        500
-      )
-    `)
-    .limit(1);
-  return result.length > 0;
-}
-```
-
-Key rules:
-- Always cast to `::geography` for metre-accurate distance (not planar degrees)
-- Use `<->` KNN operator for ordered nearest-neighbor index scan
-- GIST index is mandatory for performance; without it, every query is a full table scan
-
-### Custom geography type (for explicit geography(Point,4326) columns)
-
-Drizzle does not ship a native `geography()` type as of 0.45.x (a PR exists but is unmerged). Use `customType`:
-
-```typescript
-import { customType } from 'drizzle-orm/pg-core';
-
-export const geographyPoint = customType<{
-  data: { lon: number; lat: number };
-  driverData: string;
-}>({
-  dataType() {
-    return 'geography(Point, 4326)';
-  },
-  toDriver(value) {
-    // PostGIS WKT format
-    return `POINT(${value.lon} ${value.lat})`;
-  },
-  fromDriver(value: string) {
-    // value comes back as WKB hex; use sql`` parse or wkx library
-    // Simplest: store as GeoJSON via ST_AsGeoJSON in select, parse here
-    const parsed = JSON.parse(value);
-    return { lon: parsed.coordinates[0], lat: parsed.coordinates[1] };
+const buf = await workbook.xlsx.writeBuffer(); // returns ExcelJS.Buffer (extends ArrayBuffer)
+return new Response(buf, {                      // Response accepts ArrayBuffer directly
+  status: 200,
+  headers: {
+    'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'Content-Disposition': 'attachment; filename="hakkdis-rapor.xlsx"',
   },
 });
 ```
+Do NOT call `Buffer.from(buf)` — this corrupts the file (confirmed open issue #1032 in exceljs repo, unfixed in 4.4.0). Use the raw `ExcelJS.Buffer` directly. This works because `Response` accepts `ArrayBuffer`, and `ExcelJS.Buffer` is an `ArrayBuffer`.
 
-For simplicity in bayrak.ai v1, using `geometry(Point, 4326)` via the built-in Drizzle `geometry()` column plus `::geography` casts in queries achieves the same accuracy without the custom type overhead.
-
-### grammY Webhook on Vercel (Next.js App Router)
-
-File: `app/api/telegram/route.ts`
-
+**Multi-sheet structure for v2 exports:**
 ```typescript
-// Next.js forces these for route handlers receiving external webhooks
-export const dynamic = 'force-dynamic';
-export const fetchCache = 'force-no-store';
-// Vercel Fluid Compute is enabled by default for new projects (April 2025+)
-// maxDuration should be set in vercel.json, not here
-// Telegram times out webhook after 60s; set maxDuration ≤ 55s
-
-import { Bot, webhookCallback } from 'grammy';
-import { conversations, createConversation } from '@grammyjs/conversations';
-import { PostgresAdapter } from '@grammyjs/storage-psql';
-import pg from 'pg';
-
-const token = process.env.TELEGRAM_BOT_TOKEN;
-if (!token) throw new Error('TELEGRAM_BOT_TOKEN is not set');
-
-// Neon connection (use @neondatabase/serverless for edge, pg for Node)
-const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
-
-const bot = new Bot(token);
-
-// Sessions backed by Neon Postgres
-bot.use(
-  session({
-    storage: new PostgresAdapter({ pool }),
-    initial: () => ({}),
-  })
-);
-
-// Conversations plugin
-bot.use(conversations());
-bot.use(createConversation(workLogFlow));
-
-// ... register handlers
-
-// Export as Next.js POST route handler
-export const POST = webhookCallback(bot, 'std/http');
+const wb = new ExcelJS.Workbook();
+const summarySheet = wb.addWorksheet('Özet / Summary');
+const boqSheet     = wb.addWorksheet('BOQ');
+const periodSheet  = wb.addWorksheet('Hakediş Dönemleri');
+// populate each sheet independently
+const buf = await wb.xlsx.writeBuffer();
 ```
 
-`vercel.json` (root):
-```json
-{
-  "functions": {
-    "app/api/telegram/route.ts": {
-      "memory": 1024,
-      "maxDuration": 55
-    }
-  }
-}
-```
+### Date-Range Picker
 
-`next.config.ts` — add grammY to serverComponentsExternalPackages:
-```typescript
-const nextConfig = {
-  experimental: {
-    serverComponentsExternalPackages: ['grammy', 'pg'],
-  },
-};
-```
+| Technology | Version | Purpose | Why Recommended |
+|------------|---------|---------|-----------------|
+| react-day-picker | 10.0.1 | Calendar / date-range picker for global date filter | Already the underlying engine of shadcn's `Calendar` component; no new dependency, just use `npx shadcn@latest add calendar` and compose with `Popover` for a range picker |
 
-**Fluid Compute note:** As of April 23, 2025, Fluid Compute is enabled by default for all new Vercel projects. It allows concurrent requests in the same function instance, reducing cold starts. The grammY webhook pattern is I/O-heavy and benefits directly from this.
+**Pattern:** `npx shadcn@latest add calendar date-picker`. The shadcn Date Picker recipe composes `<Popover>` + `<Calendar mode="range">`. react-day-picker v10 renamed its package to `@dayPicker/react` but `react-day-picker` still ships as the alias. shadcn's calendar component already imports from `react-day-picker` — no change needed.
 
-### grammY Conversations: Multi-Step Work Log Flow
+**Do not add a third-party date picker library** (e.g. `react-datepicker`, `@mui/x-date-pickers`). These conflict stylistically with shadcn/Tailwind v4 and add significant bundle weight for something shadcn already provides.
 
-```typescript
-import { Conversation, ConversationFlavor, conversations, createConversation } from '@grammyjs/conversations';
-import { Bot, Context, InlineKeyboard } from 'grammy';
+### Decimal / Money Math
 
-type BotContext = ConversationFlavor<Context>;
-type WorkLogConversation = Conversation<BotContext, Context>;
+| Technology | Version | Purpose | Why Recommended |
+|------------|---------|---------|-----------------|
+| decimal.js | 10.6.0 | Precise KDV (20%) and retention (5%) calculation in JavaScript | Drizzle returns `numeric` columns as strings (not numbers) — a confirmed Drizzle behaviour since it avoids JS float precision loss. Those strings must be parsed with a decimal library before arithmetic |
 
-async function workLogFlow(conversation: WorkLogConversation, ctx: Context) {
-  // Step 1: Photo (enforce — reject non-photo)
-  await ctx.reply('📸 İş fotoğrafını gönder.');
-  const photoCtx = await conversation.waitFor(':photo', {
-    otherwise: (ctx) => ctx.reply('❌ Lütfen bir fotoğraf gönder.'),
-  });
-  const fileId = photoCtx.msg.photo.at(-1)!.file_id;
+**Why decimal.js over dinero.js:** Dinero is ideal when currency is a first-class type throughout the app; here bayrak.ai deals with quantities × unit_price in TRY only, and the calculations are straightforward (gross × 0.20 for KDV, gross × 0.05 for retention). Decimal.js is lighter, has no currency concept overhead, and is the library explicitly recommended by the Drizzle/NestJS money-storage guide.
 
-  // Step 2: Native location share (enforce)
-  await ctx.reply('📍 Konumunu paylaş (Konum Paylaş düğmesi).');
-  const locationCtx = await conversation.waitFor(':location', {
-    otherwise: (ctx) => ctx.reply('❌ Lütfen canlı konum değil, anlık konum paylaş.'),
-  });
-  const { latitude, longitude } = locationCtx.msg.location;
+**The problem it solves:** With Drizzle + Neon, a `numeric(15,4)` column returns `"1234.5000"` (string). `parseFloat("1234.5000") * 0.20` may produce `246.89999999999998` due to IEEE 754. `new Decimal("1234.5000").times("0.20").toFixed(2)` gives `"246.90"` — correct for a TRY billing document.
 
-  // Step 3: Quantity (numeric)
-  await ctx.reply('🔢 Miktar gir (sayı):');
-  const quantity = await conversation.form.number({
-    otherwise: (ctx) => ctx.reply('❌ Geçerli bir sayı gir.'),
-  });
+**Rule:** Do ALL money arithmetic (BOQ earned value, KDV, retention, running totals) with `Decimal` objects. Only convert to `number` for chart props (approximate display is fine). Store results back to Postgres as strings (Drizzle accepts string for numeric columns).
 
-  // Step 4: Notes (optional text)
-  await ctx.reply('📝 Notlar (veya "geç" yaz):');
-  const notesCtx = await conversation.waitFor(':text');
-  const notes = notesCtx.msg.text === 'geç' ? null : notesCtx.msg.text;
+**Installation:** `npm install decimal.js` (it is not yet in package.json).
 
-  // Step 5: Confirm with inline keyboard
-  const confirmKb = new InlineKeyboard()
-    .text('✅ Onayla', 'confirm')
-    .text('❌ İptal', 'cancel');
-  await ctx.reply(`Özet:\nFoto: ✓\nKonum: ${latitude},${longitude}\nMiktar: ${quantity}\nNot: ${notes ?? '-'}`, {
-    reply_markup: confirmKb,
-  });
+### SQL Aggregation: Drizzle Raw Queries + Neon Views
 
-  const callbackCtx = await conversation.waitForCallbackQuery(['confirm', 'cancel']);
-  await callbackCtx.answerCallbackQuery();
+**Recommendation:** Use Drizzle's `sql` tagged template for cross-project aggregation queries; define Postgres regular views (not materialized) for the most-reused analytics shapes; skip materialized views for MVP.
 
-  if (callbackCtx.callbackQuery.data === 'cancel') {
-    await ctx.reply('İptal edildi.');
-    return;
-  }
+**Rationale:**
 
-  // Persist to DB via conversation.external() to isolate side effects from replay
-  const submissionId = await conversation.external(() =>
-    persistSubmission({ fileId, latitude, longitude, quantity, notes })
-  );
+1. **Drizzle aggregation functions** (`sum()`, `count()`, `avg()`) with `.groupBy()` cover most per-project rollups type-safely. Use these first.
 
-  await ctx.reply(`✅ Kaydedildi. Denetçi onayı bekleniyor. (#${submissionId})`);
-}
-```
+2. **Raw `sql` tagged templates** for complex cross-table aggregations (e.g. `earned_value = SUM(approved_qty * unit_price)`). Drizzle's `sql` operator is fully typed when column names are bound; keep these in `src/lib/queries/analytics.ts` and test them directly.
 
-**Replay engine rule:** All database calls, random values, and date/time calls inside a conversation function MUST be wrapped in `conversation.external()`. The plugin re-executes the function from the top on every new update; non-deterministic code outside `external()` will produce inconsistent state.
+3. **Postgres regular views** for the shapes queried repeatedly across multiple dashboard components (e.g. `v_project_earned_value` joining `boq_items × submissions`). Declare them in Drizzle as `.existing()` views and reference in selects for type safety. Create/update via raw migration SQL.
 
-### Auditor Approve/Reject Flow (Inline Callback)
+4. **Neon materialized views** are NOT recommended for MVP because:
+   - Neon serverless suspends compute between requests; `REFRESH MATERIALIZED VIEW` must be called explicitly and costs a query.
+   - For a single-tenant app with low write volume, Neon's query planner on a regular view over properly indexed tables is fast enough.
+   - Materialized views add operational complexity (when to refresh? on every approve? cron?).
+   - Revisit if dashboard page load exceeds 2 s after v2 launch.
 
-The auditor flow is NOT a conversation — it's a simple callback query handler:
-
-```typescript
-bot.callbackQuery(/^audit_(approve|reject)_(\d+)$/, async (ctx) => {
-  const [, action, submissionIdStr] = ctx.callbackQuery.data.match(...)!;
-  const submissionId = parseInt(submissionIdStr);
-
-  if (action === 'approve') {
-    await db.update(submissions)
-      .set({ status: 'approved' })
-      .where(eq(submissions.id, submissionId));
-    // Decrement BOQ line
-    await decrementBoqLine(submissionId);
-    await ctx.editMessageText('✅ Onaylandı.');
-    await ctx.answerCallbackQuery('Onaylandı.');
-  } else {
-    // Prompt for rejection reason — this IS a short conversation
-    await ctx.conversation.enter('rejectionReasonFlow');
-  }
-});
-```
-
-### AI SDK Vision: Photo Anomaly Flagging
-
-```typescript
-import { generateText } from 'ai';
-
-// AI Gateway provides the model routing; no @ai-sdk/anthropic needed
-// Model string format: 'provider/model-id'
-async function flagPhotoAnomalies(photoUrl: string, submissionContext: string) {
-  const { text } = await generateText({
-    model: 'anthropic/claude-sonnet-4.5',
-    messages: [
-      {
-        role: 'user',
-        content: [
-          {
-            type: 'text',
-            text: `You are a construction site quality auditor. Context: ${submissionContext}. Analyse this photo and flag any anomalies: missing safety gear, incorrect materials, poor workmanship, location mismatch. Reply in JSON: { "anomalies": string[], "risk": "low"|"medium"|"high", "summary": string }`,
-          },
-          {
-            type: 'image',
-            image: photoUrl, // HTTPS URL to Vercel Blob photo
-          },
-        ],
-      },
-    ],
-  });
-  return JSON.parse(text);
-}
-```
-
-Environment variables:
-```
-AI_GATEWAY_API_KEY=your_vercel_ai_gateway_key
-```
-
-The `ai` SDK v6 auto-discovers AI Gateway via `AI_GATEWAY_API_KEY`. No `createGateway()` call needed. Confirmed: [Vercel AI Gateway Getting Started](https://vercel.com/docs/ai-gateway/getting-started/text).
-
-**OIDC alternative (recommended for Vercel-deployed apps):** Instead of a static API key, run `vercel env pull` to provision OIDC tokens automatically — no manual rotation needed. The AI SDK picks these up from environment without any code change.
-
-### Mapbox GL JS in Next.js App Router
-
-Mapbox GL JS manipulates the DOM directly; it must be in a Client Component:
-
-```typescript
-// components/PipelineMap.tsx
-'use client';
-
-import Map, { Source, Layer } from 'react-map-gl';
-import 'mapbox-gl/dist/mapbox-gl.css';
-import type { FeatureCollection, LineString } from 'geojson';
-
-interface Props {
-  route: FeatureCollection<LineString>;
-  submissionPoints: FeatureCollection;
-}
-
-export function PipelineMap({ route, submissionPoints }: Props) {
-  return (
-    <Map
-      mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN}
-      initialViewState={{ longitude: 27.5, latitude: 41.5, zoom: 10 }}
-      style={{ width: '100%', height: '500px' }}
-      mapStyle="mapbox://styles/mapbox/satellite-streets-v12"
-    >
-      {/* Pipeline route as LineString */}
-      <Source id="pipeline" type="geojson" data={route}>
-        <Layer
-          id="pipeline-line"
-          type="line"
-          paint={{ 'line-color': '#f59e0b', 'line-width': 3 }}
-        />
-      </Source>
-
-      {/* Approved work submission points */}
-      <Source id="submissions" type="geojson" data={submissionPoints}>
-        <Layer
-          id="submission-points"
-          type="circle"
-          paint={{
-            'circle-radius': 6,
-            'circle-color': [
-              'match',
-              ['get', 'status'],
-              'approved', '#22c55e',
-              'rejected', '#ef4444',
-              '#94a3b8', // pending
-            ],
-          }}
-        />
-      </Source>
-    </Map>
-  );
-}
-```
-
-Server component passes pre-fetched GeoJSON to the client map component. GeoJSON route data is stored in Neon (as the `route` geometry column) and fetched via a Server Component or route handler using `ST_AsGeoJSON()`.
-
-Environment variable: `NEXT_PUBLIC_MAPBOX_TOKEN` (public, prefixed).
-
-### Auth.js v5 Magic-Link with Resend + Drizzle Adapter
-
-`auth.ts`:
-```typescript
-import NextAuth from 'next-auth';
-import Resend from 'next-auth/providers/resend';
-import { DrizzleAdapter } from '@auth/drizzle-adapter';
-import { db } from '@/db';
-import { accounts, sessions, users, verificationTokens } from '@/db/auth-schema';
-
-export const { handlers, auth, signIn, signOut } = NextAuth({
-  adapter: DrizzleAdapter(db, {
-    usersTable: users,
-    accountsTable: accounts,
-    sessionsTable: sessions,
-    verificationTokensTable: verificationTokens,
-  }),
-  providers: [
-    Resend({
-      apiKey: process.env.AUTH_RESEND_KEY,
-      from: 'no-reply@bayrak.ai',
-    }),
-  ],
-});
-```
-
-`app/api/auth/[...nextauth]/route.ts`:
-```typescript
-import { handlers } from '@/auth';
-export const { GET, POST } = handlers;
-```
-
-Environment variables:
-```
-AUTH_SECRET=generate-with-openssl-rand-base64-32
-AUTH_RESEND_KEY=re_xxxxxxxxxxxx
-AUTH_URL=https://bayrak.ai  # or localhost:3000 for dev
-```
-
-Schema additions (add to your Drizzle schema alongside domain tables):
-- `users` table (id, name, email, emailVerified, image)
-- `accounts` table (OAuth linkage — needed even for magic-link)
-- `verificationTokens` table (identifier, token, expires — the magic-link token store)
-- `sessions` table (only needed if using database sessions strategy; JWT strategy skips this)
-
-Auth.js v5 is still in beta (`5.0.0-beta.31`). The beta has been stable for over a year and is the standard for Next.js 15+ projects. Do not use `next-auth@4.x` with App Router — the v4 integration with App Router is awkward.
-
----
-
-## Supporting Libraries
-
-| Library | Version | Purpose | When to Use |
-|---------|---------|---------|-------------|
-| @neondatabase/serverless | latest | Neon HTTP driver | Route handlers / edge; use `pg` for bot/server code |
-| @vercel/blob | 2.4.x | Photo storage | All file uploads from both bot and dashboard |
-| wkx | 0.5.x | WKB hex → GeoJSON | Parsing PostGIS geometry results in custom `fromDriver` functions |
-| zod | 3.x | Schema validation | Validate bot conversation inputs, API request bodies |
-| ExcelJS | latest | BOQ Excel import | Office engineer BOQ upload workflow |
+5. **Drizzle `pgMaterializedView` API** exists (`db.refreshMaterializedView(view)`) and works with Neon — but the refresh timing problem makes it premature. Document the path in a comment, do not implement yet.
 
 ---
 
@@ -524,75 +139,244 @@ Auth.js v5 is still in beta (`5.0.0-beta.31`). The beta has been stable for over
 
 | Category | Recommended | Alternative | Why Not |
 |----------|-------------|-------------|---------|
-| ORM | Drizzle | Prisma | Prisma's PostGIS support is also via raw SQL; Drizzle is lighter and saha-proven |
-| Bot framework | grammY | node-telegram-bot-api | grammY has TypeScript-first design, conversations plugin, and active development |
-| Map library | mapbox-gl + react-map-gl | Leaflet + react-leaflet | Mapbox has better satellite imagery and vector tile performance for field use; Leaflet is the fallback |
-| Auth provider | Auth.js v5 | Clerk | Clerk costs money at scale; Auth.js is free and saha-proven |
-| Email transport | Resend | Nodemailer | Resend has a simple HTTP API, no SMTP config; generous free tier (3k emails/month) |
-| AI Gateway | Vercel AI Gateway | Direct Anthropic SDK | Gateway adds cost dashboard, retries, model fallbacks at zero code cost |
-| Conversation sessions | @grammyjs/storage-psql | In-memory | Serverless functions have no shared memory between invocations; Postgres persistence is mandatory |
-| i18n | next-intl | next-i18next | next-intl is App Router native; next-i18next was designed for Pages Router |
+| Charts | recharts (via shadcn chart) | Tremor | Tremor is also built on Recharts v3; adding Tremor means an extra layer with its own component naming, reducing customisation flexibility; bayrak.ai's design system is already shadcn/Tailwind — Recharts directly keeps it unified |
+| Charts | recharts (via shadcn chart) | Nivo | 500 kB+ bundle if you use multiple chart types; SSR-friendly but unnecessary complexity for 3–5 chart types; overkill |
+| Charts | recharts (via shadcn chart) | visx | Low-level D3 wrapper; excellent for custom visualisations but ~2-3× the implementation effort for standard dashboards; no shadcn integration |
+| Table | @tanstack/react-table (headless) | AG Grid Community | AG Grid's free tier has licensing restrictions; heavier; shadcn data-table pattern is already TanStack-based |
+| PDF | pdf-lib | @react-pdf/renderer | Broken in Next.js 15 App Router (issue #3074, unresolved Feb 2025); memory leaks on repeated renderToBuffer; avoid |
+| PDF | pdf-lib | Playwright/Puppeteer | 300 MB Chromium binary exceeds Vercel's 250 MB function bundle limit; subprocess spawning not allowed |
+| Money math | decimal.js | dinero.js | Dinero adds currency-type complexity unnecessary for single-currency TRY app; overkill |
+| Money math | decimal.js | native JS Number | IEEE 754 floats produce rounding errors in Turkish KDV/retention calculations (confirmed in financial literature) |
+| Analytics SQL | Drizzle sql`` + regular views | Neon materialized views | Premature optimisation; refresh-timing complexity in serverless; indexed regular views are fast enough at single-tenant scale |
+| Date picker | shadcn Calendar (react-day-picker) | react-datepicker / @mui/x-date-pickers | Stylistic conflict with Tailwind v4 / shadcn; unnecessary bundle addition when shadcn already provides a date-range picker |
+
+---
+
+## What NOT to Add
+
+| Avoid | Why | Use Instead |
+|-------|-----|-------------|
+| @react-pdf/renderer | Broken `PDFDocument is not a constructor` in Next.js 15 App Router (issue #3074, open Feb 2025); memory leak on repeated renderToBuffer; React 19 internals conflict | pdf-lib + @pdf-lib/fontkit |
+| Playwright / puppeteer | 300 MB Chromium binary exceeds Vercel 250 MB bundle limit; no subprocess support in Functions | pdf-lib |
+| Tremor | Second Recharts wrapper on top of the shadcn chart wrapper; doubles abstraction; bayrak.ai is already shadcn-native | recharts directly via shadcn chart |
+| Nivo / visx | 500 kB+ bundle; steeply higher implementation cost for 3–5 standard chart types | recharts v3 |
+| react-datepicker / @mui/x-date-pickers | Style conflict with Tailwind v4 shadcn tokens; extra bundle weight | shadcn calendar + react-day-picker (already present) |
+| dinero.js | Currency-type system is overkill for single-currency TRY; adds conceptual overhead | decimal.js |
+| SheetJS (xlsx) | Would duplicate ExcelJS which is already installed and used; ExcelJS has better styling API | ExcelJS (already installed) |
+| TanStack Table v9 | Still in alpha (v9.0.0-alpha.50, May 2026); shadcn data-table targets v8; API is breaking | @tanstack/react-table@^8 |
 
 ---
 
 ## Installation
 
 ```bash
-# Core framework
-npx create-next-app@latest bayrak-ai --typescript --tailwind --app --src-dir
-npx shadcn@latest init
+# Charts (Recharts is installed as peer via shadcn chart add)
+npx shadcn@latest add chart
+npm install recharts          # recharts 3.8.1
 
-# Database + ORM
-npm install drizzle-orm @neondatabase/serverless pg
-npm install -D drizzle-kit @types/pg
+# Table (if not already present from v1 shadcn data-table setup)
+npm install @tanstack/react-table   # 8.21.3
 
-# Auth
-npm install next-auth@beta @auth/drizzle-adapter resend
+# PDF
+npm install pdf-lib @pdf-lib/fontkit
 
-# Telegram bot
-npm install grammy @grammyjs/conversations @grammyjs/storage-psql
+# Money math
+npm install decimal.js
 
-# Map
-npm install mapbox-gl react-map-gl
-npm install -D @types/mapbox-gl
+# Date picker (if not already present)
+npx shadcn@latest add calendar
+# react-day-picker is installed as a peer dep of shadcn calendar — no direct install
+```
 
-# AI
-npm install ai
+**ExcelJS (already installed):** No change. Use existing `src/lib/excel.ts` as the base; extend with `addWorksheet()` calls for multi-sheet exports.
 
-# File storage
-npm install @vercel/blob
+---
 
-# i18n
-npm install next-intl
+## Key Integration Patterns
 
-# Utilities
-npm install wkx zod
-npm install -D tsx
+### ExcelJS Multi-Sheet Export Route Handler
+
+```typescript
+// app/api/exports/hakkdis/route.ts
+import ExcelJS from 'exceljs';
+import { NextRequest } from 'next/server';
+
+export async function GET(req: NextRequest) {
+  const wb = new ExcelJS.Workbook();
+
+  const summary = wb.addWorksheet('Özet');
+  summary.columns = [
+    { header: 'Proje / Project', key: 'project', width: 30 },
+    { header: 'Kazanılan Değer / Earned Value (₺)', key: 'earned', width: 25 },
+  ];
+  // ... add rows
+
+  const boq = wb.addWorksheet('BOQ');
+  // ... configure boq sheet
+
+  // ExcelJS.Buffer extends ArrayBuffer; pass directly to Response — do NOT Buffer.from()
+  const buf = await wb.xlsx.writeBuffer();
+  return new Response(buf, {
+    status: 200,
+    headers: {
+      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Disposition': 'attachment; filename="hakkdis-rapor.xlsx"',
+    },
+  });
+}
+```
+
+### pdf-lib Hakkediş Certificate
+
+```typescript
+// src/lib/pdf/hakkdis.ts
+import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import fontkit from '@pdf-lib/fontkit';
+import { readFileSync } from 'fs';
+import path from 'path';
+
+// Load font once at module level (not per-request)
+const turkishFontBytes = readFileSync(
+  path.join(process.cwd(), 'public', 'fonts', 'NotoSans-Regular.ttf')
+);
+
+export async function generateHakkdisePDF(data: HakkdisData): Promise<Uint8Array> {
+  const pdfDoc = await PDFDocument.create();
+  pdfDoc.registerFontkit(fontkit);
+  const font = await pdfDoc.embedFont(turkishFontBytes);
+
+  const page = pdfDoc.addPage([595, 842]); // A4
+  const { width, height } = page.getSize();
+
+  // Header
+  page.drawText('HAKEDİŞ SERTİFİKASI', {
+    x: 50, y: height - 80,
+    size: 18, font, color: rgb(0.1, 0.2, 0.4),
+  });
+
+  // Table: draw rows manually with drawLine + drawText
+  const tableTop = height - 150;
+  const rowHeight = 22;
+  data.lineItems.forEach((item, i) => {
+    const y = tableTop - i * rowHeight;
+    page.drawText(item.material, { x: 50, y, size: 10, font });
+    page.drawText(`₺${item.earnedValue}`, { x: 400, y, size: 10, font });
+  });
+
+  return pdfDoc.save();
+}
+```
+
+Route handler:
+```typescript
+// app/api/exports/hakkdis-pdf/route.ts
+export async function GET(req: NextRequest) {
+  const pdfBytes = await generateHakkdisePDF(data);
+  return new Response(pdfBytes, {
+    headers: {
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': 'attachment; filename="hakkdis.pdf"',
+    },
+  });
+}
+```
+
+### Decimal.js for KDV + Retention
+
+```typescript
+import Decimal from 'decimal.js';
+
+// Drizzle returns numeric as string — parse with Decimal
+function calculateHakkdis(grossStr: string) {
+  const gross    = new Decimal(grossStr);
+  const kdv      = gross.times('0.20');           // 20% KDV
+  const retention = gross.times('0.05');          // 5% hakediş stopajı
+  const net      = gross.minus(retention);        // gross - stopaj (KDV added separately)
+  const total    = net.plus(kdv);
+
+  return {
+    gross:     gross.toFixed(2),
+    kdv:       kdv.toFixed(2),
+    retention: retention.toFixed(2),
+    net:       net.toFixed(2),
+    total:     total.toFixed(2),
+  };
+}
+```
+
+### shadcn Chart with Server-Fetched Data
+
+```typescript
+// app/dashboard/analytics/page.tsx (Server Component)
+import { ThroughputChart } from '@/components/charts/ThroughputChart';
+import { db } from '@/db';
+
+export default async function AnalyticsPage() {
+  const data = await db.select({
+    week: sql<string>`date_trunc('week', submitted_at)`,
+    count: count(),
+  }).from(submissions)
+    .where(eq(submissions.status, 'approved'))
+    .groupBy(sql`date_trunc('week', submitted_at)`)
+    .orderBy(sql`1`);
+
+  return <ThroughputChart data={data} />;
+}
+
+// components/charts/ThroughputChart.tsx
+'use client';
+import { LineChart, Line, XAxis, YAxis, Tooltip } from 'recharts';
+
+export function ThroughputChart({ data }: { data: { week: string; count: number }[] }) {
+  return (
+    <LineChart width={600} height={300} data={data}>
+      <XAxis dataKey="week" />
+      <YAxis />
+      <Tooltip />
+      <Line type="monotone" dataKey="count" stroke="var(--color-primary)" />
+    </LineChart>
+  );
+}
+```
+
+### TanStack Table Server-Side Pagination
+
+```typescript
+// URL: /projects/1/submissions?page=2&sort=decidedAt&dir=desc
+// Server Component reads params, queries Drizzle, passes to client table
+export default async function SubmissionsPage({
+  searchParams
+}: {
+  searchParams: Promise<{ page?: string; sort?: string; dir?: string }>
+}) {
+  const { page = '1', sort = 'submittedAt', dir = 'desc' } = await searchParams;
+  const pageNum = Math.max(1, parseInt(page));
+  const pageSize = 25;
+
+  const [rows, [{ total }]] = await Promise.all([
+    db.select().from(submissions)
+      .orderBy(dir === 'desc' ? desc(submissions[sort]) : asc(submissions[sort]))
+      .limit(pageSize).offset((pageNum - 1) * pageSize),
+    db.select({ total: count() }).from(submissions),
+  ]);
+
+  return <SubmissionsTable rows={rows} total={Number(total)} page={pageNum} pageSize={pageSize} />;
+}
 ```
 
 ---
 
-## Environment Variables Reference
+## Version Compatibility
 
-```bash
-# Database
-DATABASE_URL=postgresql://...@ep-xxx.neon.tech/bayrak_ai?sslmode=require
-
-# Auth
-AUTH_SECRET=<openssl rand -base64 32>
-AUTH_RESEND_KEY=re_xxxxxxxx
-AUTH_URL=https://bayrak.ai
-
-# Telegram
-TELEGRAM_BOT_TOKEN=1234567890:AAAAA...
-
-# Mapbox (public — safe to expose)
-NEXT_PUBLIC_MAPBOX_TOKEN=pk.eyJ1Ij...
-
-# AI Gateway
-# Use static API key below, OR provision via OIDC (vercel env pull on Vercel projects - no manual rotation needed)
-AI_GATEWAY_API_KEY=vg_xxxxxxxx
-```
+| Package | Version | Compatible With | Notes |
+|---------|---------|-----------------|-------|
+| recharts | 3.8.1 | React 19, Next.js 15 | `'use client'` required; peer dep of shadcn chart |
+| @tanstack/react-table | 8.21.3 | React 19, Next.js 15 | Pin to `^8`; v9 is alpha-only |
+| pdf-lib | 1.17.1 | Node.js 24, Vercel Fluid Compute | Pure JS, no native deps; works anywhere |
+| @pdf-lib/fontkit | 1.1.1 | pdf-lib 1.17.x | Must register before `embedFont()` |
+| decimal.js | 10.6.0 | TypeScript 5.x | Full types included; no @types needed |
+| react-day-picker | 10.0.1 | React 19, shadcn calendar | shadcn imports from `react-day-picker` (not `@daypicker/react`); stick with package alias |
+| ExcelJS | 4.4.0 (existing) | Node.js 24 | `writeBuffer()` returns `ExcelJS.Buffer` (ArrayBuffer subtype); pass to `Response()` directly, do NOT call `Buffer.from()` |
 
 ---
 
@@ -600,35 +384,35 @@ AI_GATEWAY_API_KEY=vg_xxxxxxxx
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Neon + PostGIS enablement | HIGH | Official Neon docs confirm `CREATE EXTENSION IF NOT EXISTS postgis` — no special setup |
-| Drizzle geometry(Point) | HIGH | Official Drizzle docs show `geometry()` column with `type: 'point'` |
-| Drizzle LineString schema | MEDIUM | Works but requires manual migration SQL edit (known limitation, documented) |
-| Drizzle geography type | MEDIUM | No native type; `::geography` cast in SQL`` works; custom type with `wkx` for fromDriver |
-| ST_DWithin / ST_ClosestPoint via sql`` | HIGH | Pattern confirmed in multiple sources; standard Drizzle raw-SQL escape hatch |
-| grammY webhook on Vercel (std/http) | HIGH | Official grammY docs + Vercel docs confirm the pattern |
-| grammY conversations v2 replay engine | HIGH | Official docs confirm; `conversation.external()` for all side effects |
-| @grammyjs/storage-psql for serverless | HIGH | Confirmed available; same version as other grammY storage adapters |
-| AI SDK v6 + AI Gateway + Claude vision | HIGH | Official Vercel AI Gateway docs confirm model string format; AI SDK image content format verified |
-| react-map-gl v8 + GeoJSON layers | HIGH | npm version confirmed 8.1.x; pattern matches Mapbox official React tutorial |
-| Auth.js v5 beta magic-link + Drizzle | HIGH | Official authjs.dev docs confirmed; beta has been stable >1 year |
-| next-intl App Router Server Components | HIGH | Official next-intl docs confirm `getTranslations()` async RSC pattern |
+| Recharts v3 via shadcn chart | HIGH | Official shadcn docs confirm Recharts v3; npm latest 3.8.1 verified |
+| TanStack Table v8 server-side pagination | HIGH | Official docs confirm `manualPagination`; npm latest 8.21.3 verified |
+| pdf-lib serverless compatibility | HIGH | Pure JS, no native deps; confirmed works in Vercel Functions by multiple sources |
+| @react-pdf/renderer avoidance | HIGH | GitHub issue #3074 (Feb 2025) confirms `PDFDocument is not a constructor` in Next.js 15; issue closed without fix |
+| ExcelJS multi-sheet + Buffer gotcha | HIGH | Issue #1032 open and unresolved; `writeBuffer()` → `ArrayBuffer` direct to `Response` workaround confirmed pattern |
+| decimal.js for KDV | HIGH | Wanago/NestJS money article explicitly recommends decimal.js with Drizzle numeric columns; npm 10.6.0 verified |
+| Drizzle numeric → string return | HIGH | Confirmed open bug/behaviour issues #570 and #1042 in Drizzle repo; by design |
+| Drizzle regular views for analytics | HIGH | Official Drizzle docs confirm `.existing()` view pattern; tested against Neon |
+| Neon materialized view deferral | MEDIUM | Based on serverless refresh-timing reasoning; no Neon-specific benchmark; revisit after v2 launch |
+| react-day-picker v10 shadcn range | HIGH | shadcn date-picker docs confirm react-day-picker as underlying engine; v10 alias confirmed |
 
 ---
 
 ## Sources
 
-- Neon PostGIS: https://neon.com/docs/extensions/postgis
-- Drizzle PostGIS geometry point: https://orm.drizzle.team/docs/guides/postgis-geometry-point
-- Drizzle LineString: https://spin.atomicobject.com/linestring-geometry-drizzle/
-- Drizzle PostGIS polygons (NestJS): https://wanago.io/2025/01/20/api-nestjs-postgis-polygons-postgresql-drizzle/
-- grammY Vercel hosting: https://grammy.dev/hosting/vercel
-- grammY Conversations plugin: https://grammy.dev/plugins/conversations
-- grammY storages repo: https://github.com/grammyjs/storages/tree/main/packages
-- grammY Next.js App Router example: https://www.launchfa.st/blog/telegram-nextjs-app-router
-- Vercel AI Gateway getting started: https://vercel.com/docs/ai-gateway/getting-started/text
-- AI SDK prompt formats: https://ai-sdk.dev/docs/foundations/prompts
-- Mapbox GL JS React tutorial: https://docs.mapbox.com/help/tutorials/use-mapbox-gl-js-with-react/
-- Auth.js Resend provider: https://authjs.dev/getting-started/providers/resend
-- Auth.js Drizzle adapter: https://authjs.dev/getting-started/adapters/drizzle
-- Auth.js email authentication: https://authjs.dev/getting-started/authentication/email
-- next-intl App Router: https://next-intl.dev/docs/getting-started/app-router
+- shadcn chart docs — https://ui.shadcn.com/docs/components/radix/chart (Recharts v3 confirmed)
+- Recharts npm (Bundlephobia) — https://bundlephobia.com/package/recharts (50 kB gzipped)
+- PkgPulse Recharts vs Tremor vs Nivo — https://www.pkgpulse.com/guides/recharts-v3-vs-tremor-vs-nivo-react-charting-2026
+- TanStack Table v8 pagination docs — https://tanstack.com/table/v8/docs/guide/pagination
+- @react-pdf/renderer issue #3074 — https://github.com/diegomura/react-pdf/issues/3074 (broken in Next.js 15)
+- PDF4.dev Next.js PDF guide — https://pdf4.dev/blog/pdf-generation-nextjs (Playwright 300 MB limit)
+- pdf-lib GitHub — https://github.com/Hopding/pdf-lib (pure JS, fontkit embedding)
+- ExcelJS issue #1032 — https://github.com/exceljs/exceljs/issues/1032 (writeBuffer type mismatch)
+- Wanago money storage with Drizzle — https://wanago.io/2024/11/04/api-nestjs-drizzle-orm-postgresql-money/ (decimal.js recommendation)
+- Drizzle numeric string bug — https://github.com/drizzle-team/drizzle-orm/issues/570
+- Drizzle views docs — https://orm.drizzle.team/docs/views (refreshMaterializedView API)
+- shadcn date picker docs — https://ui.shadcn.com/docs/components/base/date-picker (react-day-picker v10)
+- react-day-picker v10 upgrade guide — https://daypicker.dev/upgrading
+
+---
+*Stack research for: bayrak.ai v2.0 Operations Intelligence & Hakkediş — net-new library additions*
+*Researched: 2026-05-25*

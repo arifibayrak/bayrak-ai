@@ -1,657 +1,879 @@
-# Architecture Research
+# Architecture Research — v2.0 Integration Guide
 
-**Domain:** Linear-infrastructure field-ops platform (Telegram bot + web dashboard + geospatial + AI assist)
-**Researched:** 2026-05-23
-**Confidence:** HIGH (stack fixed by constraints; patterns verified against grammY docs, PostGIS docs, Drizzle docs, saha ADR precedents)
-
----
-
-## System Overview
-
-```
-┌─────────────────────────── FIELD CHANNEL ─────────────────────────────┐
-│  Telegram Worker Chat                 Telegram Auditor Chat            │
-│  (conversational state machine)       (inline callback buttons)        │
-└────────────────┬──────────────────────────────┬───────────────────────┘
-                 │ webhook (POST)                │ callback_query (POST)
-                 ▼                               ▼
-┌─────────────────────────── NEXT.JS MONOLITH (Vercel) ─────────────────┐
-│                                                                        │
-│  /api/telegram/webhook  ─── grammY Bot ──┬── BotConversation engine   │
-│       (Route Handler)                    │   (sessions → Neon)        │
-│                                          ├── SubmissionService         │
-│                                          ├── AuditService              │
-│                                          └── NotificationService       │
-│                                                                        │
-│  /api/ai/vision         ─── AI SDK (Claude) ── VisionAnalysis          │
-│       (Route Handler)                                                  │
-│                                                                        │
-│  /dashboard/*           ─── React Server Components (App Router)       │
-│       Auth: Auth.js magic-link                                         │
-│       Map: Mapbox GL JS (client component)                             │
-│       Data: Server Actions → DB queries                                │
-│                                                                        │
-│  /api/projects/*        ─── REST Route Handlers (BOQ mgmt, GeoJSON)   │
-│                                                                        │
-└───────────────────────────────┬───────────────────────────────────────┘
-                                │
-        ┌───────────────────────┼──────────────────────┐
-        ▼                       ▼                      ▼
-  Neon Postgres           Vercel Blob             Telegram API
-  + PostGIS               (photos)                (outbound notify)
-  Drizzle ORM
-```
+**Domain:** Operations Intelligence & Hakkediş — additive integration into existing Next.js 15 + Drizzle + PostGIS monolith
+**Researched:** 2026-05-25
+**Confidence:** HIGH (grounded in actual source files; patterns derived from v1 codebase conventions)
 
 ---
 
-## Component Boundaries
+## Framing: What v2 Adds vs What It Preserves
 
-| Component | Responsibility | Communicates With |
-|-----------|---------------|-------------------|
-| **grammY webhook handler** (`/api/telegram/webhook`) | Receives all Telegram updates; routes to BotConversation or AuditCallbackHandler depending on update type | BotConversation engine, AuditCallbackHandler, Neon via Drizzle |
-| **BotConversation engine** | Owns the worker dialog state machine (States 0–6); persists state in Neon via `@grammyjs/storage-psql`; enforces input types; calls SubmissionService on confirm | Neon (session store), SubmissionService, Telegram API (outbound messages) |
-| **AuditCallbackHandler** | Handles `callback_query` from auditor Approve/Reject buttons; calls AuditService; triggers side-effects atomically | AuditService, NotificationService, Neon |
-| **SubmissionService** | Creates a `submissions` row with `status: pending_audit`; triggers spatial matching; invokes AI vision (async); pings auditor | Neon, SpatialService, AI Route Handler (background), NotificationService |
-| **AuditService** | Transitions `submissions.status`; runs approval transaction (BOQ decrement + map point write) atomically; or sets rejected + reason | Neon (transaction) |
-| **SpatialService** | Matches submission lat/long to nearest route segment using PostGIS; writes `matched_chainage` and `nearest_point` back to submission | Neon + PostGIS |
-| **NotificationService** | Sends outgoing Telegram messages (auditor ping on submission, worker rejection notice); thin wrapper over grammY's `bot.api` | Telegram API |
-| **AI Vision Route Handler** (`/api/ai/vision`) | Receives photo URL + submission metadata; calls Claude vision via AI SDK; returns structured anomaly/classification JSON; stores result | Neon (vision_results table), Vercel AI Gateway |
-| **Dashboard (App Router)** | Office Engineer UI: project setup, BOQ management, GeoJSON route upload, live map view (approved markers + colored segments) | Neon via Server Actions and Route Handlers, Mapbox GL JS (client) |
-| **Auth layer** | Auth.js magic-link for dashboard; Telegram User ID (from update.message.from.id) for bot identity | Neon (sessions table) |
+v2 does NOT redesign v1. Every existing route, schema table, and action file stays intact. v2 adds:
+
+1. Three new schema tables (`office_activity_log`, `hakkediş_periods`, `hakkediş_period_lines`) + one column alteration (`boq_items.unit_price`)
+2. A shared canonical submission record type + SQL view
+3. An aggregation layer (data-access functions backed by raw SQL aggregates)
+4. A restructured IA shell built as App Router route groups layered *over* existing routes
+5. An export pipeline (ExcelJS multi-sheet + PDF) as new route handlers
+6. Charting as client components (Recharts) within existing dashboard layout
 
 ---
 
-## Dialog State Machine (Worker Bot, States 0–6)
+## 1. DATA MODEL CHANGES
 
-### Durability Choice: grammY Conversations Plugin + `@grammyjs/storage-psql`
+### 1a. `unit_price` on `boq_items`
 
-**Decision:** Use the grammY Conversations plugin with `@grammyjs/storage-psql` backed by Neon Postgres. Do NOT use in-memory sessions.
+**Add:** `unit_price: numeric('unit_price', { precision: 15, scale: 4 }).nullable()`
 
-**Rationale:** Vercel runs serverless functions that can be on different instances across invocations. In-memory session state is lost between cold starts and across concurrent workers. The `@grammyjs/storage-psql` adapter serializes conversation replay state to a `sessions` table in Neon, making dialog state durable across serverless restarts with zero additional infrastructure.
+Precision rationale:
+- `precision: 15, scale: 4` — handles Turkish Lira amounts up to 99,999,999,999.9999 (billions, four decimal places). Turkish construction BOQ unit prices are typically quoted in TRY to 2–4 decimal places; 4dp is safe.
+- Nullable: the column is explicitly nullable because v1 rows have no price data and backfill is not required.
+- No separate `currency` column needed for single-tenant MVP (always TRY). Add a `currency_code text default 'TRY'` only when multi-tenant is built.
+- Do NOT use `money` Postgres type — it's locale-sensitive and breaks in non-Turkish locales.
 
-**Critical constraint from grammY docs:** In serverless environments, do NOT use custom `getStorageKey` functions — stick to the default per-chat key to avoid race conditions. Each worker's conversation is keyed by their `chat_id`.
-
-**How replay works:** The grammY Conversations plugin is a replay engine, not a classic Redux state machine. When a worker sends a message, the conversation function replays from the beginning (skipping past API calls) until it reaches the current wait point, then continues. Side effects (DB writes, `Math.random()`, time calls) MUST be wrapped in `conversation.external()` to prevent duplicate execution during replay.
-
-### State Machine Definition
-
-```
-State 0 — Project Select
-  Wait: inline keyboard showing worker's assigned projects
-  Invalid: not a callback_query → reprompt "Lütfen listeden seçiniz"
-
-State 1 — Photo Upload
-  Wait: photo message
-  Invalid: text/location/document → reprompt "Lütfen önce fotoğraf gönderin"
-
-State 2 — Location Share
-  Wait: native Telegram location message (message.location)
-  Invalid: text/photo/pin-drop URL → reprompt "Lütfen konum paylaş butonunu kullanın"
-
-State 3 — Quantity Input
-  Wait: text message parseable as positive float
-  Invalid: non-numeric → reprompt "Lütfen sayısal bir miktar girin (örn: 25.5)"
-
-State 4 — Notes (optional, with skip button)
-  Wait: text message OR "Geç" callback_query
-  No invalid — any text accepted; empty accepted via skip
-
-State 5 — Confirm
-  Wait: callback_query [✅ Onayla] or [❌ İptal]
-  On Onayla → SubmissionService.create() wrapped in conversation.external()
-  On İptal → restart from State 0
-
-State 6 — Done (terminal)
-  Bot sends "Gönderildi ✅" + submission ID
-  Conversation ends, session cleared
+**Modified file:** `src/db/schema/boq-items.ts`
+```typescript
+// Uncomment and update the existing comment:
+unitPrice: numeric('unit_price', { precision: 15, scale: 4 }), // nullable — v1 rows have no price
 ```
 
-**Reprompt pattern:** Each wait call is wrapped in a loop that validates the incoming message type. Invalid inputs send a Turkish error message and loop back to the same `conversation.wait()` call — the state machine does not advance.
+**Migration:** A Drizzle-generated migration (`drizzle-kit generate`) will emit:
+```sql
+ALTER TABLE "boq_items" ADD COLUMN "unit_price" numeric(15, 4);
+```
+This is safe: no CHECK constraint, no geometry column, no SRID — no hand-editing needed. Run `drizzle-kit generate` normally; the output goes into `src/db/migrations/0004_*.sql`, then `tsx src/db/migrate.ts`.
+
+**Earned value formula** (computed at query time, never stored):
+```
+contractedValue(item)    = planned_qty    × unit_price
+earnedValue(item)        = approved_qty   × unit_price
+percentCompleteByValue   = approved_qty / planned_qty  (quantity-based, unit_price not needed)
+earnedValueTotal(project)= SUM(approved_qty × unit_price) WHERE unit_price IS NOT NULL
+```
+
+---
+
+### 1b. Office-Engineer Activity Log
+
+**New table:** `office_activity_log`
+
+**New file:** `src/db/schema/office-activity-log.ts`
 
 ```typescript
-// Canonical reprompt loop pattern
-while (true) {
-  const msg = await conversation.wait();
-  if (msg.message?.photo) break;  // valid
-  await ctx.reply("Lütfen önce fotoğraf gönderin 📷");
+import { pgTable, uuid, text, jsonb, timestamp, index } from 'drizzle-orm/pg-core';
+import { users } from './auth';       // Auth.js users table (office engineers)
+import { tenants } from './tenants';
+import { projects } from './projects';
+
+// action_type enum — extend as new office actions are added
+export const OFFICE_ACTION_TYPES = [
+  'project_created',
+  'project_updated',
+  'boq_item_created',
+  'boq_item_updated',
+  'boq_item_deleted',
+  'boq_imported',           // bulk Excel import
+  'unit_price_set',         // pricing specifically tracked
+  'route_uploaded',
+  'person_approved',        // pending → active
+  'person_assigned',
+  'person_unassigned',
+  'hakkediş_period_created',
+  'hakkediş_period_finalized',
+  'hakkediş_exported',
+  'submission_reviewed',    // manual review from dashboard (not bot approval)
+] as const;
+
+export type OfficeActionType = typeof OFFICE_ACTION_TYPES[number];
+
+export const officeActivityLog = pgTable('office_activity_log', {
+  id:           uuid('id').primaryKey().defaultRandom(),
+  tenantId:     uuid('tenant_id').references(() => tenants.id),
+  actorUserId:  text('actor_user_id').notNull().references(() => users.id), // Auth.js users.id is text
+  actionType:   text('action_type').notNull(),  // one of OFFICE_ACTION_TYPES; text not enum for easy extension
+  entityType:   text('entity_type').notNull(),  // 'project' | 'boq_item' | 'person' | 'hakkediş_period' | 'submission'
+  entityId:     text('entity_id'),              // uuid of the affected row (nullable for bulk ops)
+  projectId:    uuid('project_id').references(() => projects.id), // nullable — cross-project actions
+  metadata:     jsonb('metadata'),              // arbitrary context; see examples below
+  occurredAt:   timestamp('occurred_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index('office_activity_log_actor_idx').on(t.actorUserId),
+  index('office_activity_log_project_idx').on(t.projectId),
+  index('office_activity_log_action_idx').on(t.actionType),
+  index('office_activity_log_occurred_idx').on(t.occurredAt),
+]);
+```
+
+**`metadata` JSONB examples by action type:**
+- `boq_imported`: `{ rowCount: 42, fileName: "BOQ-Q1.xlsx" }`
+- `unit_price_set`: `{ boqItemId: "...", oldPrice: null, newPrice: "1250.0000", material: "DN200 HDPE" }`
+- `person_assigned`: `{ personId: "...", role: "worker", displayName: "Ahmet Yılmaz" }`
+- `hakkediş_exported`: `{ periodId: "...", format: "xlsx", rowCount: 18 }`
+
+**What to log:** Log every mutation that a Server Action or route handler performs on behalf of an office engineer. Do NOT log reads. Log at the end of the action, after the DB write succeeds, in the same Server Action function (not a separate hook — keeps it simple and avoids fire-and-forget failures silently dropping log entries).
+
+**Migration:** `drizzle-kit generate` → standard migration file. No spatial columns, no hand-editing needed.
+
+---
+
+### 1c. Hakkediş Tables
+
+**Design principle:** A hakkediş (Turkish progress payment certificate) is a point-in-time snapshot of approved work quantities and their unit prices. It is NOT recomputed from live submissions after finalization — unit prices can change and quantities can continue to grow. Snapshot the values at period creation/finalization time.
+
+**New files:** `src/db/schema/hakkediş-periods.ts` and `src/db/schema/hakkediş-period-lines.ts`
+
+```typescript
+// src/db/schema/hakkediş-periods.ts
+import { pgTable, uuid, text, timestamp, index, date } from 'drizzle-orm/pg-core';
+import { tenants } from './tenants';
+import { projects } from './projects';
+import { users } from './auth';
+
+export const HAKKEDIŞ_STATUSES = ['draft', 'finalized', 'submitted', 'paid'] as const;
+export type HakkediştStatus = typeof HAKKEDIŞ_STATUSES[number];
+
+export const hakkedişPeriods = pgTable('hakkediş_periods', {
+  id:              uuid('id').primaryKey().defaultRandom(),
+  tenantId:        uuid('tenant_id').references(() => tenants.id),
+  projectId:       uuid('project_id').notNull().references(() => projects.id, { onDelete: 'restrict' }),
+  periodNumber:    text('period_number').notNull(),          // "HK-2026-01" — human-readable label
+  periodStartDate: date('period_start_date').notNull(),      // inclusive
+  periodEndDate:   date('period_end_date').notNull(),        // inclusive
+  status:          text('status').notNull().default('draft'), // draft | finalized | submitted | paid
+  notes:           text('notes'),
+  kdvRate:         text('kdv_rate').notNull().default('0.20'),     // numeric(5,4) as text; 0.20 = 20%
+  retentionRate:   text('retention_rate').notNull().default('0.05'), // 0.05 = 5%
+  createdByUserId: text('created_by_user_id').references(() => users.id),
+  finalizedAt:     timestamp('finalized_at', { withTimezone: true }),
+  createdAt:       timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt:       timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index('hakkediş_periods_project_idx').on(t.projectId),
+  index('hakkediş_periods_status_idx').on(t.status),
+]);
+```
+
+```typescript
+// src/db/schema/hakkediş-period-lines.ts
+import { pgTable, uuid, text, numeric, timestamp, index } from 'drizzle-orm/pg-core';
+import { tenants } from './tenants';
+import { hakkedişPeriods } from './hakkediş-periods';
+import { boqItems } from './boq-items';
+
+export const hakkedişPeriodLines = pgTable('hakkediş_period_lines', {
+  id:                   uuid('id').primaryKey().defaultRandom(),
+  tenantId:             uuid('tenant_id').references(() => tenants.id),
+  periodId:             uuid('period_id').notNull().references(() => hakkedişPeriods.id, { onDelete: 'cascade' }),
+  boqItemId:            uuid('boq_item_id').notNull().references(() => boqItems.id, { onDelete: 'restrict' }),
+
+  // Snapshot fields — captured at period creation/finalization, immutable after finalize
+  materialSnapshot:     text('material_snapshot').notNull(),          // boq_items.material at snapshot time
+  unitSnapshot:         text('unit_snapshot').notNull(),              // boq_items.unit at snapshot time
+  unitPriceSnapshot:    numeric('unit_price_snapshot', { precision: 15, scale: 4 }).notNull(), // locked in
+
+  // Quantities — period vs cumulative
+  cumulativeQtyApproved: numeric('cumulative_qty_approved', { precision: 12, scale: 3 }).notNull(), // total approved up to period end
+  previousCumulativeQty: numeric('previous_cumulative_qty', { precision: 12, scale: 3 }).notNull().default('0'), // end of prior period
+  periodQty:            numeric('period_qty', { precision: 12, scale: 3 }).notNull(), // = cumulative - previous
+
+  // Computed values — stored for immutability after finalization
+  periodValue:          numeric('period_value', { precision: 15, scale: 2 }).notNull(), // periodQty × unitPriceSnapshot
+  cumulativeValue:      numeric('cumulative_value', { precision: 15, scale: 2 }).notNull(), // cumulativeQtyApproved × unitPriceSnapshot
+
+  createdAt:            timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index('hakkediş_period_lines_period_idx').on(t.periodId),
+  index('hakkediş_period_lines_boq_idx').on(t.boqItemId),
+]);
+```
+
+**Relationship to submissions:** Lines are computed from approved submissions at period creation time, NOT linked to individual submission rows. The link is: "all submissions with `status = 'approved'` and `decided_at <= periodEndDate` for this `boq_item_id`". This is a read-time aggregation, not a FK join. This avoids the N+1 problem and keeps hakkediş independent of submission-level changes after finalization.
+
+**Finalization lock:** When `status` transitions to `finalized`, the snapshot columns become immutable — enforced in the Server Action by checking status before allowing updates. No DB-level lock needed for MVP; add a trigger if strict audit compliance is required later.
+
+**Migration:** Two new `CREATE TABLE` statements. `drizzle-kit generate` handles them. No spatial columns. The filename convention (e.g., `hakkediş`) is ASCII-safe in filenames — use `hakkediş-periods.ts` but the SQL table name can stay `hakkediş_periods` since Postgres handles UTF-8 identifiers. Alternatively, use `hakedis_periods` as the SQL name to stay ASCII-safe in migrations — recommended for portability.
+
+**Recommended SQL table names:** `hakedis_periods` and `hakedis_period_lines` (ASCII-safe, still readable).
+
+---
+
+## 2. AGGREGATION LAYER
+
+### Where Rollups Live
+
+**Verdict: Raw SQL via `db.execute(sql\`...\`)` in data-access functions. No Postgres VIEWs. No materialized views.**
+
+Rationale:
+- The codebase already uses `sql\`ST_AsGeoJSON(...)\`` raw SQL for spatial queries — the pattern is established and the team knows it.
+- Neon supports regular VIEWs but **does not support `REFRESH MATERIALIZED VIEW`** in the serverless HTTP driver (the `neon-http` driver used in `migrate.ts` does not support multi-statement transactions needed for background refresh). Materialized views require a scheduled job or pg_cron — overkill for MVP scale.
+- Regular Postgres VIEWs are syntactically convenient but add a layer of indirection without type safety. A TypeScript data-access function returning the same query result is more debuggable and refactorable.
+- Drizzle relational query builder (`db.query.*`) does not support aggregation well — use `db.execute()` for anything with `GROUP BY`, `SUM`, `COUNT`, window functions, or CTEs.
+
+**Aggregation function location:** `src/actions/analytics.ts` (new file, follows existing Server Action conventions — `'use server'`, `auth()` guard, `getDefaultTenantId()` scope).
+
+### Canonical Submission Record
+
+Define once in `src/lib/types/canonical-submission.ts` (new file). This type is the shared shape used by the submissions table view, the analytics API, and the Excel export:
+
+```typescript
+// src/lib/types/canonical-submission.ts
+// The canonical view of a submission row — used by analytics, table, and export.
+// All numerics are number (not Drizzle's string). All dates are ISO strings.
+export type CanonicalSubmission = {
+  id: string;
+  projectId: string;
+  projectName: string;
+  personId: string;
+  workerName: string;              // people.display_name
+  auditorName: string | null;      // people.display_name of decidedBy
+  boqItemId: string;
+  material: string;                // boq_items.material
+  unit: string;                    // boq_items.unit
+  unitPrice: number | null;        // boq_items.unit_price (nullable)
+  quantity: number;
+  earnedValue: number | null;      // quantity × unitPrice, null if no price
+  status: 'pending_audit' | 'approved' | 'rejected';
+  submittedAt: string;             // ISO 8601
+  decidedAt: string | null;
+  auditLatencyHours: number | null; // (decidedAt - submittedAt) in hours, null if pending
+  locationMatch: 'near' | 'far' | 'no_route' | null;
+  locationDistanceM: number | null;
+  photoUrl: string;
+  notes: string | null;
+  rejectionReason: string | null;
+};
+```
+
+**SQL backing query for `CanonicalSubmission`** (used in analytics and export functions):
+
+```sql
+SELECT
+  s.id,
+  s.project_id,
+  p.name                                            AS project_name,
+  s.person_id,
+  w.display_name                                    AS worker_name,
+  aud.display_name                                  AS auditor_name,
+  s.boq_item_id,
+  b.material,
+  b.unit,
+  b.unit_price::float8                              AS unit_price,
+  s.quantity::float8,
+  CASE WHEN b.unit_price IS NOT NULL
+       THEN (s.quantity * b.unit_price)::float8
+       ELSE NULL
+  END                                               AS earned_value,
+  s.status,
+  s.submitted_at,
+  s.decided_at,
+  CASE WHEN s.decided_at IS NOT NULL AND s.status != 'pending_audit'
+       THEN EXTRACT(EPOCH FROM (s.decided_at - s.submitted_at)) / 3600.0
+       ELSE NULL
+  END                                               AS audit_latency_hours,
+  s.location_match,
+  s.location_distance_m::float8                    AS location_distance_m,
+  s.photo_url,
+  s.notes,
+  s.rejection_reason
+FROM submissions s
+JOIN projects p   ON p.id = s.project_id
+JOIN people w     ON w.id = s.person_id
+JOIN boq_items b  ON b.id = s.boq_item_id
+LEFT JOIN people aud ON aud.id = s.decided_by
+WHERE s.tenant_id = $1
+  AND s.project_id = ANY($2::uuid[])   -- multi-project support for cross-project analytics
+  AND s.submitted_at >= $3             -- date range start (optional, pass epoch 0 to skip)
+  AND s.submitted_at <  $4             -- date range end exclusive
+ORDER BY s.submitted_at DESC
+```
+
+Build this as a TypeScript function `getCanonicalSubmissions(filters)` in `src/actions/analytics.ts` using `db.execute(sql\`...\`)`. The function returns `CanonicalSubmission[]`. The same function feeds:
+- The analytics scorecard page
+- The Excel multi-sheet export handler
+- The hakkediş period line computation
+
+### Aggregate Functions
+
+**`getProjectMetrics(projectId: string, dateRange?: {from: Date, to: Date})`** — per-project KPIs:
+```sql
+SELECT
+  COUNT(*)                           FILTER (WHERE status = 'approved')  AS approved_count,
+  COUNT(*)                           FILTER (WHERE status = 'rejected')  AS rejected_count,
+  COUNT(*)                           FILTER (WHERE status = 'pending_audit') AS pending_count,
+  ROUND(AVG(EXTRACT(EPOCH FROM (decided_at - submitted_at)) / 3600.0)
+        FILTER (WHERE decided_at IS NOT NULL), 2) AS avg_audit_latency_hours,
+  SUM(quantity * b.unit_price)       FILTER (WHERE status = 'approved' AND b.unit_price IS NOT NULL) AS earned_value,
+  COUNT(*)                           FILTER (WHERE location_warning = true) AS location_warning_count,
+  COUNT(*)                           FILTER (WHERE status = 'rejected') * 1.0 /
+    NULLIF(COUNT(*) FILTER (WHERE status IN ('approved','rejected')), 0) AS rejection_rate
+FROM submissions s
+JOIN boq_items b ON b.id = s.boq_item_id
+WHERE s.project_id = $1 AND s.tenant_id = $2
+  AND s.submitted_at BETWEEN $3 AND $4
+```
+
+**`getPersonMetrics(personId: string, projectIds?: string[])`** — per-worker/auditor scorecard:
+```sql
+SELECT
+  s.person_id,
+  w.display_name,
+  COUNT(*)                           FILTER (WHERE s.status = 'approved') AS submissions_approved,
+  COUNT(*)                           FILTER (WHERE s.status = 'rejected') AS submissions_rejected,
+  SUM(s.quantity * b.unit_price)     FILTER (WHERE s.status = 'approved' AND b.unit_price IS NOT NULL) AS value_contributed,
+  ROUND(AVG(...audit_latency...), 2) AS avg_audit_latency_hours  -- for auditors: where decided_by = person_id
+FROM submissions s
+JOIN people w     ON w.id = s.person_id
+JOIN boq_items b  ON b.id = s.boq_item_id
+WHERE s.person_id = $1 AND s.tenant_id = $2
+GROUP BY s.person_id, w.display_name
+```
+
+**`getPortfolioOverview()`** — cross-project home page KPIs. Keep this query lightweight — it runs on every Overview page load:
+```sql
+SELECT
+  p.id, p.name,
+  COUNT(s.id) FILTER (WHERE s.status = 'approved')  AS approved_count,
+  COUNT(s.id) FILTER (WHERE s.status = 'pending_audit') AS pending_count,
+  SUM(b.planned_qty * b.unit_price)                  AS contracted_value,
+  SUM(b.approved_qty * b.unit_price)                 AS earned_value_to_date
+FROM projects p
+LEFT JOIN submissions s ON s.project_id = p.id
+LEFT JOIN boq_items b   ON b.project_id = p.id
+WHERE p.tenant_id = $1
+GROUP BY p.id, p.name
+```
+
+**Index additions for aggregation performance** (add to existing schema or new migration):
+```sql
+-- Composite index for status + submitted_at (primary analytics filter)
+CREATE INDEX submissions_status_submitted_idx ON submissions (status, submitted_at DESC)
+  WHERE tenant_id IS NOT NULL;
+
+-- Partial index for pending audit (dashboard alert count, hits this constantly)
+CREATE INDEX submissions_pending_idx ON submissions (project_id, submitted_at DESC)
+  WHERE status = 'pending_audit';
+
+-- Index for auditor scorecard (decided_by + decided_at)
+CREATE INDEX submissions_decided_by_idx ON submissions (decided_by, decided_at DESC)
+  WHERE decided_by IS NOT NULL;
+```
+
+Add these indexes as a hand-edited migration file (follow the `0003_slippery_prowler.sql` pattern — no geometry here, so no SRID issues, but partial index syntax is not emitted by `drizzle-kit generate`).
+
+---
+
+## 3. INFORMATION ARCHITECTURE / ROUTING
+
+### Admin Shell: Route Group Strategy
+
+The existing dashboard lives at `src/app/dashboard/`. The v1 path structure is:
+- `dashboard/projects` — project list
+- `dashboard/projects/[id]` — project detail (tabs via `?tab=`)
+
+v2 adds a top-level admin navigation shell (Overview · Projects · People · Analytics · Hakkediş · Exports) WITHOUT breaking existing project-scoped routes.
+
+**Approach: Route group `(admin)` wrapping the new shell layout, sibling to existing routes.**
+
+```
+src/app/dashboard/
+├── layout.tsx                        ← EXISTING: auth guard + TopNav (keep unchanged)
+├── projects/                         ← EXISTING: keep all unchanged
+│   ├── page.tsx
+│   ├── new/page.tsx
+│   └── [id]/
+│       ├── page.tsx
+│       ├── edit/page.tsx
+│       └── boq-template/route.ts
+│
+├── (admin)/                          ← NEW route group — no URL segment
+│   ├── layout.tsx                    ← NEW: admin sidebar shell layout
+│   │
+│   ├── overview/
+│   │   └── page.tsx                  ← NEW: cross-project home + portfolio KPIs
+│   │
+│   ├── people/
+│   │   ├── page.tsx                  ← NEW: people list (all workers/auditors)
+│   │   └── [personId]/
+│   │       └── page.tsx              ← NEW: employee profile + scorecard
+│   │
+│   ├── analytics/
+│   │   └── page.tsx                  ← NEW: date-ranged analytics + charts
+│   │
+│   ├── hakedis/
+│   │   ├── page.tsx                  ← NEW: hakkediş period list (all projects)
+│   │   └── [periodId]/
+│   │       └── page.tsx              ← NEW: period detail + line items
+│   │
+│   └── exports/
+│       └── page.tsx                  ← NEW: export trigger UI
+```
+
+**`(admin)` layout** (`src/app/dashboard/(admin)/layout.tsx`):
+- Adds a sidebar nav component alongside `{children}`
+- No additional auth check — the parent `dashboard/layout.tsx` already guards all of `/dashboard/*`
+- Responsive: sidebar collapses to a hamburger menu on mobile
+
+**Navigation redirect:** Update `dashboard/layout.tsx` (or add a `dashboard/page.tsx`) to redirect `/dashboard` → `/dashboard/overview`. The existing `/dashboard/projects` link in the current TopNav becomes one item in the sidebar nav.
+
+**Existing project-scoped routes** stay at their current paths and are NOT wrapped in `(admin)`. They can be reached from the Projects sidebar item or from drill-down links in the analytics/people pages.
+
+**Submission detail page** (new, drill-down from analytics):
+```
+src/app/dashboard/projects/[id]/submissions/[submissionId]/
+└── page.tsx                          ← NEW: full submission detail (photo, location, audit trail)
+```
+This lives under `projects/[id]/` not under `(admin)/` because it is project-scoped and the existing `KayitlarTab` already links into this namespace.
+
+---
+
+### Sidebar Nav Component
+
+**New file:** `src/components/layout/AdminSidebar.tsx`
+
+Nav items:
+```
+Overview         → /dashboard/overview
+Projects         → /dashboard/projects  (existing)
+People           → /dashboard/people
+Analytics        → /dashboard/analytics
+Hakkediş         → /dashboard/hakedis
+Exports          → /dashboard/exports
+```
+
+Use `usePathname()` to highlight the active item. Sidebar is a client component (`'use client'`) because it uses `usePathname`. The `(admin)/layout.tsx` is a Server Component that renders the sidebar.
+
+---
+
+## 4. EXPORT PIPELINE
+
+### Architecture Decision: Buffer, Not Stream
+
+**Use `Buffer` (in-memory), not streaming, for both Excel and PDF exports.**
+
+Rationale:
+- Vercel Hobby/Pro function timeout is 10–60 seconds. ExcelJS writes to a buffer in ~0.5–3 seconds for realistic BOQ sizes (< 500 rows). No need for streaming.
+- Streaming responses from Vercel functions require careful `TransformStream` wiring; the added complexity is not justified for this use case.
+- Neon's serverless HTTP driver (`neon-http`) used in this project does NOT support streaming SQL queries — so data retrieval is always buffered anyway.
+
+**Vercel function limit:** Default body size is 4.5 MB. A typical hakkediş Excel workbook with 3 sheets and 200 rows will be well under 1 MB. Safe.
+
+### Excel Export Route Handler
+
+**New file:** `src/app/api/exports/submissions/route.ts`
+
+Pattern (follows `boq-template/route.ts`):
+```typescript
+export async function GET(request: Request) {
+  const session = await auth();
+  if (!session) return new Response('Unauthorized', { status: 401 });
+
+  const { searchParams } = new URL(request.url);
+  // parse projectId, dateFrom, dateTo, status filters
+
+  const rows = await getCanonicalSubmissions({ ... });      // from analytics.ts
+  const buf = await generateSubmissionsExcel(rows);         // from lib/excel-exports.ts
+
+  return new Response(buf, {
+    headers: {
+      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Disposition': `attachment; filename="kayitlar-${date}.xlsx"`,
+    },
+  });
+}
+```
+
+**New file:** `src/lib/excel-exports.ts` (extends `src/lib/excel.ts` patterns with ExcelJS):
+
+```typescript
+// generateSubmissionsExcel(rows: CanonicalSubmission[]): Promise<Buffer>
+//   Sheet 1: "Kayıtlar" — full submission list (all columns)
+//   Sheet 2: "Özet" — per-BOQ-item aggregate (material, planned qty, approved qty, earned value)
+//   Sheet 3: "Kişi Performansı" — per-worker summary
+
+// generateHakkedişExcel(period: HakkedişPeriod, lines: HakkedişPeriodLine[]): Promise<Buffer>
+//   Sheet 1: "Hakkediş" — period cover (project name, period dates, kdv rate, retention rate, totals)
+//   Sheet 2: "Kalemler" — line items (code, material, unit, unit price, cumulative qty, period qty, period value)
+//   Sheet 3: "Hesap Özeti" — financial summary (subtotal, KDV, retention, net payable)
+```
+
+Column widths and number formatting: use `sheet.getColumn(n).numFmt = '#,##0.00'` for TRY amounts (Turkish locale); column headers bilingual matching existing `parseBoqExcel` patterns.
+
+### PDF Route for Hakkediş
+
+**Use `@react-pdf/renderer` (Vercel-compatible), NOT Puppeteer/Chromium.**
+
+Puppeteer requires a headless Chrome binary — incompatible with Vercel serverless. `@react-pdf/renderer` generates PDFs in pure Node.js with no binary dependencies.
+
+**New file:** `src/app/api/exports/hakedis/[periodId]/route.ts`
+```typescript
+import { renderToBuffer } from '@react-pdf/renderer';
+import { HakkedişDocument } from '@/components/pdf/HakkedişDocument';
+
+export async function GET(_, { params }) {
+  const session = await auth();
+  if (!session) return new Response('Unauthorized', { status: 401 });
+
+  const period = await getHakkedişPeriod(params.periodId);
+  const lines = await getHakkedişPeriodLines(params.periodId);
+
+  const buf = await renderToBuffer(<HakkedişDocument period={period} lines={lines} />);
+
+  return new Response(buf, {
+    headers: {
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="hakkediş-${period.periodNumber}.pdf"`,
+    },
+  });
+}
+```
+
+**New file:** `src/components/pdf/HakkedişDocument.tsx` — React PDF component. A Vercel function running `renderToBuffer` takes ~1–3 seconds for a typical one-page hakkediş; well within the 60s limit.
+
+---
+
+## 5. PERFORMANCE / CACHING
+
+### Existing Pattern: `force-dynamic`
+
+The `[id]/page.tsx` already uses `export const dynamic = 'force-dynamic'`. This is correct and should be inherited by all new analytics/hakkediş pages — they all render live data. Do NOT switch to ISR or static for these pages.
+
+### Caching Strategy for v2
+
+**Overview page** (`/dashboard/overview`): `force-dynamic`. Portfolio KPIs must be live — a stale pending count misleads.
+
+**Analytics page** (`/dashboard/analytics`): `force-dynamic`. Date-range changes require fresh data.
+
+**Employee profile page** (`/dashboard/people/[personId]`): `force-dynamic`. The scorecard reflects real-time progress.
+
+**Hakkediş period detail** (`/dashboard/hakedis/[periodId]`): For `status = 'finalized'`, the data is immutable — consider `export const revalidate = 3600` (1-hour ISR) as an optimization. For `draft` periods, `force-dynamic`.
+
+**NO `unstable_cache` or Next.js Data Cache:** The existing codebase does not use it; the submissions dataset is small enough (~hundreds of rows per project for MVP scale) that caching adds complexity without meaningful benefit.
+
+### N+1 Prevention
+
+The `getCanonicalSubmissions` function uses a single JOIN query — all related data fetched in one SQL call. This is the correct pattern and follows the existing `getApprovedPoints` precedent (which already does `leftJoin(boqItems, ...).leftJoin(people, ...)`).
+
+The `getPortfolioOverview` query does a single aggregated query across all projects — no per-project looping.
+
+**Avoid:** Calling `getProjectMetrics` in a loop for each project. Always write a single SQL query with `GROUP BY project_id` and return all projects in one call.
+
+### Index Summary (all indexes needed for v2)
+
+```sql
+-- Submission aggregation (STATUS.md Phase note: hand-edited migration required for partial indexes)
+CREATE INDEX submissions_status_submitted_idx ON submissions (status, submitted_at DESC);
+CREATE INDEX submissions_pending_idx ON submissions (project_id, submitted_at DESC)
+  WHERE status = 'pending_audit';
+CREATE INDEX submissions_decided_by_idx ON submissions (decided_by, decided_at DESC)
+  WHERE decided_by IS NOT NULL;
+
+-- Activity log (new table — drizzle-kit will create base indexes; BTREE sufficient)
+-- (covered by table definition indexes above)
+
+-- Hakkediş period lookups
+-- (covered by table definition indexes above)
+```
+
+---
+
+## 6. SUGGESTED PHASE / BUILD ORDER
+
+### Dependency Graph
+
+```
+unit_price on boq_items
+    │
+    ├─→ earned value formulas
+    │       │
+    │       ├─→ CanonicalSubmission type + getCanonicalSubmissions()
+    │       │       │
+    │       │       ├─→ Analytics page (scorecards, charts)
+    │       │       ├─→ Excel multi-sheet export
+    │       │       └─→ Hakkediş period line computation
+    │       │
+    │       └─→ Hakkediş tables + Server Actions
+    │               │
+    │               └─→ PDF export
+    │
+office_activity_log
+    │
+    └─→ Office engineer scorecard on Analytics page
+
+(admin) route group + sidebar
+    │
+    └─→ Overview → People → Analytics → Hakkediş → Exports pages
+        (each page is independent once the data layer exists)
+```
+
+### Recommended Build Sequence
+
+**Phase A — Foundation: Data Model + Canonical Record**
+
+Deliverables:
+- `boq_items.unit_price` column + migration (0004)
+- `office_activity_log` table + migration (0005)
+- `hakedis_periods` + `hakedis_period_lines` tables + migration (0006)
+- Index migration (0007) — hand-edited for partial indexes
+- `src/lib/types/canonical-submission.ts` — CanonicalSubmission type
+- `src/actions/analytics.ts` — `getCanonicalSubmissions()`, `getProjectMetrics()`, `getPersonMetrics()`, `getPortfolioOverview()`
+- Unit price field in BOQ item create/edit Server Actions + UI in `BoqTab`
+- Wiring `logOfficeActivity()` helper into existing Server Actions (projects, boq, people)
+- Tests: unit tests for aggregation queries against seed data
+
+Unblocks: everything else. Do this first.
+
+**Phase B — Admin Shell IA**
+
+Deliverables:
+- `src/app/dashboard/(admin)/layout.tsx` + `AdminSidebar` component
+- `src/app/dashboard/overview/page.tsx` — portfolio KPIs using `getPortfolioOverview()`
+- `src/app/dashboard/people/page.tsx` — people list
+- `src/app/dashboard/people/[personId]/page.tsx` — employee profile using `getPersonMetrics()`
+- Redirect `/dashboard` → `/dashboard/overview`
+- i18n keys in `messages/tr.json` + `messages/en.json` for new nav items
+
+No new data layer work — all data comes from Phase A actions.
+
+**Phase C — Analytics UI**
+
+Deliverables:
+- `src/app/dashboard/analytics/page.tsx` — date range filter + global filters
+- Recharts client components: `ThroughputChart`, `RejectionRateChart`, `EarnedValueChart`
+- Global filter state: use URL `searchParams` (`?from=&to=&project=&person=`) — no client state management library needed; follows existing `?tab=&status=&page=` pattern
+- Activity log feed on Overview page (last N office actions)
+- Submission detail page `projects/[id]/submissions/[submissionId]/page.tsx`
+
+Unblocks: Hakkediş (requires understanding of earned value displays).
+
+**Phase D — Hakkediş**
+
+Deliverables:
+- `src/actions/hakedis.ts` — `createHakkedişPeriod()`, `computePeriodLines()`, `finalizeHakkedişPeriod()`
+- `src/app/dashboard/hakedis/page.tsx` — period list per project
+- `src/app/dashboard/hakedis/[periodId]/page.tsx` — period detail + finalize button
+- `computePeriodLines()` logic: aggregates approved submissions by boq_item_id up to periodEndDate, computes period vs cumulative quantities, snapshots unit prices
+- KDV and retention calculation at finalization
+- Log `hakkediş_period_created` and `hakkediş_period_finalized` to office_activity_log
+
+Depends on: Phase A (hakkediş tables + unit_price), Phase C (engineers will want to see analytics before creating the first hakedis period).
+
+**Phase E — Exports**
+
+Deliverables:
+- `src/lib/excel-exports.ts` — `generateSubmissionsExcel()`, `generateHakkedişExcel()`
+- `src/app/api/exports/submissions/route.ts` — GET handler
+- `src/app/api/exports/hakedis/[periodId]/route.ts` — GET handler (Excel)
+- `src/components/pdf/HakkedişDocument.tsx` + `src/app/api/exports/hakedis/[periodId]/pdf/route.ts`
+- Export trigger UI at `src/app/dashboard/exports/page.tsx`
+- Log `hakkediş_exported` to office_activity_log
+
+Depends on: Phase A (CanonicalSubmission), Phase D (hakedis period data).
+
+---
+
+## File Map: New vs Modified
+
+### New Files
+
+| File | Purpose |
+|------|---------|
+| `src/db/schema/office-activity-log.ts` | Activity log table |
+| `src/db/schema/hakedis-periods.ts` | Hakkediş period table |
+| `src/db/schema/hakedis-period-lines.ts` | Hakkediş line items table |
+| `src/db/migrations/0004_*.sql` | unit_price column |
+| `src/db/migrations/0005_*.sql` | office_activity_log table |
+| `src/db/migrations/0006_*.sql` | hakedis tables |
+| `src/db/migrations/0007_v2_indexes.sql` | Hand-edited: partial indexes (do not run drizzle-kit generate on this) |
+| `src/lib/types/canonical-submission.ts` | CanonicalSubmission type |
+| `src/lib/types/index.ts` | Type barrel export |
+| `src/actions/analytics.ts` | Aggregation data-access layer |
+| `src/actions/hakedis.ts` | Hakkediş CRUD + computation |
+| `src/lib/excel-exports.ts` | Multi-sheet Excel builders |
+| `src/components/pdf/HakkedişDocument.tsx` | React PDF template |
+| `src/components/layout/AdminSidebar.tsx` | Admin nav sidebar |
+| `src/app/dashboard/(admin)/layout.tsx` | Admin shell layout |
+| `src/app/dashboard/overview/page.tsx` | Portfolio overview |
+| `src/app/dashboard/people/page.tsx` | People list |
+| `src/app/dashboard/people/[personId]/page.tsx` | Employee profile |
+| `src/app/dashboard/analytics/page.tsx` | Analytics + charts |
+| `src/app/dashboard/hakedis/page.tsx` | Hakkediş period list |
+| `src/app/dashboard/hakedis/[periodId]/page.tsx` | Period detail |
+| `src/app/dashboard/exports/page.tsx` | Export trigger UI |
+| `src/app/dashboard/projects/[id]/submissions/[submissionId]/page.tsx` | Submission detail |
+| `src/app/api/exports/submissions/route.ts` | Excel export handler |
+| `src/app/api/exports/hakedis/[periodId]/route.ts` | Hakkediş Excel handler |
+| `src/app/api/exports/hakedis/[periodId]/pdf/route.ts` | Hakkediş PDF handler |
+| `src/components/dashboard/analytics/ThroughputChart.tsx` | Recharts throughput |
+| `src/components/dashboard/analytics/EarnedValueChart.tsx` | Recharts earned value |
+| `src/components/dashboard/analytics/RejectionRateChart.tsx` | Recharts rejection rate |
+
+### Modified Files
+
+| File | Change |
+|------|--------|
+| `src/db/schema/boq-items.ts` | Uncomment `unitPrice` column |
+| `src/db/schema/index.ts` | Add exports for 3 new schema files |
+| `src/actions/projects.ts` | Add `logOfficeActivity()` call after createProject/updateProject/deleteProject |
+| `src/actions/boq.ts` | Add `logOfficeActivity()` on boq mutations; add `unit_price` to create/update |
+| `src/actions/people.ts` | Add `logOfficeActivity()` on person_approved, person_assigned |
+| `src/components/dashboard/BoqTab.tsx` / `BoqItemDialog.tsx` | Unit price input field |
+| `src/app/dashboard/layout.tsx` | Import AdminSidebar or redirect `/dashboard` → `/dashboard/overview` |
+| `src/components/layout/TopNav.tsx` | Link "Projects" updates or add Overview as home |
+| `messages/tr.json` | New keys: overview, analytics, hakedis, exports nav labels + page strings |
+| `messages/en.json` | Same |
+
+---
+
+## Integration Points and Constraints Summary
+
+### Migration Constraint (CRITICAL)
+
+The project uses `tsx src/db/migrate.ts` NOT `drizzle-kit push`. The flow for every new migration:
+
+1. Edit schema file (e.g., `boq-items.ts`)
+2. Run `npx drizzle-kit generate` → generates `src/db/migrations/000N_<random>.sql`
+3. For migrations with **partial indexes** or other constructs `drizzle-kit` cannot emit correctly, create the file manually and name it `000N_v2_indexes.sql` — the migrate runner picks up all `.sql` files in the folder alphabetically
+4. Run `tsx src/db/migrate.ts` to apply
+5. Do NOT run `drizzle-kit push` — it bypasses the PostGIS `0000_enable_postgis.sql` pre-step and will fail on geometry columns
+
+The `unit_price` column alteration is a plain `ALTER TABLE ADD COLUMN numeric` — safe for `drizzle-kit generate`. The new `office_activity_log` and `hakedis_*` tables are also plain — no geometry. Only the index migration (0007) needs hand-editing for partial indexes.
+
+### Auth Boundary
+
+Office engineers authenticate via Auth.js (`users` table, `text` PK). The `office_activity_log.actor_user_id` FK references `users.id` (text). All new Server Actions follow the existing pattern: `const session = await auth(); if (!session) throw new Error('Unauthorized');`. There is no new auth work in v2.
+
+### Tenant Scoping
+
+All new tables include `tenant_id uuid references tenants(id)` (nullable, matching v1 convention per D-09). All new data-access functions include `eq(table.tenantId, getDefaultTenantId())` in their WHERE clauses. Single-tenant MVP: `getDefaultTenantId()` returns the one tenant ID from `.env.local`. This constraint is already established and does not change.
+
+### i18n
+
+All new page strings go into `messages/tr.json` and `messages/en.json` before the page is built. Use `getTranslations('dashboard.analytics')`, `getTranslations('dashboard.hakedis')` etc. following the established namespace pattern. Navigation labels use `getTranslations('layout.nav')`.
+
+---
+
+## Patterns to Follow
+
+### Pattern: Server Action → logOfficeActivity (fire-and-forget in same function)
+
+```typescript
+// src/actions/boq.ts (modified)
+export async function setUnitPrice(boqItemId: string, price: string) {
+  const session = await auth();
+  if (!session) throw new Error('Unauthorized');
+
+  const [old] = await db.select({ unitPrice: boqItems.unitPrice })
+    .from(boqItems).where(eq(boqItems.id, boqItemId)).limit(1);
+
+  await db.update(boqItems)
+    .set({ unitPrice: price })
+    .where(and(eq(boqItems.id, boqItemId), eq(boqItems.tenantId, getDefaultTenantId())));
+
+  // Log after successful write — if logging fails, mutation still succeeded
+  await db.insert(officeActivityLog).values({
+    tenantId: getDefaultTenantId(),
+    actorUserId: session.user.id,
+    actionType: 'unit_price_set',
+    entityType: 'boq_item',
+    entityId: boqItemId,
+    metadata: { oldPrice: old?.unitPrice ?? null, newPrice: price },
+  }).catch(() => {}); // swallow log errors — never block the mutation
+
+  revalidatePath(`/dashboard/projects/${projectId}`);
+}
+```
+
+### Pattern: Hakkediş Period Line Computation
+
+```typescript
+// src/actions/hakedis.ts
+export async function computePeriodLines(periodId: string) {
+  const period = await getHakkedişPeriod(periodId);
+  if (period.status !== 'draft') throw new Error('Can only recompute draft periods');
+
+  // Get cumulative approved quantities per BOQ item up to periodEndDate
+  const cumulativeRows = await db.execute(sql`
+    SELECT
+      s.boq_item_id,
+      b.material,
+      b.unit,
+      b.unit_price,
+      SUM(s.quantity)::numeric(12,3) AS cumulative_qty
+    FROM submissions s
+    JOIN boq_items b ON b.id = s.boq_item_id
+    WHERE s.project_id = ${period.projectId}
+      AND s.tenant_id = ${getDefaultTenantId()}
+      AND s.status = 'approved'
+      AND s.decided_at <= ${period.periodEndDate}::timestamptz
+    GROUP BY s.boq_item_id, b.material, b.unit, b.unit_price
+  `);
+
+  // Get end-of-previous-period quantities (from previous period's lines)
+  const previousLines = await getPreviousPeriodLines(period.projectId, period.periodEndDate);
+  const previousMap = new Map(previousLines.map(l => [l.boqItemId, l.cumulativeQtyApproved]));
+
+  // Delete existing draft lines and replace
+  await db.delete(hakkedişPeriodLines).where(eq(hakkedişPeriodLines.periodId, periodId));
+
+  const lines = cumulativeRows.map(r => {
+    const prevQty = previousMap.get(r.boq_item_id) ?? '0';
+    const periodQty = (Number(r.cumulative_qty) - Number(prevQty)).toFixed(3);
+    const periodValue = (Number(periodQty) * Number(r.unit_price ?? 0)).toFixed(2);
+    const cumulativeValue = (Number(r.cumulative_qty) * Number(r.unit_price ?? 0)).toFixed(2);
+    return {
+      periodId,
+      boqItemId: r.boq_item_id,
+      materialSnapshot: r.material,
+      unitSnapshot: r.unit,
+      unitPriceSnapshot: r.unit_price ?? '0',
+      cumulativeQtyApproved: r.cumulative_qty,
+      previousCumulativeQty: prevQty,
+      periodQty,
+      periodValue,
+      cumulativeValue,
+      tenantId: getDefaultTenantId(),
+    };
+  });
+
+  await db.insert(hakkedişPeriodLines).values(lines);
 }
 ```
 
 ---
 
-## Submission Lifecycle State Machine
+## Anti-Patterns to Avoid
 
-```
-[Worker confirms] ──→ submissions.status = 'pending_audit'
-                         │
-                         ├── SpatialService.matchSegment() (sync, before insert)
-                         ├── NotificationService.pingAuditor() (async, after insert)
-                         └── AI Vision job enqueued (async, non-blocking)
+### Anti-Pattern: Computing Earned Value in a Drizzle Relational Query
 
-[Auditor taps ✅] ──→ AuditService.approve(submissionId)
-                         │
-                         └── BEGIN TRANSACTION
-                               UPDATE submissions SET status = 'approved', audited_at = now(), auditor_id = ?
-                               UPDATE boq_items SET approved_qty = approved_qty + ? WHERE id = ?
-                               INSERT INTO approved_points (submission_id, location, matched_segment_fraction)
-                             COMMIT
-                         │
-                         └── NotificationService (no worker notify needed on approve — silent)
-                             Dashboard map layer invalidation (auto via Next.js revalidatePath or SWR polling)
+`db.query.submissions.findMany({ with: { boqItem: true } })` then multiplying in JS is N+1 and loses precision. Use `db.execute(sql\`SELECT s.quantity * b.unit_price ...\`)` so the multiplication happens in Postgres with full numeric precision.
 
-[Auditor taps ❌] ──→ AuditService.reject(submissionId)
-                         │
-                         ├── Bot prompts auditor: "Ret gerekçesi?" (free text wait)
-                         └── UPDATE submissions SET status = 'rejected', rejection_reason = ?, audited_at = now()
-                             NotificationService.notifyWorker(workerId, rejectionReason)
-```
+### Anti-Pattern: Storing `earnedValue` as a Column on `submissions`
 
-### Transactional Integrity
+Earned value depends on `unit_price` which can change until hakkediş finalization. Storing it on each submission row creates stale data. Compute at query time or snapshot only at hakkediş finalization in the `period_lines` table.
 
-The approval is a single Postgres transaction covering three writes:
-1. `submissions` status update
-2. `boq_items` atomic counter increment (`approved_qty += qty`)
-3. Insert into `approved_points` (the spatial record that feeds the map)
+### Anti-Pattern: Breaking Existing Routes with the New IA
 
-This uses Drizzle's `db.transaction()`. If any write fails, all three roll back and the auditor receives an error message. The BOQ counter is never out of sync with the set of approved submissions.
+The `(admin)` route group adds pages at new paths without touching existing paths. The existing `dashboard/projects`, `dashboard/projects/[id]`, etc. are preserved. Do NOT move existing pages into the `(admin)` group — that changes their URLs and breaks existing bookmarks and the Telegram bot's `revalidatePath()` calls.
 
-**Double-approval guard:** A `CHECK` constraint or `WHERE status = 'pending_audit'` in the UPDATE prevents processing the same submission twice. Use optimistic locking: `UPDATE submissions SET status = 'approved' WHERE id = ? AND status = 'pending_audit' RETURNING id` — if no rows returned, reject the callback as stale.
+### Anti-Pattern: Using Puppeteer for PDF Generation on Vercel
 
----
+Chromium binary not available in Vercel serverless. Use `@react-pdf/renderer` (pure JS, Node.js compatible, Vercel-safe). This is a known Vercel constraint — HIGH confidence.
 
-## Spatial Subsystem
+### Anti-Pattern: Streaming SQL for Aggregates via neon-http Driver
 
-### Route Storage
-
-The project route is stored as a PostGIS `geometry(LineString, 4326)` column on the `projects` table. The Office Engineer uploads a GeoJSON file through the dashboard; the API extracts the LineString coordinates and inserts them via `ST_GeomFromGeoJSON(?)`.
-
-**Drizzle limitation:** Drizzle does not have a native `linestring` column type. Use a custom column type with `customType` that passes through WKB from Postgres and accepts GeoJSON strings on insert:
-
-```typescript
-import { customType } from 'drizzle-orm/pg-core';
-import { sql } from 'drizzle-orm';
-
-const geometry = customType<{ data: GeoJSON.Geometry; driverData: string }>({
-  dataType() { return 'geometry'; },
-  fromDriver(value) { return JSON.parse(value); },  // ST_AsGeoJSON output
-  toDriver(value) { return JSON.stringify(value); },
-});
-```
-
-For read queries that need GeoJSON, wrap the column in `ST_AsGeoJSON()` via `sql` template literals.
-
-### Nearest-Segment Matching (SpatialService)
-
-When a submission arrives, run this query before persisting:
-
-```sql
-SELECT
-  ST_LineLocatePoint(
-    p.route_geometry,
-    ST_SetSRID(ST_MakePoint($lon, $lat), 4326)
-  ) AS segment_fraction,
-  ST_AsGeoJSON(
-    ST_ClosestPoint(
-      p.route_geometry,
-      ST_SetSRID(ST_MakePoint($lon, $lat), 4326)
-    )
-  ) AS snapped_point,
-  ST_Distance(
-    p.route_geometry::geography,
-    ST_SetSRID(ST_MakePoint($lon, $lat), 4326)::geography
-  ) AS distance_meters
-FROM projects p
-WHERE p.id = $project_id
-  AND ST_DWithin(
-    p.route_geometry::geography,
-    ST_SetSRID(ST_MakePoint($lon, $lat), 4326)::geography,
-    500  -- 500m proximity check; flag if outside
-  )
-```
-
-`segment_fraction` (0.0–1.0) is stored on the submission and used for chainage display. `snapped_point` is stored as the canonical map location for the approved point. If `ST_DWithin` returns no row, `SpatialService` sets `location_warning = true` on the submission — the auditor sees a flag ("Worker is >500m from route").
-
-### Mapbox Layer Feed
-
-The dashboard fetches approved points from a Server Action or Route Handler that returns GeoJSON FeatureCollection. Each feature is an `approved_points` row with the `snapped_point` as geometry and submission metadata (worker name, qty, material, photo URL) as properties. Mapbox GL JS renders these as a circle layer over the project route LineString (loaded from `projects.route_geometry` via `ST_AsGeoJSON`).
-
----
-
-## BOQ Model
-
-### Schema Sketch
-
-```
-boq_items
-  id              uuid PK
-  project_id      uuid FK → projects
-  code            text          -- e.g. "DN200-PE-BURIED"
-  description     text
-  unit            text          -- m, m², m³, pc, ton
-  planned_qty     numeric(12,3) -- from contract
-  approved_qty    numeric(12,3) -- auto-incremented on approval (default 0)
-  created_at      timestamptz
-
-submissions
-  id              uuid PK
-  project_id      uuid FK → projects
-  worker_id       uuid FK → workers
-  boq_item_id     uuid FK → boq_items   -- set at State 3 (qty input) or derived from project default
-  status          text  -- 'pending_audit' | 'approved' | 'rejected'
-  qty             numeric(12,3)
-  photo_url       text  -- Vercel Blob URL
-  raw_lat         float8
-  raw_lon         float8
-  segment_fraction float8       -- ST_LineLocatePoint result (0.0–1.0)
-  snapped_point   geometry(Point, 4326)  -- ST_ClosestPoint result
-  location_warning boolean default false
-  notes           text
-  rejection_reason text
-  auditor_id      uuid FK → workers (nullable)
-  ai_result_id    uuid FK → vision_results (nullable)
-  submitted_at    timestamptz
-  audited_at      timestamptz
-```
-
-**BOQ decrement:** `approved_qty` increments (not decrements — it accumulates approved work against the plan) atomically in the approval transaction:
-
-```sql
-UPDATE boq_items
-SET approved_qty = approved_qty + $qty
-WHERE id = $boq_item_id
-  AND approved_qty + $qty <= planned_qty  -- optional guard against over-approval
-RETURNING id
-```
-
-The office dashboard computes completion percentage as `approved_qty / planned_qty`. The saha ADR-0008 "parallel quantity counters" model is the conceptual precedent; bayrak.ai simplifies to a single counter per BOQ item since the workflow stage breakdown is not required for v1.
-
-**BOQ item selection in the bot:** For the worker's flow, if the assigned project has a single BOQ item (common for a single-material pipe run), auto-select it. If multiple items exist, add a State 2.5 inline keyboard selection step between Photo and Location. This is a minor extension of the state machine — the router checks `boq_item_count` for the project after State 0.
-
----
-
-## AI Vision Assist
-
-### Placement in the Flow
-
-AI vision runs **after submission persists**, **before the auditor opens the submission** — it is non-blocking for the worker loop.
-
-Sequence:
-1. Worker confirms → SubmissionService creates row with `status: pending_audit`
-2. SubmissionService fires `POST /api/ai/vision` with `{ submission_id, photo_url, project_id }` — this is a non-awaited fetch (fire-and-forget within the route handler, or a background job via Vercel's `after()` hook from Next.js 15)
-3. The vision route handler downloads the photo from Vercel Blob, calls Claude vision via AI SDK, parses the structured response, and writes to `vision_results`
-4. Separately, NotificationService pings the auditor — the auditor's Telegram message includes a link to the dashboard submission view, not inline in the Telegram message itself for v1
-5. When the auditor opens the dashboard review or taps the approve/reject button, the `vision_results` row is already written and displayed alongside the submission
-
-**Why not inline in Telegram auditor message?** Telegram has strict timeout requirements; AI vision latency (2–8 seconds) would risk the webhook timing out before the bot can send the full auditor message. Keeping it async and dashboard-surfaced avoids this without any queuing infrastructure in v1.
-
-### vision_results Table
-
-```
-vision_results
-  id              uuid PK
-  submission_id   uuid FK → submissions
-  model           text          -- "claude-opus-4-5" or similar
-  anomaly_flags   jsonb         -- [{ type: "location_mismatch", confidence: 0.87, detail: "..." }]
-  work_classification text      -- auto-classified work type
-  raw_response    jsonb         -- full model output for debugging
-  created_at      timestamptz
-```
-
-The `anomaly_flags` array is displayed on the dashboard auditor review card as colored badges. High-confidence flags appear in the Telegram auditor message as a brief text appended: "⚠️ AI: Konum uyuşmazlığı tespit edildi" — sent as a separate follow-up message once the vision result is ready (using `bot.api.sendMessage(auditorChatId, ...)`).
-
----
-
-## Data Model Sketch (Full Entity Map)
-
-```
-projects
-  id, name, description, route_geometry(LineString), project_manager_id, created_at
-
-workers
-  id, telegram_user_id (unique), name, role ('worker' | 'auditor' | 'office_engineer'), created_at
-
-assignments
-  id, worker_id FK→workers, project_id FK→projects, role_on_project ('worker'|'auditor')
-  -- A worker can be auditor on one project and worker on another
-  -- An auditor is typically assigned to one active project
-
-boq_items
-  id, project_id FK→projects, code, description, unit, planned_qty, approved_qty, created_at
-
-submissions
-  id, project_id, worker_id, boq_item_id, status, qty,
-  photo_url, raw_lat, raw_lon, segment_fraction, snapped_point(Point),
-  location_warning, notes, rejection_reason, auditor_id, ai_result_id,
-  submitted_at, audited_at
-
-approved_points
-  id, submission_id FK→submissions, location(Point), segment_fraction, created_at
-  -- Denormalized for map query performance; populated in approval transaction
-
-vision_results
-  id, submission_id FK→submissions, model, anomaly_flags(jsonb),
-  work_classification, raw_response(jsonb), created_at
-
-sessions (grammY)
-  key text PK   -- telegram chat_id as string
-  value jsonb   -- serialized conversation replay state
-  -- Managed by @grammyjs/storage-psql; not touched by application code
-```
-
-**No `tenant_id` in v1** — single-tenant MVP per PROJECT.md constraints. Schema designed without it but without hardcoded tenant identity, so adding `tenant_id` columns in v2 is a migration-only change.
-
----
-
-## Recommended Project Structure
-
-```
-bayrak-ai/
-├── src/
-│   ├── app/                          # Next.js App Router
-│   │   ├── api/
-│   │   │   ├── telegram/
-│   │   │   │   └── webhook/route.ts  # grammY webhook entry point
-│   │   │   ├── ai/
-│   │   │   │   └── vision/route.ts   # Vision analysis endpoint
-│   │   │   └── projects/
-│   │   │       └── [id]/route.ts     # Project/BOQ management REST handlers
-│   │   ├── dashboard/                # Office Engineer UI (RSC)
-│   │   │   ├── layout.tsx
-│   │   │   ├── page.tsx              # Project list
-│   │   │   └── [projectId]/
-│   │   │       ├── page.tsx          # Project dashboard + map
-│   │   │       ├── boq/page.tsx      # BOQ management
-│   │   │       └── submissions/page.tsx
-│   │   ├── auth/                     # Auth.js pages
-│   │   └── layout.tsx
-│   ├── bot/                          # All grammY bot code
-│   │   ├── index.ts                  # Bot instance, session middleware, conversation plugin
-│   │   ├── conversations/
-│   │   │   └── submit-work.ts        # Worker dialog state machine (States 0–6)
-│   │   └── handlers/
-│   │       └── audit-callback.ts     # Auditor Approve/Reject callback_query handler
-│   ├── db/
-│   │   ├── index.ts                  # Drizzle client
-│   │   ├── schema/
-│   │   │   ├── projects.ts
-│   │   │   ├── workers.ts
-│   │   │   ├── assignments.ts
-│   │   │   ├── submissions.ts
-│   │   │   ├── boq-items.ts
-│   │   │   ├── approved-points.ts
-│   │   │   ├── vision-results.ts
-│   │   │   └── sessions.ts           # grammY session table definition
-│   │   └── migrations/
-│   ├── services/
-│   │   ├── submission.ts             # SubmissionService — create, validate
-│   │   ├── audit.ts                  # AuditService — approve/reject transactions
-│   │   ├── spatial.ts                # SpatialService — PostGIS queries
-│   │   └── notification.ts          # NotificationService — outbound Telegram messages
-│   ├── lib/
-│   │   ├── ai-vision.ts              # AI SDK call, response parsing, anomaly extraction
-│   │   ├── mapbox.ts                 # GeoJSON helpers for dashboard
-│   │   └── auth.ts                   # Auth.js config
-│   └── components/
-│       ├── map/
-│       │   └── ProjectMap.tsx        # Mapbox GL JS client component
-│       └── dashboard/
-│           └── SubmissionCard.tsx    # Auditor review card with AI flags
-├── drizzle.config.ts
-├── .env.local
-└── next.config.ts
-```
-
----
-
-## Data Flow (End-to-End)
-
-```
-WORKER FLOW
-Worker sends message
-    ↓
-POST /api/telegram/webhook
-    ↓
-grammY Bot receives update
-    ↓
-session middleware loads conversation state from Neon (sessions table)
-    ↓
-BotConversation replays to current state
-    ↓
-  [State 0] project keyboard → assignments query → inline keyboard sent
-  [State 1] photo → validate, store URL reference in conversation.external()
-  [State 2] location → validate native location, store lat/lon
-  [State 3] quantity → parse float, validate > 0
-  [State 4] notes → accept or skip
-  [State 5] confirm →
-      conversation.external(() => SubmissionService.create({...}))
-        ├── SpatialService.matchSegment(lat, lon, project_id) → segment_fraction, snapped_point
-        ├── INSERT submissions (status: pending_audit)
-        ├── after(): POST /api/ai/vision (non-blocking)
-        └── NotificationService.pingAuditor(auditorChatId, submissionId)
-  [State 6] "Gönderildi ✅" → conversation ends
-
-AUDITOR FLOW
-NotificationService sends Telegram message to auditor with:
-  - Photo (forwarded / linked)
-  - Location: Google Maps link from raw_lat/raw_lon
-  - Quantity + notes
-  - [✅ Onayla] [❌ Reddet] inline buttons (callback_data: "approve:SUB_ID" / "reject:SUB_ID")
-    ↓
-Auditor taps button
-    ↓
-POST /api/telegram/webhook (callback_query update)
-    ↓
-AuditCallbackHandler.handle(ctx)
-    ↓
-  [APPROVE]
-    db.transaction():
-      UPDATE submissions SET status='approved' WHERE id=? AND status='pending_audit' RETURNING id
-      if no row → reply "Bu gönderi zaten işlendi"
-      UPDATE boq_items SET approved_qty += qty WHERE id=?
-      INSERT INTO approved_points (submission_id, location, segment_fraction)
-    ctx.answerCallbackQuery("Onaylandı ✅")
-    revalidatePath('/dashboard/[projectId]')  — or map layer polls
-
-  [REJECT]
-    ctx.reply("Ret gerekçesi nedir?") + conversation.wait() in auditor conversation
-    UPDATE submissions SET status='rejected', rejection_reason=? WHERE id=?
-    NotificationService.notifyWorker(workerId, reason)
-    ctx.answerCallbackQuery("Reddedildi")
-
-DASHBOARD FLOW
-Office Engineer loads /dashboard/[projectId]
-    ↓
-RSC fetches:
-  - projects.route_geometry via ST_AsGeoJSON → passed to client as prop
-  - approved_points → GeoJSON FeatureCollection
-  - boq_items (planned_qty, approved_qty)
-    ↓
-ProjectMap (client component) renders:
-  - Route LineString as Mapbox GeoJSON source (line layer)
-  - Approved points as circle layer (color by material/boq_item)
-BOQ table renders completion bars (approved_qty / planned_qty)
-```
-
----
-
-## Architectural Patterns
-
-### Pattern 1: Conversation-as-State-Machine with Postgres Session Backend
-
-**What:** grammY Conversations plugin replays the conversation function on each incoming message. State is not an explicit enum stored in DB — it is the implicit position in the conversation function, serialized as replay log in the `sessions` table.
-
-**When to use:** Anytime the bot needs multi-step input gathering that must survive serverless restarts and cold starts.
-
-**Trade-offs:** Simpler code than an explicit FSM; the replay model can surprise developers unfamiliar with it. Side effects MUST use `conversation.external()` or they execute on every replay.
-
-### Pattern 2: Approval Transaction as Single DB Transaction
-
-**What:** The three writes on approval (submission status, BOQ counter, approved_point insert) run in a single Drizzle `db.transaction()`. The WHERE clause on the submission update acts as an optimistic lock.
-
-**When to use:** Any time approval has side effects that must be atomic. Prevents partial updates (BOQ incremented but submission still `pending_audit`).
-
-### Pattern 3: Async AI Vision via `after()` Hook
-
-**What:** Use Next.js 15's `after()` function inside the webhook route handler to schedule the vision API call after the response is sent. This prevents the AI latency from blocking the Telegram webhook acknowledgement.
-
-**When to use:** Any background work that should not block the Telegram response. Vercel requires a 200 response within ~10 seconds; Claude vision can take 3–8 seconds.
-
-**Trade-offs:** No retry on failure in v1. If the vision call fails, `vision_results` has no row for that submission — auditor sees no AI flags. Accept this in v1; add a retry queue in v2 if needed.
-
-### Pattern 4: Spatial Matching Before Persistence
-
-**What:** Run `ST_DWithin` / `ST_LineLocatePoint` / `ST_ClosestPoint` synchronously before writing the submission row. Store `segment_fraction`, `snapped_point`, and `location_warning` on the submission.
-
-**When to use:** Always — spatial matching is cheap (single indexed query) and the result is needed for both the auditor alert and the map.
-
-**Trade-offs:** Adds ~20–50ms to the submission path. Acceptable; the spatial index on `route_geometry` makes this fast.
-
----
-
-## Anti-Patterns
-
-### Anti-Pattern 1: In-Memory grammY Sessions on Vercel
-
-**What people do:** Leave grammY at default `MemorySessionStorage`.
-
-**Why it's wrong:** Vercel spins up a new function instance for each webhook call. In-memory state from a prior call is gone. Workers get reset to State 0 mid-flow.
-
-**Do this instead:** `@grammyjs/storage-psql` backed by Neon. One `sessions` table; zero extra infrastructure.
-
-### Anti-Pattern 2: BOQ Counter as Derived Query (COUNT over submissions)
-
-**What people do:** Compute `approved_qty` at read time by summing submissions with `status='approved'`.
-
-**Why it's wrong:** Correct for small datasets but unindexable for the dashboard table. Also non-atomic — a race between two simultaneous approvals can double-count.
-
-**Do this instead:** Atomic `UPDATE boq_items SET approved_qty += qty` inside the approval transaction. Read is a simple column scan.
-
-### Anti-Pattern 3: Awaiting AI Vision in the Webhook Handler
-
-**What people do:** `await callVisionAPI(photoUrl)` inside the webhook route handler before returning 200.
-
-**Why it's wrong:** Telegram re-sends the webhook if no 200 within ~5 seconds. Claude vision takes 3–8 seconds. Result: duplicate submissions.
-
-**Do this instead:** `after(() => callVisionAPI(submissionId))` — runs after 200 is sent.
-
-### Anti-Pattern 4: Storing Raw lat/lon Only (No Spatial Snapping)
-
-**What people do:** Store `raw_lat`, `raw_lon` and compute "on the segment?" at render time in JS.
-
-**Why it's wrong:** GPS drift means raw points scatter off the route. Mapbox will render scattered dots, not a clean progress layer. The `segment_fraction` ordering is lost.
-
-**Do this instead:** Snap to route with `ST_ClosestPoint` at submission time, store `snapped_point`. Render the snapped point on the map; show raw point in auditor detail as debugging info.
-
-### Anti-Pattern 5: Single Auditor-per-Bot-Conversation (Sharing Auditor's Bot State)
-
-**What people do:** Use the same grammY conversation context for the reject-reason follow-up as the worker conversation.
-
-**Why it's wrong:** The auditor has their own chat context. The reject-reason wait needs a separate short-lived conversation keyed to the auditor's `chat_id`, not the worker's.
-
-**Do this instead:** When the auditor taps Reject, enter a short auditor-side conversation (or use a `force_reply` message and handle the reply in the callback handler without a full conversation).
-
----
-
-## Integration Points
-
-### External Services
-
-| Service | Integration Pattern | Notes |
-|---------|---------------------|-------|
-| Telegram Bot API | grammY webhook at `/api/telegram/webhook` (POST); outbound via `bot.api.*` | Set webhook URL via `setWebhook` once per deploy; use `secretToken` header to authenticate Telegram requests |
-| Neon Postgres + PostGIS | Drizzle client; PostGIS queries via `sql` template literals for spatial functions | Run `CREATE EXTENSION IF NOT EXISTS postgis` in initial migration; custom column type for geometry |
-| Vercel Blob | `put(filename, buffer, { access: 'public' })` → URL stored in submissions | Photos uploaded from bot: download file from Telegram API (`getFile`), pipe to Blob |
-| Vercel AI Gateway + Claude | AI SDK `generateObject` or `generateText` with vision; structured JSON output via Zod schema | Vision input: `[{ type: 'image_url', image_url: { url: blobUrl }}]` |
-| Mapbox GL JS | Client component with `mapboxgl.Map`; GeoJSON sources populated from Server Action output | Mapbox token in `NEXT_PUBLIC_MAPBOX_TOKEN`; do NOT use server-rendered map |
-| Auth.js | Magic-link email provider; session checked in dashboard layout via `auth()` | Configure `NEXTAUTH_SECRET`, `EMAIL_SERVER`, `EMAIL_FROM` |
-
-### Internal Boundaries
-
-| Boundary | Communication | Notes |
-|----------|---------------|-------|
-| webhook handler ↔ BotConversation | Direct function call; grammY middleware chain | Both in the same serverless function invocation |
-| BotConversation ↔ SubmissionService | `conversation.external(() => service.create())` | Required to avoid replay side effects |
-| AuditCallbackHandler ↔ AuditService | Direct `await` — callback_query handlers are short-lived | Run inside the same webhook invocation |
-| webhook route ↔ vision route | HTTP `fetch` (fire-and-forget via `after()`) | Separate serverless function invocation; no shared state |
-| Dashboard Server Actions ↔ DB | Drizzle queries in `'use server'` functions | Revalidate map data path after approval |
-| SpatialService ↔ DB | `db.execute(sql\`SELECT ST_...\`)` raw queries | No Drizzle query builder abstraction for PostGIS functions |
-
----
-
-## Suggested Build Order
-
-Dependencies determine phase order. Each phase's output is a prerequisite for the next.
-
-```
-Phase 1 — Foundation (DB + skeleton)
-  ├── Neon database, PostGIS extension
-  ├── Drizzle schema (all tables, migrations)
-  ├── Next.js project scaffold
-  └── Auth.js magic-link for dashboard
-
-Phase 2 — Bot Core (conversation without spatial)
-  ├── grammY bot instance + sessions (storage-psql)
-  ├── Worker conversation (States 0–6)
-  ├── Submission creation (status: pending_audit)
-  └── Reprompt-on-invalid handling
-
-Phase 3 — Audit Loop
-  ├── Auditor notification (ping on submission)
-  ├── Approve/Reject callback handler
-  ├── Approval transaction (BOQ increment + approved_point insert)
-  └── Worker rejection notification
-
-Phase 4 — Spatial Layer
-  ├── GeoJSON route upload in dashboard
-  ├── SpatialService (ST_DWithin + ST_LineLocatePoint + ST_ClosestPoint)
-  ├── Location_warning flag surfaced in auditor message
-  └── Approved_points populated in approval transaction
-
-Phase 5 — Dashboard + Map
-  ├── Project list and BOQ management UI
-  ├── Mapbox GL JS map component
-  ├── Route LineString layer
-  ├── Approved points layer
-  └── BOQ progress bars
-
-Phase 6 — AI Vision Assist
-  ├── Vision route handler
-  ├── AI SDK Claude vision call
-  ├── vision_results table
-  ├── Anomaly flags on dashboard submission card
-  └── Follow-up Telegram message to auditor with high-confidence flags
-```
-
-**Why this order:**
-- Phases 1–3 deliver the core value loop (worker submits → auditor approves → BOQ updates) with no map or AI dependencies — this can be validated with real users first
-- Phase 4 (spatial) requires Phase 1 (schema) and Phase 3 (the approved_points write happens inside the approval transaction)
-- Phase 5 (dashboard/map) requires Phase 4 (no approved points to render without spatial matching)
-- Phase 6 (AI) requires Phase 3 (submissions must exist) and Phase 5 (dashboard card to display flags) but is independent of Phase 4 — could be moved earlier if the auditor decision-support is higher priority
-
----
-
-## Scaling Considerations
-
-| Scale | Architecture Adjustments |
-|-------|--------------------------|
-| 1–5 workers, 1 project | Current monolith — no changes needed |
-| 10–50 workers, 5 projects | Add `ANALYZE` on spatial columns; consider connection pooling (Neon's built-in pooler is sufficient) |
-| 100+ workers | Vercel functions scale automatically; Neon scales compute; PostGIS spatial index handles query load |
-| Multi-tenant (v2) | Add `tenant_id` to all domain tables; add tenant routing to Auth.js; no architectural change needed |
+The `neon-http` driver (used in this project for both route handlers and migrations) does not support streaming. All queries return a full result set. This is fine for the data volumes expected in MVP (< 10k submissions). Design queries to return aggregated results, not streaming row-by-row.
 
 ---
 
 ## Sources
 
-- grammY Sessions documentation: https://grammy.dev/plugins/session
-- grammY Conversations documentation: https://grammy.dev/plugins/conversations
-- grammY storage adapters (psql confirmed): https://github.com/grammyjs/storages/tree/main/packages
-- grammY Vercel hosting: https://grammy.dev/hosting/vercel
-- Drizzle PostGIS geometry point guide: https://orm.drizzle.team/docs/guides/postgis-geometry-point
-- PostGIS ST_LineLocatePoint: https://postgis.net/docs/ST_LineLocatePoint.html
-- saha ADR-0004 (project/branch hierarchy, party handling) — reference for data model shape
-- saha ADR-0008 (quantity counters vs state machine) — contrast: bayrak.ai uses a simpler single approved_qty counter since workflow stage breakdown is out of scope for v1
+- Actual codebase: `src/db/schema/*.ts`, `src/actions/submissions.ts`, `src/db/migrate.ts`, `src/lib/excel.ts`, `src/app/dashboard/projects/[id]/page.tsx`
+- v1 architecture archive: `.planning/research/_v1-archive/ARCHITECTURE.md`
+- Neon serverless HTTP driver limitations: known from driver documentation (neon-http supports `sql.query()` for raw SQL but not streaming or `LISTEN/NOTIFY`)
+- Vercel function limits: 4.5 MB response body, 60s timeout on Pro; confirmed from Vercel docs
+- `@react-pdf/renderer` Vercel compatibility: HIGH confidence — pure Node.js, no binary deps
+- Postgres partial index syntax: not supported by drizzle-kit generate (known limitation); requires hand-editing — confirmed from drizzle-kit issue tracker and this project's own `0003_slippery_prowler.sql` hand-edit precedent
 
 ---
-*Architecture research for: bayrak.ai — linear-infrastructure field-ops platform*
-*Researched: 2026-05-23*
+*Architecture integration research for: bayrak.ai v2.0 Operations Intelligence & Hakkediş*
+*Researched: 2026-05-25*
