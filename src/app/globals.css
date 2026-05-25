@@ -7,9 +7,14 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: "Geist Mono", "Geist Mono Fallback", ui-monospace, monospace;
-  --font-heading: var(--font-sans);
+  /* `--font-inter` is set on <body> by next/font (layout.tsx). Previously
+     `--font-sans` referenced itself → undefined → app fell back to a system
+     font. Now it resolves to Inter with a robust fallback stack. */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "SFMono-Regular", Menlo, Consolas,
+    "Liberation Mono", monospace;
+  --font-heading: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -49,72 +54,79 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  /* Richer light theme: cool slate-tinted neutrals (hue ~264) instead of flat
+     gray, with cards (white) lifting above a faintly tinted background.
+     Accent = Industrial Blue. Status colors (destructive/amber/emerald) and
+     the BOQ marker hex palette are governed by 05-UI-SPEC.md and unchanged. */
+  --background: oklch(0.985 0.004 264);
+  --foreground: oklch(0.21 0.02 264);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: oklch(0.21 0.02 264);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.21 0.02 264);
+  /* Industrial Blue ~#2563EB */
+  --primary: oklch(0.55 0.2 255);
+  --primary-foreground: oklch(0.985 0.01 264);
+  --secondary: oklch(0.967 0.006 264);
+  --secondary-foreground: oklch(0.28 0.025 264);
+  --muted: oklch(0.967 0.006 264);
+  --muted-foreground: oklch(0.5 0.022 264);
+  --accent: oklch(0.955 0.012 255);
+  --accent-foreground: oklch(0.4 0.12 255);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  --border: oklch(0.915 0.01 264);
+  --input: oklch(0.915 0.01 264);
+  --ring: oklch(0.62 0.17 255);
+  --chart-1: oklch(0.55 0.2 255);
+  --chart-2: oklch(0.62 0.16 195);
+  --chart-3: oklch(0.68 0.15 70);
+  --chart-4: oklch(0.6 0.18 300);
+  --chart-5: oklch(0.62 0.19 350);
   --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar: oklch(0.985 0.004 264);
+  --sidebar-foreground: oklch(0.21 0.02 264);
+  --sidebar-primary: oklch(0.55 0.2 255);
+  --sidebar-primary-foreground: oklch(0.985 0.01 264);
+  --sidebar-accent: oklch(0.955 0.012 255);
+  --sidebar-accent-foreground: oklch(0.4 0.12 255);
+  --sidebar-border: oklch(0.915 0.01 264);
+  --sidebar-ring: oklch(0.62 0.17 255);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  /* Coherent dark variant in the same slate + Industrial Blue language.
+     Dark mode is not toggled by default, but the tokens stay correct if enabled. */
+  --background: oklch(0.18 0.02 264);
+  --foreground: oklch(0.97 0.005 264);
+  --card: oklch(0.22 0.022 264);
+  --card-foreground: oklch(0.97 0.005 264);
+  --popover: oklch(0.22 0.022 264);
+  --popover-foreground: oklch(0.97 0.005 264);
+  --primary: oklch(0.62 0.19 255);
+  --primary-foreground: oklch(0.16 0.02 264);
+  --secondary: oklch(0.28 0.024 264);
+  --secondary-foreground: oklch(0.97 0.005 264);
+  --muted: oklch(0.28 0.024 264);
+  --muted-foreground: oklch(0.7 0.02 264);
+  --accent: oklch(0.32 0.05 255);
+  --accent-foreground: oklch(0.92 0.04 255);
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 16%);
+  --ring: oklch(0.62 0.19 255);
+  --chart-1: oklch(0.62 0.19 255);
+  --chart-2: oklch(0.66 0.15 195);
+  --chart-3: oklch(0.72 0.15 70);
+  --chart-4: oklch(0.64 0.18 300);
+  --chart-5: oklch(0.66 0.19 350);
+  --sidebar: oklch(0.22 0.022 264);
+  --sidebar-foreground: oklch(0.97 0.005 264);
+  --sidebar-primary: oklch(0.62 0.19 255);
+  --sidebar-primary-foreground: oklch(0.16 0.02 264);
+  --sidebar-accent: oklch(0.32 0.05 255);
+  --sidebar-accent-foreground: oklch(0.92 0.04 255);
+  --sidebar-border: oklch(1 0 0 / 12%);
+  --sidebar-ring: oklch(0.62 0.19 255);
 }
 
 @layer base {
@@ -123,8 +135,32 @@
   }
   body {
     @apply bg-background text-foreground;
+    /* Inter optical tuning: contextual alternates + tabular-friendly rendering */
+    font-feature-settings: "cv11", "ss01";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
   html {
     @apply font-sans;
+  }
+  /* Bold & tight: headings get negative tracking + balanced wrapping by default.
+     Weight is set per-usage via font-* utilities (utilities win the cascade). */
+  h1,
+  h2,
+  h3,
+  h4 {
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+}
+
+@layer components {
+  /* Hero / display headline — fluid 36→60px, heavy, tightly tracked. */
+  .text-display {
+    font-size: clamp(2.25rem, 1.1rem + 4.4vw, 3.75rem);
+    line-height: 1.04;
+    letter-spacing: -0.025em;
+    font-weight: 700;
   }
 }
