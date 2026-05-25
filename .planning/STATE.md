@@ -5,7 +5,7 @@ milestone_name: milestone
 status: ready_to_plan
 stopped_at: Phase 05 complete (6/6) — ready to discuss Phase 6
 last_updated: 2026-05-25T00:15:35.188Z
-last_activity: 2026-05-24
+last_activity: 2026-05-25 - Completed quick task 260525-2uq: bilingual TR/EN landing page
 progress:
   total_phases: 6
   completed_phases: 5
@@ -132,6 +132,12 @@ None yet.
 - Phase 4: PostGIS coordinate order — `ST_MakePoint(longitude, latitude)`; unit test required before merging
 - Phase 4: Geometry vs geography — use `::geography` cast for metre-accurate distance thresholds
 - Phase 1: Drizzle LineString migration requires manual SQL edit to change generated type from `geometry(point,4326)` to `geometry(linestring,4326)`
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260525-2uq | Bilingual TR/EN marketing landing page at root route | 2026-05-25 | 5717e6b | [260525-2uq-bilingual-tr-en-marketing-landing-page-a](./quick/260525-2uq-bilingual-tr-en-marketing-landing-page-a/) |
 
 ## Deferred Items
 
