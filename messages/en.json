@@ -67,7 +67,9 @@
       "error_not_json": "Invalid file. Upload a valid GeoJSON file.",
       "error_not_geojson": "Invalid GeoJSON format. Ensure the file contains a FeatureCollection or Feature.",
       "error_not_linestring": "Route geometry must be a LineString. The uploaded file contains {actualType} geometry.",
-      "validating": "Validating..."
+      "validating": "Validating...",
+      "coord_count": "Coordinate count",
+      "upload_date": "Upload date"
     },
     "submissions": {
       "tab_label": "Submissions",

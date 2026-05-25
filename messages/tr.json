@@ -67,7 +67,9 @@
       "error_not_json": "Geçersiz dosya. JSON formatında bir GeoJSON dosyası yükleyin.",
       "error_not_geojson": "GeoJSON formatı geçersiz. Dosyanın bir FeatureCollection veya Feature içerdiğinden emin olun.",
       "error_not_linestring": "Rota geometrisi LineString olmalı. Yüklenen dosya {actualType} tipinde geometri içeriyor.",
-      "validating": "Doğrulanıyor..."
+      "validating": "Doğrulanıyor...",
+      "coord_count": "Koordinat sayısı",
+      "upload_date": "Yükleme tarihi"
     },
     "submissions": {
       "tab_label": "Kayıtlar",

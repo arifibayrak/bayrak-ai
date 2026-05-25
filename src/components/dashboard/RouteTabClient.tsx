@@ -49,6 +49,7 @@ export function RouteTabClient({
   boqLegend,
 }: RouteTabClientProps) {
   const t = useTranslations('dashboard.route');
+  const tc = useTranslations('common');
   const [savedRoute, setSavedRoute] = useState<ExistingRoute | null>(existingRoute);
   const [isReplacing, setIsReplacing] = useState(false);
 
@@ -79,13 +80,13 @@ export function RouteTabClient({
         <Card className="p-6">
           <div className="space-y-2 text-sm">
             <div className="flex items-center gap-2">
-              <span className="text-muted-foreground">Koordinat sayısı /</span>
+              <span className="text-muted-foreground">{t('coord_count')}</span>
               <span className="font-medium tabular-nums">
                 {savedRoute.coordinateCount.toLocaleString('tr-TR')}
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-muted-foreground">Yükleme tarihi /</span>
+              <span className="text-muted-foreground">{t('upload_date')}</span>
               <span className="font-medium">
                 {new Date(savedRoute.uploadedAt).toLocaleDateString('tr-TR', {
                   year: 'numeric',
@@ -121,7 +122,7 @@ export function RouteTabClient({
       <RouteUpload projectId={projectId} onSuccess={handleUploadSuccess} />
       {isReplacing && (
         <Button variant="ghost" onClick={() => setIsReplacing(false)}>
-          İptal
+          {tc('cancel')}
         </Button>
       )}
     </div>
