@@ -12,8 +12,11 @@ export default async function ProjectsPage() {
   return (
     <div className="space-y-6">
       {/* Page heading + CTA */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">{t('title')}</h1>
+      <div className="flex items-start justify-between gap-4">
+        <div className="space-y-1">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{t('title')}</h1>
+          <p className="text-sm text-muted-foreground">{t('subtitle')}</p>
+        </div>
         <Button render={<Link href="/dashboard/projects/new" />}>
           {t('create_project')}
         </Button>

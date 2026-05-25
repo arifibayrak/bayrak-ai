@@ -57,7 +57,7 @@ export default async function ProjectDetailPage({ params, searchParams }: Props)
       </nav>
 
       {/* Page heading */}
-      <h1 className="text-xl font-semibold mb-4">{project.name}</h1>
+      <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-5">{project.name}</h1>
 
       {/* Refresh on window focus / visibility regain so map + BOQ % update (DASH-05 / D-55) */}
       <RefreshOnFocus />

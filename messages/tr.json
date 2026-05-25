@@ -29,7 +29,8 @@
       "project_name_label": "Proje Adı",
       "description_label": "Açıklama",
       "save_changes": "Değişiklikleri Kaydet",
-      "name_required": "Proje adı zorunludur."
+      "name_required": "Proje adı zorunludur.",
+      "subtitle": "Tüm sahalarınızı tek yerden yönetin."
     },
     "boq": {
       "title": "Metraj Kalemleri",

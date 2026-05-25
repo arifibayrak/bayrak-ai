@@ -16,10 +16,10 @@ export async function TopNav({ userEmail }: { userEmail: string }) {
   const t = await getTranslations('nav');
 
   return (
-    <header className="sticky top-0 z-40 h-14 bg-card border-b border-border">
+    <header className="sticky top-0 z-40 h-14 bg-card/80 backdrop-blur-md supports-[backdrop-filter]:bg-card/70 border-b border-border">
       <div className="max-w-5xl mx-auto px-6 h-full flex items-center justify-between">
         {/* Left: wordmark */}
-        <span className="text-xl font-semibold">{t('wordmark')}</span>
+        <span className="text-xl font-bold tracking-tight">{t('wordmark')}</span>
 
         {/* Right: language toggle + user email + sign out */}
         <div className="flex items-center gap-3">

@@ -29,7 +29,8 @@
       "project_name_label": "Project Name",
       "description_label": "Description",
       "save_changes": "Save Changes",
-      "name_required": "Project name is required."
+      "name_required": "Project name is required.",
+      "subtitle": "Manage all your sites from one place."
     },
     "boq": {
       "title": "Bill of Quantities",

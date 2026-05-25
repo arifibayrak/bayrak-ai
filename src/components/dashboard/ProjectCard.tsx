@@ -53,13 +53,15 @@ export function ProjectCard({ id, name, createdAt, boqCount, peopleCount }: Proj
 
   return (
     <>
-      <Card className="hover:shadow-md transition-shadow">
+      <Card className="transition-all hover:shadow-md hover:border-primary/40">
         <CardHeader className="pb-2 flex flex-row items-start justify-between gap-2">
-          <div className="flex items-center gap-2 min-w-0">
-            <FolderIcon className="size-4 text-muted-foreground shrink-0" />
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className="inline-flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0">
+              <FolderIcon className="size-4" />
+            </span>
             <Link
               href={`/dashboard/projects/${id}`}
-              className="text-base font-semibold leading-tight hover:underline truncate"
+              className="text-[1.05rem] font-semibold tracking-tight leading-tight hover:text-primary hover:underline truncate"
             >
               {name}
             </Link>
@@ -91,11 +93,15 @@ export function ProjectCard({ id, name, createdAt, boqCount, peopleCount }: Proj
             </DropdownMenuContent>
           </DropdownMenu>
         </CardHeader>
-        <CardContent className="text-sm text-muted-foreground space-y-1">
+        <CardContent className="text-sm text-muted-foreground space-y-2">
           <p>{createdDate}</p>
-          <p className="flex gap-4">
-            <span>{boqCount} BOQ</span>
-            <span>{peopleCount} Personel</span>
+          <p className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-md bg-muted px-2 py-0.5">
+              <span className="font-semibold text-foreground tabular-nums">{boqCount}</span> BOQ
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-md bg-muted px-2 py-0.5">
+              <span className="font-semibold text-foreground tabular-nums">{peopleCount}</span> Personel
+            </span>
           </p>
         </CardContent>
       </Card>
