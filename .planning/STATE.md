@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-05-23)
 Phase: 6
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-05-25
+Last activity: 2026-05-25 - Completed quick task 260525-3fc: Polish UI/UX — typography, fonts, spacing, visual hierarchy
 
 Progress: [██████████] 100%
 
@@ -138,6 +138,7 @@ None yet.
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260525-2uq | Bilingual TR/EN marketing landing page at root route | 2026-05-25 | 5717e6b | [260525-2uq-bilingual-tr-en-marketing-landing-page-a](./quick/260525-2uq-bilingual-tr-en-marketing-landing-page-a/) |
+| 260525-3fc | Polish UI/UX — typography, fonts, spacing, visual hierarchy across landing + dashboard | 2026-05-25 | fc1e92c | [260525-3fc-polish-ui-ux-typography-fonts-spacing-vi](./quick/260525-3fc-polish-ui-ux-typography-fonts-spacing-vi/) |
 
 ## Deferred Items
 

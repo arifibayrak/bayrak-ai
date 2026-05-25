@@ -23,8 +23,8 @@ created: 2026-05-24
 | Base color | neutral | components.json |
 | Component library | @base-ui/react (via shadcn base-nova preset) | package.json |
 | Icon library | lucide-react 1.16.x | package.json |
-| Font | Geist Sans — variable via `next/font/google` | src/app/layout.tsx |
-| Mono font | Geist Mono — variable via `next/font/google` | src/app/layout.tsx |
+| Font | **Inter** — variable via `next/font/google`, subsets `latin`+`latin-ext` | src/app/layout.tsx (revised by quick task 260525-3fc) |
+| Mono font | ui-monospace system stack (`tabular-nums` via Inter figures) | src/app/globals.css (revised by quick task 260525-3fc) |
 | CSS variables | enabled | components.json |
 | Dark mode | class-based (`.dark`) | globals.css |
 
@@ -58,7 +58,14 @@ Exceptions:
 
 ## Typography
 
-All sizes use Geist Sans (`--font-sans`). Tailwind v4 utility classes map directly.
+> **REVISED by quick task 260525-3fc (2026-05-25):** Font is now **Inter** (not Geist).
+> The original "only 2 weights (400/600), max 20px" rule below was identified as the
+> source of flat hierarchy and is **superseded for global chrome**: weights 400/500/600/700
+> are now in use, and headings use tight tracking (`-0.02em`) with a fluid display scale
+> (`.text-display`, clamp 36→60px / 700) for hero/marketing contexts. The table below still
+> governs dashboard *data-table* roles (Body/Label) for density.
+
+All sizes use Inter (`--font-sans`). Tailwind v4 utility classes map directly.
 
 | Role | Size | Weight | Line Height | Tailwind class |
 |------|------|--------|-------------|----------------|
@@ -79,7 +86,13 @@ Rules:
 
 ## Color
 
-The project uses shadcn `neutral` tokens via OKLCH CSS variables. No raw hex is hardcoded for UI chrome — only BOQ palette markers use fixed hex.
+> **REVISED by quick task 260525-3fc (2026-05-25):** Neutrals are now **cool slate-tinted**
+> (OKLCH hue ~264, low chroma) rather than pure achromatic gray, and `--primary` is now
+> **Industrial Blue** `oklch(0.55 0.20 255)` (~#2563EB) instead of near-black. The "Accent (10%)"
+> role below now maps to this blue. Destructive (red), Success (emerald), Warning (amber),
+> and the BOQ marker hex palette are **unchanged**.
+
+The project uses shadcn slate-tinted neutral tokens via OKLCH CSS variables. No raw hex is hardcoded for UI chrome — only BOQ palette markers use fixed hex.
 
 | Role | Token / Value | Usage |
 |------|---------------|-------|
