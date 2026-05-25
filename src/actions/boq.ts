@@ -12,7 +12,7 @@
  * Threat T-06-03: 4MB body limit enforced by Next.js framework; surfaced in UI.
  */
 
-import { eq, sql } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { db } from '@/db';
 import { boqItems } from '@/db/schema/boq-items';
@@ -72,8 +72,8 @@ export async function addBoqItem(params: {
 
 /**
  * updateBoqItem — update material, unit, and/or plannedQty of an existing BOQ item.
- * Auth-guarded. Tenant-scoping not enforced here since item IDs are UUIDs (not guessable),
- * but callers should only pass IDs belonging to the current tenant's projects.
+ * Auth-guarded. WR-06: tenant-scoped WHERE clause prevents cross-tenant writes
+ * even if a UUID leaks through logs or network traces.
  */
 export async function updateBoqItem(
   id: string,
@@ -107,13 +107,17 @@ export async function updateBoqItem(
     return { ok: true as const }; // no-op
   }
 
-  await db.update(boqItems).set(updates).where(eq(boqItems.id, id));
+  // WR-06: tenant scope prevents cross-tenant write even if UUID leaks
+  await db
+    .update(boqItems)
+    .set(updates)
+    .where(and(eq(boqItems.id, id), eq(boqItems.tenantId, getDefaultTenantId())));
 
   // Fetch the project ID to revalidate the correct path
   const [row] = await db
     .select({ projectId: boqItems.projectId })
     .from(boqItems)
-    .where(eq(boqItems.id, id))
+    .where(and(eq(boqItems.id, id), eq(boqItems.tenantId, getDefaultTenantId())))
     .limit(1);
 
   if (row) revalidatePath(`/dashboard/projects/${row.projectId}`);
@@ -122,20 +126,23 @@ export async function updateBoqItem(
 
 /**
  * deleteBoqItem — delete a BOQ line item by ID.
- * Auth-guarded.
+ * Auth-guarded. WR-06: tenant-scoped WHERE clause prevents cross-tenant deletes.
  */
 export async function deleteBoqItem(id: string) {
   const session = await auth();
   if (!session) throw new Error('Unauthorized');
 
-  // Fetch project ID before delete for revalidation
+  // Fetch project ID before delete for revalidation (tenant-scoped)
   const [row] = await db
     .select({ projectId: boqItems.projectId })
     .from(boqItems)
-    .where(eq(boqItems.id, id))
+    .where(and(eq(boqItems.id, id), eq(boqItems.tenantId, getDefaultTenantId())))
     .limit(1);
 
-  await db.delete(boqItems).where(eq(boqItems.id, id));
+  // WR-06: tenant scope prevents cross-tenant delete even if UUID leaks
+  await db
+    .delete(boqItems)
+    .where(and(eq(boqItems.id, id), eq(boqItems.tenantId, getDefaultTenantId())));
 
   if (row) revalidatePath(`/dashboard/projects/${row.projectId}`);
   return { ok: true as const };
