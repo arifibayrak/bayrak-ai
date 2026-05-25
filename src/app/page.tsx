@@ -47,7 +47,7 @@ export default async function Home() {
               <span className="size-1.5 rounded-full bg-primary" aria-hidden="true" />
               {t('hero.eyebrow')}
             </span>
-            <h1 className="text-display text-foreground">{t('hero.title')}</h1>
+            <h1 className="text-display text-foreground">{t('hero.headline')}</h1>
             <p className="max-w-xl text-lg sm:text-xl leading-relaxed text-muted-foreground">
               {t('hero.tagline')}
             </p>
