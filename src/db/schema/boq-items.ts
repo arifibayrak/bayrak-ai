@@ -10,8 +10,8 @@ export const boqItems = pgTable('boq_items', {
   unit: text('unit').notNull(),               // e.g. "m", "m³", "adet"
   plannedQty: numeric('planned_qty', { precision: 12, scale: 3 }).notNull(),
   approvedQty: numeric('approved_qty', { precision: 12, scale: 3 }).notNull().default('0'),
-  // unit_price omitted per D-06; add nullable column in v2 for hakkediş
-  // unit_price: numeric('unit_price', { precision: 12, scale: 2 }),
+  unitPrice: numeric('unit_price', { precision: 15, scale: 4 }),          // nullable — v1 rows have no price
+  currencyCode: text('currency_code').notNull().default('TRY'),            // ISO-4217; TRY is the default
   sortOrder: integer('sort_order').notNull().default(0),  // preserves import row order
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
