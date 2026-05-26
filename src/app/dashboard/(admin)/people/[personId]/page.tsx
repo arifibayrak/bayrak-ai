@@ -126,8 +126,9 @@ export default async function PersonProfilePage({ params, searchParams }: Props)
   const workerPending = workerMetrics?.submissionsPending ?? 0;
   const workerTotal = workerApproved + workerRejected + workerPending;
   const workerDecided = workerApproved + workerRejected;
-  const workerRejectionRate =
-    workerDecided > 0 ? ((workerRejected / workerDecided) * 100).toFixed(1) : '—';
+  // WR-03: include '%' only when rate is a real number; omit it for the em-dash placeholder
+  const workerRejectionRateLabel =
+    workerDecided > 0 ? `${((workerRejected / workerDecided) * 100).toFixed(1)}%` : '—';
   const workerLocationRate =
     workerMetrics?.locationComplianceRate !== null && workerMetrics?.locationComplianceRate !== undefined
       ? `${(workerMetrics.locationComplianceRate * 100).toFixed(1)}%`
@@ -140,9 +141,13 @@ export default async function PersonProfilePage({ params, searchParams }: Props)
 
   // Auditor KPI values
   const auditorDecisionsCount = auditorMetrics?.decisionsCount ?? 0;
+  // CR-02: count decisions with status='approved' from the already-fetched auditorDecisions array.
+  // Using auditorMetrics.submissionsApproved was wrong — that field counts this person's OWN
+  // worker submissions that got approved, not the decisions they made as an auditor.
+  const auditorApprovedDecisions = auditorDecisions.filter((d) => d.status === 'approved').length;
   const auditorApprovalRate =
     auditorDecisionsCount > 0
-      ? `${(((auditorMetrics?.submissionsApproved ?? 0) / auditorDecisionsCount) * 100).toFixed(1)}%`
+      ? `${((auditorApprovedDecisions / auditorDecisionsCount) * 100).toFixed(1)}%`
       : '—';
   const auditorAvgTurnaround =
     auditorMetrics?.avgDecisionLatencyHours !== null &&
@@ -205,7 +210,7 @@ export default async function PersonProfilePage({ params, searchParams }: Props)
                 />
                 <KpiCard
                   label={t('col_rejected')}
-                  subLabel={`${workerRejectionRate}%`}
+                  subLabel={workerRejectionRateLabel}
                   value={new Intl.NumberFormat('tr-TR').format(workerRejected)}
                   icon={<XCircle className="size-5 text-muted-foreground" />}
                   valueColor="destructive"
