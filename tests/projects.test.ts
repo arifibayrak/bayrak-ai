@@ -192,6 +192,7 @@ describeIfDb('Project CRUD lifecycle (DB integration)', () => {
   it('updateProject still logs when a row IS matched (WR-01 positive control)', async () => {
     const { createProject, updateProject } = await getActions();
     const { sql } = await import('drizzle-orm');
+    const { after } = await import('next/server');
 
     // Need a real users row so logOfficeActivity's FK insert succeeds.
     await db.execute(sql.raw(`INSERT INTO users (id, email) VALUES ('test-user-id', 'test@example.com') ON CONFLICT DO NOTHING`));
@@ -199,6 +200,15 @@ describeIfDb('Project CRUD lifecycle (DB integration)', () => {
     const created = await createProject({ name: 'Owned', description: '' });
     const updated = await updateProject(created.id, { name: 'Owned Renamed' });
     expect(updated?.name).toBe('Owned Renamed');
+
+    // logOfficeActivity runs inside after() (fire-and-forget). The mock returns
+    // Promise.resolve(fn()); await the last call's result so the log INSERT has
+    // committed before we query for it. (Mirrors tests/analytics.test.ts.)
+    const afterMock = after as ReturnType<typeof vi.fn>;
+    const lastCallResult = afterMock.mock.results[afterMock.mock.results.length - 1]?.value;
+    if (lastCallResult instanceof Promise) {
+      await lastCallResult;
+    }
 
     const log = await db.execute(
       sql.raw(`SELECT COUNT(*)::int AS c FROM office_activity_log WHERE entity_id = '${created.id}' AND action_type = 'project_updated'`)
