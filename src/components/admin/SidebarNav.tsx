@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import {
@@ -47,7 +48,7 @@ export function SidebarNav() {
               <SidebarMenuButton
                 isActive={isActive}
                 render={
-                  <a
+                  <Link
                     href={item.href}
                     aria-current={isActive ? 'page' : undefined}
                   />
