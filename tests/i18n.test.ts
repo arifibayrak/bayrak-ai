@@ -24,17 +24,23 @@ function flattenKeys(obj: Record<string, unknown>, prefix = ''): string[] {
 // Pure locale selection logic — tested in isolation from next/headers
 //
 // The actual src/i18n/request.ts does:
-//   const cookieStore = await cookies();
-//   const locale = cookieStore.get('locale')?.value ?? 'tr';
+//   const raw = cookieStore.get('locale')?.value;
+//   const locale = isSupportedLocale(raw) ? raw : 'tr';
 //
 // We test this logic directly via a pure helper so there is no dependency on
 // the next/headers runtime (which is unavailable in a plain Vitest/Node env).
 // ---------------------------------------------------------------------------
 
+const SUPPORTED_LOCALES = ['tr', 'en'] as const;
+type SupportedLocale = (typeof SUPPORTED_LOCALES)[number];
+
+function isSupportedLocale(v: string | undefined): v is SupportedLocale {
+  return SUPPORTED_LOCALES.includes(v as SupportedLocale);
+}
+
 function resolveLocale(cookieValue: string | undefined): string {
-  // Mirror the logic in src/i18n/request.ts exactly:
-  //   const locale = cookieStore.get('locale')?.value ?? 'tr';
-  return cookieValue ?? 'tr';
+  // Mirror the allowlist logic in src/i18n/request.ts exactly (CR-01 fix):
+  return isSupportedLocale(cookieValue) ? cookieValue : 'tr';
 }
 
 describe('locale resolution logic (mirrors src/i18n/request.ts)', () => {
@@ -50,10 +56,10 @@ describe('locale resolution logic (mirrors src/i18n/request.ts)', () => {
     expect(resolveLocale('tr')).toBe('tr');
   });
 
-  it('preserves an unknown locale value as returned by the cookie (caller handles validation)', () => {
-    // The raw resolver is a passthrough; higher-level code or next-intl would
-    // reject unsupported locales — not the resolver's responsibility.
-    expect(resolveLocale('xx')).toBe('xx');
+  it('rejects unknown locale values and falls back to tr (CR-01 allowlist)', () => {
+    // Unknown locales must NOT be passed to import() — they fall back to default.
+    expect(resolveLocale('xx')).toBe('tr');
+    expect(resolveLocale('../../etc/passwd')).toBe('tr');
   });
 });
 
