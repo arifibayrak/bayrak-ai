@@ -21,6 +21,16 @@ import { getDefaultTenantId } from '@/lib/tenant';
 import { parseBoqExcel, type BoqRow } from '@/lib/excel';
 import { logOfficeActivity } from '@/lib/log-office-activity';
 
+// ── Currency allow-list ───────────────────────────────────────────────────────
+//
+// CR-05: the set of currency codes the server will accept on a BOQ item.
+// Server Actions are directly callable via fetch/curl, so the client-side
+// dropdown is NOT a sufficient guard — every write path must validate against
+// this list before touching the DB. Exported so other server code (and tests)
+// can share the canonical set.
+export const ALLOWED_CURRENCIES = ['TRY', 'USD', 'EUR'] as const;
+export type AllowedCurrency = (typeof ALLOWED_CURRENCIES)[number];
+
 // ── Manual CRUD ───────────────────────────────────────────────────────────────
 
 /**
@@ -67,14 +77,20 @@ export async function addBoqItem(params: {
     })
     .returning({ id: boqItems.id });
 
-  logOfficeActivity({
-    actorUserId: session.user?.id ?? '',
-    actionType: 'boq_item_created',
-    entityType: 'boq_item',
-    entityId: inserted.id,
-    projectId,
-    metadata: { material, unit, plannedQty },
-  });
+  // CR-04: never pass an empty string actorUserId — '' is not NULL and fails the
+  // FK to users.id, silently dropping the log row inside after()'s catch{}.
+  // The session guard above guarantees a session; skip the log only if the user
+  // ID is genuinely absent (keeps the primary mutation non-fatal).
+  if (session.user?.id) {
+    logOfficeActivity({
+      actorUserId: session.user.id,
+      actionType: 'boq_item_created',
+      entityType: 'boq_item',
+      entityId: inserted.id,
+      projectId,
+      metadata: { material, unit, plannedQty },
+    });
+  }
 
   revalidatePath(`/dashboard/projects/${projectId}`);
   return { ok: true as const, id: inserted.id };
@@ -131,14 +147,16 @@ export async function updateBoqItem(
     .limit(1);
 
   if (row) {
-    logOfficeActivity({
-      actorUserId: session.user?.id ?? '',
-      actionType: 'boq_item_updated',
-      entityType: 'boq_item',
-      entityId: id,
-      projectId: row.projectId,
-      metadata: params,
-    });
+    if (session.user?.id) {
+      logOfficeActivity({
+        actorUserId: session.user.id,
+        actionType: 'boq_item_updated',
+        entityType: 'boq_item',
+        entityId: id,
+        projectId: row.projectId,
+        metadata: params,
+      });
+    }
     revalidatePath(`/dashboard/projects/${row.projectId}`);
   }
   return { ok: true as const };
@@ -165,14 +183,16 @@ export async function deleteBoqItem(id: string) {
     .where(and(eq(boqItems.id, id), eq(boqItems.tenantId, getDefaultTenantId())));
 
   if (row) {
-    logOfficeActivity({
-      actorUserId: session.user?.id ?? '',
-      actionType: 'boq_item_deleted',
-      entityType: 'boq_item',
-      entityId: id,
-      projectId: row.projectId,
-      metadata: {},
-    });
+    if (session.user?.id) {
+      logOfficeActivity({
+        actorUserId: session.user.id,
+        actionType: 'boq_item_deleted',
+        entityType: 'boq_item',
+        entityId: id,
+        projectId: row.projectId,
+        metadata: {},
+      });
+    }
     revalidatePath(`/dashboard/projects/${row.projectId}`);
   }
   return { ok: true as const };
@@ -191,6 +211,14 @@ export async function setUnitPrice(params: {
 }) {
   const session = await auth();
   if (!session) throw new Error('Unauthorized');
+
+  // CR-05: validate the currency code against the server-side allow-list BEFORE
+  // any DB write. Server Actions are directly callable, so an attacker/malformed
+  // client could otherwise persist arbitrary text into currency_code, poisoning
+  // the financial schema and breaking downstream Intl.NumberFormat formatting.
+  if (!ALLOWED_CURRENCIES.includes(params.currencyCode as AllowedCurrency)) {
+    throw new Error(`Invalid currency code: ${params.currencyCode}`);
+  }
 
   // T-07-10: reject NaN or negative prices before any DB write
   if (params.unitPrice !== null) {
@@ -217,14 +245,16 @@ export async function setUnitPrice(params: {
     .set({ unitPrice: params.unitPrice, currencyCode: params.currencyCode })
     .where(and(eq(boqItems.id, params.boqItemId), eq(boqItems.tenantId, getDefaultTenantId())));
 
-  logOfficeActivity({
-    actorUserId: session.user?.id ?? '',
-    actionType: 'unit_price_set',
-    entityType: 'boq_item',
-    entityId: params.boqItemId,
-    projectId: old.projectId,
-    metadata: { oldPrice: old.unitPrice, newPrice: params.unitPrice, currencyCode: params.currencyCode },
-  });
+  if (session.user?.id) {
+    logOfficeActivity({
+      actorUserId: session.user.id,
+      actionType: 'unit_price_set',
+      entityType: 'boq_item',
+      entityId: params.boqItemId,
+      projectId: old.projectId,
+      metadata: { oldPrice: old.unitPrice, newPrice: params.unitPrice, currencyCode: params.currencyCode },
+    });
+  }
 
   revalidatePath(`/dashboard/projects/${old.projectId}`);
   return { ok: true as const };
@@ -238,10 +268,12 @@ export async function getBoqItems(projectId: string) {
   const session = await auth();
   if (!session) throw new Error('Unauthorized');
 
+  // WR-01: tenant-scope the read — projectId comes from the client, so without
+  // the tenant filter a caller could read another tenant's BOQ by guessing a UUID.
   return db
     .select()
     .from(boqItems)
-    .where(eq(boqItems.projectId, projectId))
+    .where(and(eq(boqItems.projectId, projectId), eq(boqItems.tenantId, getDefaultTenantId())))
     .orderBy(boqItems.sortOrder);
 }
 
@@ -305,13 +337,15 @@ export async function confirmBoqImport(projectId: string, rows: BoqRow[]) {
     }))
   );
 
-  logOfficeActivity({
-    actorUserId: session.user?.id ?? '',
-    actionType: 'boq_imported',
-    entityType: 'project',
-    projectId,
-    metadata: { rowCount: rows.length },
-  });
+  if (session.user?.id) {
+    logOfficeActivity({
+      actorUserId: session.user.id,
+      actionType: 'boq_imported',
+      entityType: 'project',
+      projectId,
+      metadata: { rowCount: rows.length },
+    });
+  }
 
   revalidatePath(`/dashboard/projects/${projectId}`);
   return { ok: true as const, count: rows.length };
