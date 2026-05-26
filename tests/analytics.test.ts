@@ -1037,3 +1037,214 @@ describeIfDb('REGRESSION CR-05: setUnitPrice accepts allowed currency', () => {
     expect(rows.rows[0].currency_code).toBe('TRY');
   });
 });
+
+// ── UX-02: getPortfolioKPIs() ──────────────────────────────────────────────
+
+describeIfDb('UX-02: getPortfolioKPIs() — pending backlog + in-range counts', () => {
+  let db: Awaited<ReturnType<typeof getTestDb>>;
+
+  beforeEach(async () => {
+    db = await getTestDb();
+    await truncateAllTables(db);
+  });
+
+  afterEach(async () => {
+    await truncateAllTables(db);
+  });
+
+  it('pending backlog is NOT scoped by date filter (D-66)', async () => {
+    const { getPortfolioKPIs } = await import('@/actions/analytics');
+
+    const tenantId  = '00000000-0000-0000-0000-000000000001';
+    const projectId = '00000000-0000-0000-0000-00000d020001';
+    const boqItemId = '00000000-0000-0000-0000-00000d020101';
+    const personId  = '00000000-0000-0000-0000-00000d020201';
+
+    await db.execute(sql.raw(`INSERT INTO tenants (id, name) VALUES ('${tenantId}', 'T1') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO projects (id, tenant_id, name) VALUES ('${projectId}', '${tenantId}', 'KPITest') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO boq_items (id, tenant_id, project_id, material, unit, planned_qty, approved_qty, sort_order, unit_price, currency_code) VALUES ('${boqItemId}', '${tenantId}', '${projectId}', 'Pipe', 'm', 1000, 0, 1, '100.0000', 'TRY') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO people (id, tenant_id, telegram_user_id, display_name) VALUES ('${personId}', '${tenantId}', 900001, 'WorkerKPI') ON CONFLICT DO NOTHING`));
+
+    // pending_audit submission OUTSIDE the narrow date window (old date)
+    await db.execute(sql.raw(`
+      INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at)
+      VALUES ('00000000-0000-0000-0000-d02000000001', '00000000-f000-0000-0000-d02000000001', '${tenantId}', '${projectId}', '${personId}', '${boqItemId}', 'pending_audit', '5.000', 'https://example.com/p.jpg', '2024-01-15T00:00:00Z')
+      ON CONFLICT DO NOTHING
+    `));
+    // approved submission INSIDE narrow window
+    await db.execute(sql.raw(`
+      INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at)
+      VALUES ('00000000-0000-0000-0000-d02000000002', '00000000-f000-0000-0000-d02000000002', '${tenantId}', '${projectId}', '${personId}', '${boqItemId}', 'approved', '5.000', 'https://example.com/p.jpg', '2025-06-15T00:00:00Z')
+      ON CONFLICT DO NOTHING
+    `));
+    // rejected submission INSIDE narrow window
+    await db.execute(sql.raw(`
+      INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at)
+      VALUES ('00000000-0000-0000-0000-d02000000003', '00000000-f000-0000-0000-d02000000003', '${tenantId}', '${projectId}', '${personId}', '${boqItemId}', 'rejected', '5.000', 'https://example.com/p.jpg', '2025-06-20T00:00:00Z')
+      ON CONFLICT DO NOTHING
+    `));
+
+    // narrow date window that excludes the 2024 pending row
+    const from = new Date('2025-06-01T00:00:00Z');
+    const to   = new Date('2025-06-30T23:59:59Z');
+
+    const kpis = await getPortfolioKPIs({ from, to });
+
+    // D-66: pending backlog is point-in-time — the 2024 pending row must be counted
+    expect(kpis.pendingBacklog).toBeGreaterThan(0);
+    expect(kpis.pendingBacklog).toBe(1);
+
+    // in-range counts only see the window rows
+    expect(kpis.approvalsInRange).toBe(1);
+    expect(kpis.rejectionsInRange).toBe(1);
+  });
+
+  it('activeWorkers counts distinct submitters within date range (D-65)', async () => {
+    const { getPortfolioKPIs } = await import('@/actions/analytics');
+
+    const tenantId  = '00000000-0000-0000-0000-000000000001';
+    const projectId = '00000000-0000-0000-0000-00000d020002';
+    const boqItemId = '00000000-0000-0000-0000-00000d020102';
+    const personA   = '00000000-0000-0000-0000-00000d020202';
+    const personB   = '00000000-0000-0000-0000-00000d020203';
+
+    await db.execute(sql.raw(`INSERT INTO tenants (id, name) VALUES ('${tenantId}', 'T1') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO projects (id, tenant_id, name) VALUES ('${projectId}', '${tenantId}', 'KPIActiveWorker') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO boq_items (id, tenant_id, project_id, material, unit, planned_qty, approved_qty, sort_order) VALUES ('${boqItemId}', '${tenantId}', '${projectId}', 'Pipe', 'm', 1000, 0, 1) ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO people (id, tenant_id, telegram_user_id, display_name) VALUES ('${personA}', '${tenantId}', 900002, 'WorkerA') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO people (id, tenant_id, telegram_user_id, display_name) VALUES ('${personB}', '${tenantId}', 900003, 'WorkerB') ON CONFLICT DO NOTHING`));
+
+    // personA submits 2 rows in window
+    await db.execute(sql.raw(`
+      INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at)
+      VALUES ('00000000-0000-0000-0000-d02000000a01', '00000000-f000-0000-0000-d02000000a01', '${tenantId}', '${projectId}', '${personA}', '${boqItemId}', 'approved', '1.000', 'https://example.com/p.jpg', '2025-06-10T00:00:00Z')
+      ON CONFLICT DO NOTHING
+    `));
+    await db.execute(sql.raw(`
+      INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at)
+      VALUES ('00000000-0000-0000-0000-d02000000a02', '00000000-f000-0000-0000-d02000000a02', '${tenantId}', '${projectId}', '${personA}', '${boqItemId}', 'approved', '1.000', 'https://example.com/p.jpg', '2025-06-11T00:00:00Z')
+      ON CONFLICT DO NOTHING
+    `));
+    // personB submits 1 row in window
+    await db.execute(sql.raw(`
+      INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at)
+      VALUES ('00000000-0000-0000-0000-d02000000b01', '00000000-f000-0000-0000-d02000000b01', '${tenantId}', '${projectId}', '${personB}', '${boqItemId}', 'approved', '1.000', 'https://example.com/p.jpg', '2025-06-12T00:00:00Z')
+      ON CONFLICT DO NOTHING
+    `));
+    // personA submits 1 row OUTSIDE window — should not count toward activeWorkers in narrow range
+    // but already counted above in window so still = 2 distinct
+
+    const from = new Date('2025-06-01T00:00:00Z');
+    const to   = new Date('2025-06-30T23:59:59Z');
+    const kpis = await getPortfolioKPIs({ from, to });
+
+    // 2 distinct workers submitted in this window
+    expect(kpis.activeWorkers).toBe(2);
+  });
+
+  it('throws Unauthorized when auth() returns null', async () => {
+    const { auth } = await import('@/lib/auth');
+    (auth as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null);
+    const { getPortfolioKPIs } = await import('@/actions/analytics');
+    await expect(getPortfolioKPIs()).rejects.toThrow('Unauthorized');
+  });
+});
+
+// ── UX-05: getCanonicalSubmissions pagination + single-record ───────────────
+
+describeIfDb('UX-05: getCanonicalSubmissions — submissionId lookup + limit/offset pagination', () => {
+  let db: Awaited<ReturnType<typeof getTestDb>>;
+
+  beforeEach(async () => {
+    db = await getTestDb();
+    await truncateAllTables(db);
+  });
+
+  afterEach(async () => {
+    await truncateAllTables(db);
+  });
+
+  it('returns exactly one row when filtering by submissionId', async () => {
+    const { getCanonicalSubmissions } = await import('@/actions/analytics');
+
+    const tenantId  = '00000000-0000-0000-0000-000000000001';
+    const projectId = '00000000-0000-0000-0000-00000d050001';
+    const boqItemId = '00000000-0000-0000-0000-00000d050101';
+    const personId  = '00000000-0000-0000-0000-00000d050201';
+    const subId1    = '00000000-0000-0000-0000-00000d050301';
+    const subId2    = '00000000-0000-0000-0000-00000d050302';
+
+    await db.execute(sql.raw(`INSERT INTO tenants (id, name) VALUES ('${tenantId}', 'T1') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO projects (id, tenant_id, name) VALUES ('${projectId}', '${tenantId}', 'SubIdTest') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO boq_items (id, tenant_id, project_id, material, unit, planned_qty, approved_qty, sort_order) VALUES ('${boqItemId}', '${tenantId}', '${projectId}', 'Pipe', 'm', 1000, 0, 1) ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO people (id, tenant_id, telegram_user_id, display_name) VALUES ('${personId}', '${tenantId}', 900010, 'SubLookupWorker') ON CONFLICT DO NOTHING`));
+
+    await db.execute(sql.raw(`
+      INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at)
+      VALUES ('${subId1}', '00000000-f000-0000-0000-00000d050301', '${tenantId}', '${projectId}', '${personId}', '${boqItemId}', 'approved', '10.000', 'https://example.com/p.jpg', NOW())
+      ON CONFLICT DO NOTHING
+    `));
+    await db.execute(sql.raw(`
+      INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at)
+      VALUES ('${subId2}', '00000000-f000-0000-0000-00000d050302', '${tenantId}', '${projectId}', '${personId}', '${boqItemId}', 'rejected', '5.000', 'https://example.com/p.jpg', NOW())
+      ON CONFLICT DO NOTHING
+    `));
+
+    const result = await getCanonicalSubmissions({ submissionId: subId1 });
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe(subId1);
+  });
+
+  it('returns [] when submissionId does not match any row', async () => {
+    const { getCanonicalSubmissions } = await import('@/actions/analytics');
+
+    const tenantId  = '00000000-0000-0000-0000-000000000001';
+    await db.execute(sql.raw(`INSERT INTO tenants (id, name) VALUES ('${tenantId}', 'T1') ON CONFLICT DO NOTHING`));
+
+    const result = await getCanonicalSubmissions({ submissionId: '00000000-0000-0000-0000-000000099999' });
+    expect(result).toHaveLength(0);
+  });
+
+  it('limit/offset slices the result set in DESC submitted_at order', async () => {
+    const { getCanonicalSubmissions } = await import('@/actions/analytics');
+
+    const tenantId  = '00000000-0000-0000-0000-000000000001';
+    const projectId = '00000000-0000-0000-0000-00000d050003';
+    const boqItemId = '00000000-0000-0000-0000-00000d050103';
+    const personId  = '00000000-0000-0000-0000-00000d050203';
+
+    await db.execute(sql.raw(`INSERT INTO tenants (id, name) VALUES ('${tenantId}', 'T1') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO projects (id, tenant_id, name) VALUES ('${projectId}', '${tenantId}', 'PaginateTest') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO boq_items (id, tenant_id, project_id, material, unit, planned_qty, approved_qty, sort_order) VALUES ('${boqItemId}', '${tenantId}', '${projectId}', 'Pipe', 'm', 1000, 0, 1) ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO people (id, tenant_id, telegram_user_id, display_name) VALUES ('${personId}', '${tenantId}', 900011, 'PaginateWorker') ON CONFLICT DO NOTHING`));
+
+    // Insert 5 submissions with different dates (newest first in results)
+    for (let i = 0; i < 5; i++) {
+      const subId  = `00000000-0000-0000-0000-00000d05030${i + 4}`;
+      const flowId = `00000000-f000-0000-0000-00000d05030${i + 4}`;
+      const ts = `2025-06-${String(i + 1).padStart(2, '0')}T00:00:00Z`;
+      await db.execute(sql.raw(`
+        INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at)
+        VALUES ('${subId}', '${flowId}', '${tenantId}', '${projectId}', '${personId}', '${boqItemId}', 'approved', '1.000', 'https://example.com/p.jpg', '${ts}')
+        ON CONFLICT DO NOTHING
+      `));
+    }
+
+    // limit=2 offset=0 → 2 most recent
+    const page1 = await getCanonicalSubmissions({ projectIds: [projectId], limit: 2, offset: 0 });
+    expect(page1).toHaveLength(2);
+
+    // limit=2 offset=2 → next 2
+    const page2 = await getCanonicalSubmissions({ projectIds: [projectId], limit: 2, offset: 2 });
+    expect(page2).toHaveLength(2);
+
+    // page1 and page2 must not overlap
+    const page1Ids = page1.map(r => r.id);
+    const page2Ids = page2.map(r => r.id);
+    expect(page1Ids.some(id => page2Ids.includes(id))).toBe(false);
+
+    // limit=2 offset=4 → only 1 row left
+    const page3 = await getCanonicalSubmissions({ projectIds: [projectId], limit: 2, offset: 4 });
+    expect(page3).toHaveLength(1);
+  });
+});
