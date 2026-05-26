@@ -24,6 +24,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import Image from 'next/image';
+import Link from 'next/link';
 import { ExternalLink } from 'lucide-react';
 import {
   Table,
@@ -111,6 +112,7 @@ export function KayitlarTabClient({
   initialStatus,
 }: KayitlarTabClientProps) {
   const t = useTranslations('dashboard.submissions');
+  const tAdmin = useTranslations('dashboard.admin');
   const router = useRouter();
 
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
@@ -184,6 +186,8 @@ export function KayitlarTabClient({
               <TableHead scope="col" className="w-[120px]">{t('col_date')}</TableHead>
               <TableHead scope="col" className="w-20">{t('col_location')}</TableHead>
               <TableHead scope="col" className="min-w-[160px]">{t('col_notes')}</TableHead>
+              {/* D-72: additive Details column — links to canonical detail page */}
+              <TableHead scope="col" className="w-20 sr-only">{tAdmin('records.details_header')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -262,6 +266,16 @@ export function KayitlarTabClient({
                     className="text-sm text-muted-foreground"
                   >
                     {notesTruncated || '—'}
+                  </TableCell>
+
+                  {/* D-72: additive Details link to canonical detail page — lightbox unchanged */}
+                  <TableCell>
+                    <Link
+                      href={`/dashboard/records/${row.id}`}
+                      className="inline-flex items-center justify-center rounded-lg border border-transparent px-2.5 h-8 text-sm font-medium hover:bg-muted hover:text-foreground transition-all"
+                    >
+                      {tAdmin('records.details')}
+                    </Link>
                   </TableCell>
                 </TableRow>
               );
