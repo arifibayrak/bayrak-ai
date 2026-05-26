@@ -258,7 +258,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 07-03-PLAN.md — logOfficeActivity() after()-deferred helper + analytics.ts (getCanonicalSubmissions, getProjectMetrics, getPersonMetrics, getPortfolioOverview, getOfficeActivityLog) — currency-grouped, money-in-Postgres, auth+tenant guarded
+- [x] 07-03-PLAN.md — logOfficeActivity() after()-deferred helper + analytics.ts (getCanonicalSubmissions, getProjectMetrics, getPersonMetrics, getPortfolioOverview, getOfficeActivityLog) — currency-grouped, money-in-Postgres, auth+tenant guarded
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
@@ -342,7 +342,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 4. Spatial Layer | 4/4 | Complete    | 2026-05-24 |
 | 5. Dashboard & Map | 6/6 | Complete   | 2026-05-24 |
 | 6. AI Vision Assist | 0/TBD | Not started | - |
-| 7. Data Foundation & Canonical Record | 2/4 | In Progress|  |
+| 7. Data Foundation & Canonical Record | 3/4 | In Progress|  |
 | 8. Admin Shell & Information Architecture | 0/TBD | Not started | - |
 | 9. Performance Analytics & Scorecards | 0/TBD | Not started | - |
 | 10. Hakkediş Billing | 0/TBD | Not started | - |
