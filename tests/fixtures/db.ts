@@ -52,6 +52,10 @@ export async function truncateAllTables(db: Awaited<ReturnType<typeof getTestDb>
 
   // Truncate in reverse FK dependency order (most dependent first)
   const tables = [
+    // Phase 7 tables (most dependent — must truncate before their parents)
+    "hakedis_period_lines",  // references hakedis_periods + boq_items → truncate first
+    "hakedis_periods",       // references projects + users → before projects/users
+    "office_activity_log",   // references tenants + users + projects → before projects/users
     // Phase 3 tables (most dependent — references submissions/people/tenants)
     "audit_notifications",   // references submissions → must truncate before submissions
     // Phase 2 tables (most dependent — references people/projects/boq_items/tenants)
@@ -75,27 +79,35 @@ export async function truncateAllTables(db: Awaited<ReturnType<typeof getTestDb>
   // TRUNCATE TABLE IF EXISTS is not valid PostgreSQL syntax (IF EXISTS is only for DROP TABLE).
   // RESTART IDENTITY is only relevant for SERIAL/IDENTITY columns; all our tables use UUID PKs.
   //
-  // Wave strategy: some tables in the list (e.g. audit_notifications) are registered here at
-  // schema-definition time (Plan 03-01) but not yet migrated to the test DB until Plan 03-02.
-  // To keep Phase 1/2 tests green before the migration lands, we attempt the full truncation
-  // first; if it fails with "relation does not exist" (Postgres error code 42P01), we fall back
-  // to truncating only the tables that existed before Plan 03-02.
+  // Wave strategy: some tables in the list are registered here at schema-definition time but
+  // not yet migrated to the test DB until their respective migration plan runs.
+  // To keep earlier tests green before later migrations land, we attempt the full truncation
+  // first; if it fails with "relation does not exist" (Postgres error code 42P01), we
+  // progressively fall back to narrower table sets in migration-order (most recent phase first).
+  //
+  // Phase 7 tables (migration 0004) — added Plan 07-01, migrated in Plan 07-02
+  const phase7Tables = ["hakedis_period_lines", "hakedis_periods", "office_activity_log"];
+  // Phase 3 table (migration 0003) — added Plan 03-01, migrated in Plan 03-02
+  const phase3Tables = ["audit_notifications"];
+  const laterTables = new Set([...phase7Tables, ...phase3Tables]);
+
   const tableList = tables.map(t => `"${t}"`).join(', ');
   try {
     await db.execute(sql.raw(`TRUNCATE TABLE ${tableList} CASCADE`));
   } catch (err: unknown) {
-    // 42P01 = undefined_table — a Phase 3 table hasn't been migrated yet.
-    // Retry with only the pre-Phase-3 tables so existing tests stay green.
-    // NeonDbError wraps the PG code in .code; drizzle may also wrap it in .cause.
+    // 42P01 = undefined_table — a table registered at schema-definition time hasn't been
+    // migrated yet. NeonDbError wraps the PG code in .code; drizzle may also wrap it in .cause.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const e = err as any;
     const pgCode = e?.code ?? e?.cause?.code ?? '';
     const isUndefinedTable = pgCode === '42P01' ||
       (typeof e?.message === 'string' && e.message.includes('does not exist'));
     if (isUndefinedTable) {
-      const phase2Tables = tables.filter(t => t !== 'audit_notifications');
-      const phase2List = phase2Tables.map(t => `"${t}"`).join(', ');
-      await db.execute(sql.raw(`TRUNCATE TABLE ${phase2List} CASCADE`));
+      // Retry without any tables not yet migrated (Phase 3 + Phase 7).
+      // This covers any test run against a DB that has migrations 0000–0003 only.
+      const earlierTables = tables.filter(t => !laterTables.has(t));
+      const earlierList = earlierTables.map(t => `"${t}"`).join(', ');
+      await db.execute(sql.raw(`TRUNCATE TABLE ${earlierList} CASCADE`));
     } else {
       throw err;
     }
