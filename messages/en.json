@@ -53,7 +53,11 @@
       "validating": "Validating...",
       "import_count": "{count} items will be imported",
       "excel_not_xlsx": "Only .xlsx format is supported.",
-      "row_parse_error": "Row {row}: {fieldName} {requirement}. Fix and re-upload."
+      "row_parse_error": "Row {row}: {fieldName} {requirement}. Fix and re-upload.",
+      "col_unit_price": "Unit Price",
+      "col_currency": "Currency",
+      "unit_price_placeholder": "—",
+      "unit_price_hint": "Optional · use comma or period"
     },
     "route": {
       "title": "Project Route",

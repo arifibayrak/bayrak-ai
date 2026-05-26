@@ -53,7 +53,11 @@
       "validating": "Doğrulanıyor...",
       "import_count": "{count} kalem içe aktarılacak",
       "excel_not_xlsx": "Yalnızca .xlsx formatı desteklenmektedir.",
-      "row_parse_error": "Satır {row}: {fieldName} alanı {requirement}. Düzeltin ve tekrar yükleyin."
+      "row_parse_error": "Satır {row}: {fieldName} alanı {requirement}. Düzeltin ve tekrar yükleyin.",
+      "col_unit_price": "Birim Fiyat",
+      "col_currency": "Para Birimi",
+      "unit_price_placeholder": "—",
+      "unit_price_hint": "İsteğe bağlı · virgül veya nokta kullanın"
     },
     "route": {
       "title": "Proje Rotası",

@@ -15,9 +15,16 @@ vi.mock('next/cache', () => ({
   revalidateTag: vi.fn(),
 }));
 
+// ─── next/server mock (after() throws outside request scope) ─────────────────
+// logOfficeActivity is now wired into projects.ts mutations.
+
+vi.mock('next/server', () => ({
+  after: vi.fn((fn) => Promise.resolve(fn())),
+}));
+
 // ─── auth() mock — must be defined before the action import ───────────────────
 
-let mockSession: { user: { email: string } } | null = { user: { email: 'test@example.com' } };
+let mockSession: { user: { id: string; email: string } } | null = { user: { id: 'test-user-id', email: 'test@example.com' } };
 
 vi.mock('@/lib/auth', () => ({
   auth: vi.fn(async () => mockSession),

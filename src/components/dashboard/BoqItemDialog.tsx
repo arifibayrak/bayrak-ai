@@ -21,8 +21,10 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { addBoqItem, updateBoqItem } from '@/actions/boq';
+import { addBoqItem, updateBoqItem, setUnitPrice as setUnitPriceAction } from '@/actions/boq';
 import type { BoqItem } from './BoqTable';
+
+const CURRENCY_OPTIONS = ['TRY', 'USD', 'EUR'] as const;
 
 interface BoqItemDialogProps {
   projectId: string;
@@ -36,6 +38,7 @@ interface FormErrors {
   material?: string;
   unit?: string;
   plannedQty?: string;
+  unitPrice?: string;
 }
 
 export function BoqItemDialog({
@@ -55,6 +58,13 @@ export function BoqItemDialog({
   const [plannedQty, setPlannedQty] = useState(
     item ? parseFloat(item.plannedQty).toString() : ''
   );
+  // unitPrice: null/undefined → empty string (placeholder), NOT '0'
+  const [unitPrice, setUnitPrice] = useState(
+    item?.unitPrice ? item.unitPrice : ''
+  );
+  const [currencyCode, setCurrencyCode] = useState(
+    item?.currencyCode ?? 'TRY'
+  );
   const [errors, setErrors] = useState<FormErrors>({});
   const [isPending, setIsPending] = useState(false);
 
@@ -65,6 +75,13 @@ export function BoqItemDialog({
     const qty = parseFloat(plannedQty.replace(',', '.'));
     if (isNaN(qty) || qty <= 0) {
       newErrors.plannedQty = 'Geçerli pozitif sayı gerekli / Must be a positive number';
+    }
+    // unitPrice is optional; if provided it must be non-negative
+    if (unitPrice.trim() !== '') {
+      const price = parseFloat(unitPrice.replace(',', '.'));
+      if (isNaN(price) || price < 0) {
+        newErrors.unitPrice = 'Geçerli fiyat giriniz (0 veya pozitif) / Must be a non-negative number';
+      }
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -77,15 +94,25 @@ export function BoqItemDialog({
     setIsPending(true);
     try {
       const qty = parseFloat(plannedQty.replace(',', '.'));
+      // Normalize comma to period; empty string becomes null (no price)
+      const normalizedPrice = unitPrice.trim() === ''
+        ? null
+        : unitPrice.replace(',', '.');
 
       let result;
+      let boqItemId: string | undefined;
+
       if (isEdit && item) {
         result = await updateBoqItem(item.id, { material, unit, plannedQty: qty });
+        boqItemId = item.id;
       } else {
         result = await addBoqItem({ projectId, material, unit, plannedQty: qty });
+        boqItemId = result.ok ? (result as { ok: true; id: string }).id : undefined;
       }
 
-      if (result.ok) {
+      if (result.ok && boqItemId) {
+        // Set unit price (separately from the primary mutation — COST-01)
+        await setUnitPriceAction({ boqItemId, unitPrice: normalizedPrice, currencyCode });
         toast.success(tc('save'));
         onSuccess();
       } else {
@@ -104,6 +131,8 @@ export function BoqItemDialog({
       setMaterial(item?.material ?? '');
       setUnit(item?.unit ?? '');
       setPlannedQty(item ? parseFloat(item.plannedQty).toString() : '');
+      setUnitPrice(item?.unitPrice ? item.unitPrice : '');
+      setCurrencyCode(item?.currencyCode ?? 'TRY');
       setErrors({});
     }
     onOpenChange(open);
@@ -165,6 +194,40 @@ export function BoqItemDialog({
             {errors.plannedQty && (
               <p className="text-sm text-destructive">{errors.plannedQty}</p>
             )}
+          </div>
+
+          {/* Unit Price (optional) */}
+          <div className="space-y-1.5">
+            <Label htmlFor="boq-unit-price">{t('col_unit_price')}</Label>
+            <Input
+              id="boq-unit-price"
+              type="text"
+              inputMode="decimal"
+              value={unitPrice}
+              onChange={(e) => setUnitPrice(e.target.value)}
+              placeholder={t('unit_price_placeholder')}
+              aria-invalid={!!errors.unitPrice}
+            />
+            {errors.unitPrice ? (
+              <p className="text-sm text-destructive">{errors.unitPrice}</p>
+            ) : (
+              <p className="text-xs text-muted-foreground">{t('unit_price_hint')}</p>
+            )}
+          </div>
+
+          {/* Currency */}
+          <div className="space-y-1.5">
+            <Label htmlFor="boq-currency">{t('col_currency')}</Label>
+            <select
+              id="boq-currency"
+              value={currencyCode}
+              onChange={(e) => setCurrencyCode(e.target.value)}
+              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              {CURRENCY_OPTIONS.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
           </div>
 
           <DialogFooter>

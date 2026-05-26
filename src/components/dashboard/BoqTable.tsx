@@ -50,6 +50,8 @@ export interface BoqItem {
   plannedQty: string;
   approvedQty: string;
   sortOrder: number;
+  unitPrice?: string | null;
+  currencyCode?: string | null;
 }
 
 interface BoqTableProps {

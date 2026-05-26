@@ -21,9 +21,15 @@ vi.mock('next/cache', () => ({
   revalidateTag: vi.fn(),
 }));
 
+// Mock next/server after() to prevent "called outside a request scope" error.
+// logOfficeActivity is now wired into all boq.ts mutations.
+vi.mock('next/server', () => ({
+  after: vi.fn((fn) => Promise.resolve(fn())),
+}));
+
 // Mock auth() for authorized tests
 vi.mock('@/lib/auth', () => ({
-  auth: vi.fn().mockResolvedValue({ user: { email: 'test@example.com' } }),
+  auth: vi.fn().mockResolvedValue({ user: { id: 'test-user-id', email: 'test@example.com' } }),
 }));
 
 // ── Pure unit tests (no DB) ─────────────────────────────────────────────────
