@@ -13,3 +13,6 @@ export * from './conversation-state';  // references tenants, people
 export * from './processed-updates';   // no FK references
 export * from './submissions';         // references tenants, people, projects, boq-items
 export * from './audit-notifications'; // references tenants, submissions, people (D-34)
+export * from './office-activity-log'; // references tenants, users, projects
+export * from './hakedis-periods';     // references tenants, projects, users
+export * from './hakedis-period-lines'; // references tenants, hakedis-periods, boq-items
