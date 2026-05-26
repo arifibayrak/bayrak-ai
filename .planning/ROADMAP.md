@@ -278,7 +278,26 @@ Plans:
   5. Global filters persist across navigation via URL query parameters and scope the Overview, People, and a new cross-project `/dashboard/records` list; clicking any metric drills down to the underlying filtered records
   6. Every new page label, column header, button, and status string on admin surfaces appears correctly in both Turkish and English when the dashboard locale is switched
 
-**Plans**: TBD
+**Plans**: 6 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 08-01-PLAN.md — Install shadcn sidebar+chart; full dashboard.admin.* TR/EN i18n namespace; i18n key-coverage tests (I18N-03)
+- [ ] 08-02-PLAN.md — Data layer (TDD): getPortfolioKPIs, getPortfolioTrends, getAuditorDecisions; extend getPersonMetrics(dateRange) + getCanonicalSubmissions(submissionId/limit/offset)
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 08-03-PLAN.md — Admin shell: SidebarProvider in root layout, AppSidebar + SidebarNav, TopNav hamburger, /dashboard redirect, (admin) passthrough, 3 stub pages (UX-01)
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [ ] 08-04-PLAN.md — Overview command center: FilterBar + CurrencySelector + KpiCard + TrendChartsClient + overview page (UX-02/03/04)
+
+**Wave 4** *(blocked on Wave 3)*
+
+- [ ] 08-05-PLAN.md — People directory + person profile + activity timeline; getPortfolioPeople bulk query (PERF-04, UX-03)
+- [ ] 08-06-PLAN.md — Cross-project records list + canonical submission detail page + additive Kayıtlar Details link (UX-05)
 **UI hint**: yes
 
 ### Phase 9: Performance Scorecards, Leaderboard & Alerts
