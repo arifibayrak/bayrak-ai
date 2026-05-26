@@ -120,7 +120,7 @@ export function ActivityTimeline({ entries, mode }: ActivityTimelineProps) {
                     </span>
                     {mode === 'auditor' && entry.latencyLabel && (
                       <span className="text-sm text-muted-foreground">
-                        {t('decided_in', { duration: entry.latencyLabel })}
+                        {t('decided_in')} {entry.latencyLabel}
                       </span>
                     )}
                     <Link
