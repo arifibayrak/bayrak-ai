@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Operations Intelligence & Hakkediş
-status: executing
-stopped_at: v2.0 roadmap creation — Phases 7–11 defined, ready to plan Phase 7
-last_updated: "2026-05-26T10:45:48.910Z"
+status: verifying
+stopped_at: "Completed 07-04 (COST-01 + PERF-03): setUnitPrice + full logOfficeActivity wiring + BOQ dialog price/currency fields"
+last_updated: "2026-05-26T11:07:49.821Z"
 last_activity: 2026-05-26
 progress:
   total_phases: 11
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 32
-  completed_plans: 31
-  percent: 45
+  completed_plans: 32
+  percent: 55
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-05-25)
 
 Phase: 07 (data-foundation-canonical-record) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-05-26
 
 **Progress bar (v2.0 phases only):**
@@ -89,6 +89,7 @@ Phase 11 [          ] 0%
 | Phase 05-dashboard-map P06 | 25 | 3 tasks | 2 files |
 | Phase 07-data-foundation-canonical-record P01 | 5 minutes | 3 tasks | 10 files |
 | Phase 07-data-foundation-canonical-record P02 | 7 minutes | 2 tasks | 5 files |
+| Phase 07-data-foundation-canonical-record P04 | 15 minutes | 4 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -142,6 +143,9 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 07-01]
 - [Phase 07-02]: 0005_v2_indexes.sql requires --> statement-breakpoint markers — neon-http driver cannot execute multiple commands in one prepared statement (send each CREATE INDEX separately)
 - [Phase 07-02]: TEST_DATABASE_URL requires its own migrate.ts apply — it is a separate Neon branch; 0004+0005 must be applied there too for integration tests to pass
+- [Phase ?]: [Phase 07-04]: setUnitPrice fetches old row before UPDATE to capture oldPrice in logOfficeActivity metadata — audit trail carries oldPrice/newPrice/currencyCode
+- [Phase ?]: [Phase 07-04]: Empty unit price submits as null (clears), never '0'; dialog initialises from item?.unitPrice ?? '' so null shows placeholder not zero
+- [Phase ?]: [Phase 07-04]: after() mock needed in boq/people/projects test suites after logOfficeActivity wiring — all Server Action tests importing wired actions need vi.mock('next/server')
 
 ### Open Questions / Conflicts (surface before relevant phases)
 
@@ -185,6 +189,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-26T10:45:48.903Z
-Stopped at: v2.0 roadmap creation — Phases 7–11 defined, ready to plan Phase 7
+Last session: 2026-05-26T11:07:49.816Z
+Stopped at: Completed 07-04 (COST-01 + PERF-03): setUnitPrice + full logOfficeActivity wiring + BOQ dialog price/currency fields
 Resume file: None
