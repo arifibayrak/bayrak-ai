@@ -19,6 +19,7 @@ import { boqItems } from '@/db/schema/boq-items';
 import { auth } from '@/lib/auth';
 import { getDefaultTenantId } from '@/lib/tenant';
 import { parseBoqExcel, type BoqRow } from '@/lib/excel';
+import { logOfficeActivity } from '@/lib/log-office-activity';
 
 // ── Manual CRUD ───────────────────────────────────────────────────────────────
 
@@ -65,6 +66,15 @@ export async function addBoqItem(params: {
       sortOrder,
     })
     .returning({ id: boqItems.id });
+
+  logOfficeActivity({
+    actorUserId: session.user?.id ?? '',
+    actionType: 'boq_item_created',
+    entityType: 'boq_item',
+    entityId: inserted.id,
+    projectId,
+    metadata: { material, unit, plannedQty },
+  });
 
   revalidatePath(`/dashboard/projects/${projectId}`);
   return { ok: true as const, id: inserted.id };
@@ -120,7 +130,17 @@ export async function updateBoqItem(
     .where(and(eq(boqItems.id, id), eq(boqItems.tenantId, getDefaultTenantId())))
     .limit(1);
 
-  if (row) revalidatePath(`/dashboard/projects/${row.projectId}`);
+  if (row) {
+    logOfficeActivity({
+      actorUserId: session.user?.id ?? '',
+      actionType: 'boq_item_updated',
+      entityType: 'boq_item',
+      entityId: id,
+      projectId: row.projectId,
+      metadata: params,
+    });
+    revalidatePath(`/dashboard/projects/${row.projectId}`);
+  }
   return { ok: true as const };
 }
 
@@ -144,7 +164,69 @@ export async function deleteBoqItem(id: string) {
     .delete(boqItems)
     .where(and(eq(boqItems.id, id), eq(boqItems.tenantId, getDefaultTenantId())));
 
-  if (row) revalidatePath(`/dashboard/projects/${row.projectId}`);
+  if (row) {
+    logOfficeActivity({
+      actorUserId: session.user?.id ?? '',
+      actionType: 'boq_item_deleted',
+      entityType: 'boq_item',
+      entityId: id,
+      projectId: row.projectId,
+      metadata: {},
+    });
+    revalidatePath(`/dashboard/projects/${row.projectId}`);
+  }
+  return { ok: true as const };
+}
+
+/**
+ * setUnitPrice — set or clear the unit price + currency for a BOQ line item.
+ * Auth-guarded. Tenant-scoped (T-07-09 mitigation).
+ * Validates non-negative numeric (T-07-10 mitigation).
+ * Logs 'unit_price_set' to office_activity_log after a successful write.
+ */
+export async function setUnitPrice(params: {
+  boqItemId: string;
+  unitPrice: string | null;
+  currencyCode: string;
+}) {
+  const session = await auth();
+  if (!session) throw new Error('Unauthorized');
+
+  // T-07-10: reject NaN or negative prices before any DB write
+  if (params.unitPrice !== null) {
+    const val = parseFloat(params.unitPrice);
+    if (isNaN(val) || val < 0) {
+      return { ok: false as const, error: 'Unit price must be a non-negative number' };
+    }
+  }
+
+  // Fetch old price + projectId (tenant-scoped, before update so we have old value for log)
+  const [old] = await db
+    .select({ unitPrice: boqItems.unitPrice, projectId: boqItems.projectId })
+    .from(boqItems)
+    .where(and(eq(boqItems.id, params.boqItemId), eq(boqItems.tenantId, getDefaultTenantId())))
+    .limit(1);
+
+  if (!old) {
+    return { ok: false as const, error: 'BOQ item not found' };
+  }
+
+  // T-07-09: tenant-scoped WHERE prevents cross-tenant writes
+  await db
+    .update(boqItems)
+    .set({ unitPrice: params.unitPrice, currencyCode: params.currencyCode })
+    .where(and(eq(boqItems.id, params.boqItemId), eq(boqItems.tenantId, getDefaultTenantId())));
+
+  logOfficeActivity({
+    actorUserId: session.user?.id ?? '',
+    actionType: 'unit_price_set',
+    entityType: 'boq_item',
+    entityId: params.boqItemId,
+    projectId: old.projectId,
+    metadata: { oldPrice: old.unitPrice, newPrice: params.unitPrice, currencyCode: params.currencyCode },
+  });
+
+  revalidatePath(`/dashboard/projects/${old.projectId}`);
   return { ok: true as const };
 }
 
@@ -222,6 +304,14 @@ export async function confirmBoqImport(projectId: string, rows: BoqRow[]) {
       sortOrder: i,
     }))
   );
+
+  logOfficeActivity({
+    actorUserId: session.user?.id ?? '',
+    actionType: 'boq_imported',
+    entityType: 'project',
+    projectId,
+    metadata: { rowCount: rows.length },
+  });
 
   revalidatePath(`/dashboard/projects/${projectId}`);
   return { ok: true as const, count: rows.length };

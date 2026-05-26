@@ -9,6 +9,7 @@ import { getDefaultTenantId } from '@/lib/tenant';
 import { projects } from '@/db/schema/projects';
 import { boqItems } from '@/db/schema/boq-items';
 import { assignments } from '@/db/schema/assignments';
+import { logOfficeActivity } from '@/lib/log-office-activity';
 
 // ─── Validation schemas ───────────────────────────────────────────────────────
 
@@ -38,6 +39,14 @@ export async function createProject(input: { name: string; description?: string 
       tenantId: getDefaultTenantId(),
     })
     .returning();
+
+  logOfficeActivity({
+    actorUserId: session.user?.id ?? '',
+    actionType: 'project_created',
+    entityType: 'project',
+    entityId: project.id,
+    metadata: { name: project.name },
+  });
 
   revalidatePath('/dashboard/projects');
   return project;
@@ -71,6 +80,14 @@ export async function updateProject(
     )
     .returning();
 
+  logOfficeActivity({
+    actorUserId: session.user?.id ?? '',
+    actionType: 'project_updated',
+    entityType: 'project',
+    entityId: id,
+    metadata: { name: parsed.name, description: parsed.description },
+  });
+
   revalidatePath('/dashboard/projects');
   revalidatePath(`/dashboard/projects/${id}`);
   return project;
@@ -90,6 +107,14 @@ export async function deleteProject(id: string) {
         eq(projects.tenantId, getDefaultTenantId())
       )
     );
+
+  logOfficeActivity({
+    actorUserId: session.user?.id ?? '',
+    actionType: 'project_deleted',
+    entityType: 'project',
+    entityId: id,
+    metadata: {},
+  });
 
   revalidatePath('/dashboard/projects');
 }
