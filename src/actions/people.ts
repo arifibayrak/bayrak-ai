@@ -229,13 +229,16 @@ export async function removeAssignment(assignmentId: string) {
       )
     );
 
-  if (session.user?.id) {
+  // iter3 WR-01: gate the audit log on a matched row — a cross-tenant or unknown
+  // assignmentId is a tenant-scoped DELETE no-op, so it must NOT emit a false
+  // 'person_unassigned' record (with undefined entityId).
+  if (assignmentRow && session.user?.id) {
     logOfficeActivity({
       actorUserId: session.user.id,
       actionType: 'person_unassigned',
       entityType: 'person',
-      entityId: assignmentRow?.personId,
-      projectId: assignmentRow?.projectId,
+      entityId: assignmentRow.personId,
+      projectId: assignmentRow.projectId,
       metadata: { assignmentId },
     });
   }

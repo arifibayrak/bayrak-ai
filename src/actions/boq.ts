@@ -268,11 +268,21 @@ export async function setUnitPrice(params: {
     throw new Error(`Invalid currency code. Allowed: ${ALLOWED_CURRENCIES.join(', ')}`);
   }
 
-  // T-07-10: reject NaN or negative prices before any DB write
+  // T-07-10 (+iter3 review): validate with decimal.js (NOT parseFloat — keeps the
+  // "no parseFloat on numeric strings" rule) AND bound to the numeric(15,4) column
+  // range. parseFloat let "1e308" pass (Infinity >= 0) and surface later as an
+  // unhandled Postgres numeric overflow; decimal.js parses it as finite, so we also
+  // reject magnitudes the column cannot store (numeric(15,4) → max 11 integer digits
+  // → must stay below 1e11). 0 remains allowed.
   if (params.unitPrice !== null) {
-    const val = parseFloat(params.unitPrice);
-    if (isNaN(val) || val < 0) {
+    let price: Decimal;
+    try {
+      price = new Decimal(params.unitPrice.trim());
+    } catch {
       return { ok: false as const, error: 'Unit price must be a non-negative number' };
+    }
+    if (!price.isFinite() || price.isNegative() || price.gte('1e11')) {
+      return { ok: false as const, error: 'Unit price must be a non-negative number within range' };
     }
   }
 
