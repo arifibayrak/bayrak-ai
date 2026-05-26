@@ -4,13 +4,13 @@ milestone: v2.0
 milestone_name: Operations Intelligence & Hakkediş
 status: executing
 stopped_at: v2.0 roadmap creation — Phases 7–11 defined, ready to plan Phase 7
-last_updated: "2026-05-26T09:26:35.142Z"
+last_updated: "2026-05-26T09:38:08.977Z"
 last_activity: 2026-05-26
 progress:
   total_phases: 11
   completed_phases: 5
   total_plans: 32
-  completed_plans: 29
+  completed_plans: 30
   percent: 45
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-05-25)
 ## Current Position
 
 Phase: 07 (data-foundation-canonical-record) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-05-26
 
@@ -88,6 +88,7 @@ Phase 11 [          ] 0%
 | Phase 05-dashboard-map P03 | 30 | 3 tasks | 3 files |
 | Phase 05-dashboard-map P06 | 25 | 3 tasks | 2 files |
 | Phase 07-data-foundation-canonical-record P01 | 5 minutes | 3 tasks | 10 files |
+| Phase 07-data-foundation-canonical-record P02 | 7 minutes | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -139,6 +140,8 @@ Recent decisions affecting current work:
 - [v2.0 Roadmap]: NULL decidedAt handling — always split: AVG latency WHERE decided_at IS NOT NULL (decided), COUNT for pending backlog separately; never let NULL poison SLA averages
 - [v2.0 Roadmap]: Role lives on assignments not people — all scorecard queries join assignments table and include project_id scope
 - [Phase ?]: [Phase 07-01]
+- [Phase 07-02]: 0005_v2_indexes.sql requires --> statement-breakpoint markers — neon-http driver cannot execute multiple commands in one prepared statement (send each CREATE INDEX separately)
+- [Phase 07-02]: TEST_DATABASE_URL requires its own migrate.ts apply — it is a separate Neon branch; 0004+0005 must be applied there too for integration tests to pass
 
 ### Open Questions / Conflicts (surface before relevant phases)
 
@@ -182,6 +185,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-26T09:26:35.136Z
+Last session: 2026-05-26T09:38:08.972Z
 Stopped at: v2.0 roadmap creation — Phases 7–11 defined, ready to plan Phase 7
 Resume file: None
