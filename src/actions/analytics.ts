@@ -92,6 +92,27 @@ type SubmissionFilters = {
   to?: Date;
   status?: 'pending_audit' | 'approved' | 'rejected';
   personId?: string;
+  // UX-05: single-record detail page lookup
+  submissionId?: string;
+  // UX-05: pagination — LIMIT/OFFSET as bound params (never string-concatenated, T-08-02-IV)
+  limit?: number;
+  offset?: number;
+};
+
+// ── Portfolio KPI types ────────────────────────────────────────────────────────
+
+/**
+ * PortfolioKPIs — cross-project command-center overview counts.
+ *
+ * - pendingBacklog: point-in-time count of status='pending_audit' with NO date condition (D-66)
+ * - approvalsInRange / rejectionsInRange: counts scoped to the active date range
+ * - activeWorkers: distinct submitters within the date range (D-65); all-time when no range
+ */
+export type PortfolioKPIs = {
+  pendingBacklog: number;
+  approvalsInRange: number;
+  rejectionsInRange: number;
+  activeWorkers: number;
 };
 
 // ── getCanonicalSubmissions ──────────────────────────────────────────────────
@@ -134,8 +155,16 @@ export async function getCanonicalSubmissions(
   if (filters.personId) {
     conditions.push(sql`s.person_id = ${filters.personId}`);
   }
+  if (filters.submissionId) {
+    conditions.push(sql`s.id = ${filters.submissionId}`);
+  }
 
   const whereClause = sql.join(conditions, sql` AND `);
+
+  // T-08-02-IV: LIMIT/OFFSET are bound parameters — never string-concatenated.
+  // Default limit=1000 preserves pre-pagination behaviour for callers not passing limit.
+  const limitVal = filters.limit ?? 1000;
+  const offsetVal = filters.offset ?? 0;
 
   const result = await db.execute(sql`
     SELECT
@@ -176,6 +205,7 @@ export async function getCanonicalSubmissions(
     LEFT JOIN people aud ON aud.id = s.decided_by
     WHERE  ${whereClause}
     ORDER BY s.submitted_at DESC
+    LIMIT  ${limitVal} OFFSET ${offsetVal}
   `);
 
   return result.rows.map((r) => ({
@@ -208,6 +238,72 @@ export async function getCanonicalSubmissions(
     notes: r.notes != null ? String(r.notes) : null,
     rejectionReason: r.rejection_reason != null ? String(r.rejection_reason) : null,
   }));
+}
+
+// ── getPortfolioKPIs ──────────────────────────────────────────────────────────
+
+/**
+ * getPortfolioKPIs — cross-project command-centre KPI counts.
+ *
+ * D-66: pendingBacklog is ALWAYS point-in-time (no date condition applied).
+ * D-65: activeWorkers = distinct submitters within the active filter range;
+ *       all-time when no range is set.
+ *
+ * Security: auth-guarded; tenant-scoped (T-08-02-ID).
+ * T-08-02-IV: all filter values bound as parameters via Drizzle sql`` template literals.
+ */
+export async function getPortfolioKPIs(
+  filters: SubmissionFilters = {}
+): Promise<PortfolioKPIs> {
+  const session = await auth();
+  if (!session) throw new Error('Unauthorized');
+  const tenantId = getDefaultTenantId();
+
+  // Base conditions (tenant scope + optional projectIds/personId filters)
+  const baseConditions = [sql`s.tenant_id = ${tenantId}`];
+  if (filters.projectIds && filters.projectIds.length > 0) {
+    baseConditions.push(sql`s.project_id = ANY(${filters.projectIds})`);
+  }
+  if (filters.personId) {
+    baseConditions.push(sql`s.person_id = ${filters.personId}`);
+  }
+  const baseWhere = sql.join(baseConditions, sql` AND `);
+
+  // D-66: dateCondition applied ONLY to approvals/rejections/activeWorkers counts.
+  // pendingBacklog is NEVER date-filtered — it is a point-in-time snapshot.
+  const dateCondition = (filters.from && filters.to)
+    ? sql` AND s.submitted_at >= ${filters.from.toISOString()} AND s.submitted_at < ${filters.to.toISOString()}`
+    : sql``;
+
+  // Run two queries in parallel:
+  // Query 1: pending backlog (no date condition) + approvals/rejections in range (with date condition)
+  // Query 2: active workers — distinct submitters within range (with date condition)
+  const [countsResult, workersResult] = await Promise.all([
+    db.execute(sql`
+      SELECT
+        COUNT(*) FILTER (WHERE s.status = 'pending_audit')                              AS pending_backlog,
+        COUNT(*) FILTER (WHERE s.status = 'approved' ${dateCondition})                 AS approvals_in_range,
+        COUNT(*) FILTER (WHERE s.status = 'rejected' ${dateCondition})                 AS rejections_in_range
+      FROM submissions s
+      WHERE ${baseWhere}
+    `),
+    db.execute(sql`
+      SELECT COUNT(DISTINCT s.person_id) AS active_workers
+      FROM submissions s
+      WHERE ${baseWhere}
+        ${dateCondition}
+    `),
+  ]);
+
+  const counts = countsResult.rows[0] ?? {};
+  const workers = workersResult.rows[0] ?? {};
+
+  return {
+    pendingBacklog:    Number(counts.pending_backlog    ?? 0),
+    approvalsInRange:  Number(counts.approvals_in_range ?? 0),
+    rejectionsInRange: Number(counts.rejections_in_range ?? 0),
+    activeWorkers:     Number(workers.active_workers    ?? 0),
+  };
 }
 
 // ── getProjectMetrics ────────────────────────────────────────────────────────

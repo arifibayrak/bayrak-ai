@@ -1231,11 +1231,11 @@ describeIfDb('UX-05: getCanonicalSubmissions — submissionId lookup + limit/off
     }
 
     // limit=2 offset=0 → 2 most recent
-    const page1 = await getCanonicalSubmissions({ projectIds: [projectId], limit: 2, offset: 0 });
+    const page1 = await getCanonicalSubmissions({ personId, limit: 2, offset: 0 });
     expect(page1).toHaveLength(2);
 
     // limit=2 offset=2 → next 2
-    const page2 = await getCanonicalSubmissions({ projectIds: [projectId], limit: 2, offset: 2 });
+    const page2 = await getCanonicalSubmissions({ personId, limit: 2, offset: 2 });
     expect(page2).toHaveLength(2);
 
     // page1 and page2 must not overlap
@@ -1244,7 +1244,7 @@ describeIfDb('UX-05: getCanonicalSubmissions — submissionId lookup + limit/off
     expect(page1Ids.some(id => page2Ids.includes(id))).toBe(false);
 
     // limit=2 offset=4 → only 1 row left
-    const page3 = await getCanonicalSubmissions({ projectIds: [projectId], limit: 2, offset: 4 });
+    const page3 = await getCanonicalSubmissions({ personId, limit: 2, offset: 4 });
     expect(page3).toHaveLength(1);
   });
 });
