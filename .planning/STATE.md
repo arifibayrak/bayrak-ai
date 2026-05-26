@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Operations Intelligence & Hakkediş
 status: executing
-stopped_at: Completed 08-01-PLAN.md — shadcn primitives + dashboard.admin.* i18n namespace
-last_updated: "2026-05-26T20:24:43.049Z"
+stopped_at: Completed 08-02-PLAN.md
+last_updated: "2026-05-26T20:46:12.603Z"
 last_activity: 2026-05-26
 progress:
   total_phases: 11
   completed_phases: 6
   total_plans: 39
-  completed_plans: 34
+  completed_plans: 35
   percent: 55
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-05-25)
 ## Current Position
 
 Phase: 08 (admin-shell-information-architecture) — EXECUTING
-Plan: 2 of 6
+Plan: 3 of 6
 Status: Ready to execute
 Last activity: 2026-05-26
 
@@ -91,6 +91,7 @@ Phase 11 [          ] 0%
 | Phase 07-data-foundation-canonical-record P02 | 7 minutes | 2 tasks | 5 files |
 | Phase 07-data-foundation-canonical-record P04 | 15 minutes | 4 tasks | 12 files |
 | Phase 08-admin-shell-information-architecture P01 | 8 | 2 tasks | 10 files |
+| Phase 08 P02 | 120 | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -155,6 +156,9 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 08-01]: shadcn CLI must be invoked as node_modules/.bin/shadcn — npx shadcn@latest triggers npm script lookup and fails
 - [Phase ?]: [Phase 08-01]: sidebar.tsx SidebarMenuButton has isActive prop + asChild — downstream plans use these for active nav item detection
 - [Phase ?]: [Phase 08-01]: dashboard.admin.stubs.exports_heading = Dışa Aktarma vs nav.exports = Dışa Aktar — kept distinct per UI-SPEC
+- [Phase ?]: D-66: pending backlog never date-filtered — point-in-time snapshot always
+- [Phase ?]: D-Istanbul: sql.raw() for date_trunc literal; to_char() for Istanbul-local timestamp string
+- [Phase ?]: D-AuditorSource: getAuditorDecisions reads submissions only — never office_activity_log (Pitfall 7)
 
 ### Open Questions / Conflicts (surface before relevant phases)
 
@@ -198,6 +202,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-26T20:24:43.044Z
-Stopped at: Completed 08-01-PLAN.md — shadcn primitives + dashboard.admin.* i18n namespace
+Last session: 2026-05-26T20:46:12.596Z
+Stopped at: Completed 08-02-PLAN.md
 Resume file: None

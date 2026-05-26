@@ -78,7 +78,7 @@ Current milestone. Admin-grade performance + cost analytics, Turkish hakkediş b
 - [ ] **PERF-01**: Admin can view a worker performance scorecard (submission volume, approval rate, rejection rate, location-compliance rate, output quantity, throughput) per project and across all projects
 - [ ] **PERF-02**: Admin can view an auditor performance scorecard (decision count, approval/rejection split, mean decision turnaround `decidedAt − submittedAt`, pending backlog, SLA-breach rate)
 - [x] **PERF-03**: Office-engineer actions (project create/edit, BOQ import, unit-price edits, person approval/assignment, hakkediş create/finalize) are recorded in an activity log and shown as an office-engineer activity scorecard
-- [ ] **PERF-04**: Admin can open a per-employee profile page showing that person's metrics, an activity timeline, and (for workers) value contribution
+- [x] **PERF-04**: Admin can open a per-employee profile page showing that person's metrics, an activity timeline, and (for workers) value contribution
 - [ ] **PERF-05**: Admin can compare employees side-by-side in a leaderboard ranked by a chosen metric
 - [ ] **PERF-06**: Admin sees performance & SLA alerts on the overview (audits slower than a threshold, rejection-rate spikes, location-warning spikes, stalled progress)
 
@@ -108,10 +108,10 @@ Current milestone. Admin-grade performance + cost analytics, Turkish hakkediş b
 ### Experience & Information Architecture
 
 - [ ] **UX-01**: Dashboard presents an admin shell with persistent navigation (Overview · Projects · People · Analytics · Hakkediş · Exports) without breaking existing project-scoped routes
-- [ ] **UX-02**: Admin lands on a cross-project command-center overview (portfolio KPIs, alerts, recent activity)
-- [ ] **UX-03**: All analytics views support global filters: date range, project, person, status
-- [ ] **UX-04**: Analytics include trend charts (throughput, earned-value / value-complete over time, burn rate)
-- [ ] **UX-05**: Every metric drills down to the underlying filtered records, and a structured submission detail view shows the full canonical record (photo, location, decision trail)
+- [x] **UX-02**: Admin lands on a cross-project command-center overview (portfolio KPIs, alerts, recent activity)
+- [x] **UX-03**: All analytics views support global filters: date range, project, person, status
+- [x] **UX-04**: Analytics include trend charts (throughput, earned-value / value-complete over time, burn rate)
+- [x] **UX-05**: Every metric drills down to the underlying filtered records, and a structured submission detail view shows the full canonical record (photo, location, decision trail)
 - [x] **I18N-03**: All new v2.0 dashboard surfaces are localized TR/EN
 
 ## Future Requirements (post-v2.0)
@@ -200,12 +200,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | COST-05 | Phase 7 | Complete |
 | PERF-03 | Phase 7 | Complete |
 | UX-01 | Phase 8 | Pending |
-| UX-02 | Phase 8 | Pending |
+| UX-02 | Phase 8 | Complete |
 | I18N-03 | Phase 8 | Complete |
-| PERF-04 | Phase 8 | Pending |
-| UX-03 | Phase 8 | Pending |
-| UX-04 | Phase 8 | Pending |
-| UX-05 | Phase 8 | Pending |
+| PERF-04 | Phase 8 | Complete |
+| UX-03 | Phase 8 | Complete |
+| UX-04 | Phase 8 | Complete |
+| UX-05 | Phase 8 | Complete |
 | PERF-01 | Phase 9 | Pending |
 | PERF-02 | Phase 9 | Pending |
 | PERF-05 | Phase 9 | Pending |
