@@ -231,4 +231,61 @@ describeIfDb('BOQ Server Actions (DB)', () => {
       addBoqItem({ projectId: testProjectId, material: 'X', unit: 'm', plannedQty: 1 })
     ).rejects.toThrow('Unauthorized');
   });
+
+  // ── CR-01 (re-review): project-ownership IDOR guard ────────────────────────
+  // addBoqItem / confirmBoqImport accept a caller-supplied projectId. The action
+  // runs under the default tenant (getDefaultTenantId). A projectId belonging to
+  // ANOTHER tenant must be rejected with { ok: false } and write nothing — the
+  // boq_items.project_id FK alone only checks row existence, not tenant ownership.
+
+  it('addBoqItem rejects a projectId owned by another tenant and inserts nothing (CR-01)', async () => {
+    const { addBoqItem } = await import('@/actions/boq');
+    const { boqItems } = await import('@/db/schema/boq-items');
+    const { eq, sql } = await import('drizzle-orm');
+
+    // Seed a SECOND tenant + a project owned by it. The action runs as the
+    // default tenant, so this foreign project must be unreachable.
+    const otherTenantId  = '00000000-0000-0000-0000-0000000d0001';
+    const otherProjectId = '00000000-0000-0000-0000-0000000d0101';
+    await db.execute(sql.raw(`INSERT INTO tenants (id, name) VALUES ('${otherTenantId}', 'Other Tenant') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO projects (id, tenant_id, name) VALUES ('${otherProjectId}', '${otherTenantId}', 'Foreign Project') ON CONFLICT DO NOTHING`));
+
+    const result = await addBoqItem({
+      projectId: otherProjectId,
+      material: 'Smuggled Pipe',
+      unit: 'm',
+      plannedQty: 100,
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toMatch(/not found/i);
+
+    // No boq_items row may have been inserted against the foreign project.
+    const rows = await db.select().from(boqItems).where(eq(boqItems.projectId, otherProjectId));
+    expect(rows).toHaveLength(0);
+  });
+
+  it('confirmBoqImport rejects a projectId owned by another tenant and inserts nothing (CR-01)', async () => {
+    const { confirmBoqImport } = await import('@/actions/boq');
+    const { boqItems } = await import('@/db/schema/boq-items');
+    const { eq, sql } = await import('drizzle-orm');
+
+    const otherTenantId  = '00000000-0000-0000-0000-0000000d0002';
+    const otherProjectId = '00000000-0000-0000-0000-0000000d0102';
+    await db.execute(sql.raw(`INSERT INTO tenants (id, name) VALUES ('${otherTenantId}', 'Other Tenant 2') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO projects (id, tenant_id, name) VALUES ('${otherProjectId}', '${otherTenantId}', 'Foreign Project 2') ON CONFLICT DO NOTHING`));
+
+    const result = await confirmBoqImport(otherProjectId, [
+      { rowNumber: 2, material: 'Smuggled A', unit: 'm', plannedQty: 10 },
+      { rowNumber: 3, material: 'Smuggled B', unit: 'm', plannedQty: 20 },
+    ]);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toMatch(/not found/i);
+
+    const rows = await db.select().from(boqItems).where(eq(boqItems.projectId, otherProjectId));
+    expect(rows).toHaveLength(0);
+  });
 });

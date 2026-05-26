@@ -16,6 +16,7 @@ import { eq, and, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { db } from '@/db';
 import { boqItems } from '@/db/schema/boq-items';
+import { projects } from '@/db/schema/projects';
 import { auth } from '@/lib/auth';
 import { getDefaultTenantId } from '@/lib/tenant';
 import { parseBoqExcel, type BoqRow } from '@/lib/excel';
@@ -47,6 +48,20 @@ export async function addBoqItem(params: {
   if (!session) throw new Error('Unauthorized');
 
   const { projectId, material, unit, plannedQty } = params;
+
+  // CR-01: verify the project belongs to the active tenant BEFORE any write.
+  // projectId is caller-supplied; the boq_items.project_id FK only checks row
+  // existence, not tenant ownership — so without this guard a caller could insert
+  // BOQ items into another tenant's project by guessing a valid UUID (IDOR).
+  // Mirrors the ownership check in uploadRoute (routes.ts:39-44).
+  const owned = await db
+    .select({ id: projects.id })
+    .from(projects)
+    .where(and(eq(projects.id, projectId), eq(projects.tenantId, getDefaultTenantId())))
+    .limit(1);
+  if (!owned.length) {
+    return { ok: false as const, error: 'Project not found' };
+  }
 
   if (!material.trim()) {
     return { ok: false as const, error: 'Material is required' };
@@ -324,6 +339,19 @@ export async function confirmBoqImport(projectId: string, rows: BoqRow[]) {
 
   if (rows.length === 0) {
     return { ok: false as const, error: 'No rows to import' };
+  }
+
+  // CR-01: verify the project belongs to the active tenant BEFORE any write.
+  // projectId is caller-supplied; without this guard a caller could bulk-insert
+  // imported BOQ rows into another tenant's project (IDOR). Mirrors uploadRoute
+  // (routes.ts:39-44) and the same guard in addBoqItem above.
+  const owned = await db
+    .select({ id: projects.id })
+    .from(projects)
+    .where(and(eq(projects.id, projectId), eq(projects.tenantId, getDefaultTenantId())))
+    .limit(1);
+  if (!owned.length) {
+    return { ok: false as const, error: 'Project not found' };
   }
 
   await db.insert(boqItems).values(
