@@ -1,11 +1,15 @@
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
+import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
+import { AppSidebar } from '@/components/admin/AppSidebar';
+import { TopNav } from '@/components/layout/TopNav';
 
 /**
- * Dashboard layout — session guard (T-03-02).
+ * Dashboard layout — session guard (T-03-02) + admin shell (UX-01, D-64).
  * Any unauthenticated request to /dashboard/* is redirected to /auth/signin.
- * TopNav is rendered at the top of the layout after the guard passes.
- * TopNav is created in Task 2 (plan 01-03); imported here.
+ * Auth guard runs BEFORE any client tree mounts (server-side).
+ * SidebarProvider + AppSidebar wrap ALL dashboard routes (including projects/*)
+ * via this root layout — no project page files are touched (D-64 compliance).
  */
 export default async function DashboardLayout({
   children,
@@ -15,17 +19,15 @@ export default async function DashboardLayout({
   const session = await auth();
   if (!session) redirect('/auth/signin');
 
-  // TopNav is imported lazily here because it is created in the same plan (Task 2).
-  // Using a dynamic import with a fallback-free structure so TypeScript does not
-  // error on the missing file before Task 2 runs. The layout file is committed
-  // after TopNav exists (both are in the same Task 1 GREEN commit).
-  const { TopNav } = await import('@/components/layout/TopNav');
   const userEmail = session.user?.email ?? '';
 
   return (
-    <div className="min-h-screen bg-background">
-      <TopNav userEmail={userEmail} />
-      <main className="max-w-5xl mx-auto px-6 py-8 sm:py-10">{children}</main>
-    </div>
+    <SidebarProvider>
+      <AppSidebar />
+      <SidebarInset>
+        <TopNav userEmail={userEmail} />
+        <main className="max-w-5xl mx-auto px-6 py-8 sm:py-10">{children}</main>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }

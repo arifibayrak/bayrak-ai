@@ -1,6 +1,7 @@
 import { getLocale, getTranslations } from 'next-intl/server';
 import { signOut } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
+import { SidebarTrigger } from '@/components/ui/sidebar';
 import { LanguageToggle } from './LanguageToggle';
 
 /**
@@ -14,12 +15,16 @@ import { LanguageToggle } from './LanguageToggle';
 export async function TopNav({ userEmail }: { userEmail: string }) {
   const locale = await getLocale();
   const t = await getTranslations('nav');
+  const tAdmin = await getTranslations('dashboard.admin.nav');
 
   return (
     <header className="sticky top-0 z-40 h-14 bg-card/80 backdrop-blur-md supports-[backdrop-filter]:bg-card/70 border-b border-border">
       <div className="max-w-5xl mx-auto px-6 h-full flex items-center justify-between">
-        {/* Left: wordmark */}
-        <span className="text-xl font-bold tracking-tight">{t('wordmark')}</span>
+        {/* Left: mobile hamburger + wordmark */}
+        <div className="flex items-center gap-2">
+          <SidebarTrigger className="md:hidden" aria-label={tAdmin('open_nav')} />
+          <span className="text-xl font-bold tracking-tight">{t('wordmark')}</span>
+        </div>
 
         {/* Right: language toggle + user email + sign out */}
         <div className="flex items-center gap-3">
