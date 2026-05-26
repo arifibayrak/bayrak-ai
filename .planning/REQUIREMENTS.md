@@ -107,7 +107,7 @@ Current milestone. Admin-grade performance + cost analytics, Turkish hakkediş b
 
 ### Experience & Information Architecture
 
-- [ ] **UX-01**: Dashboard presents an admin shell with persistent navigation (Overview · Projects · People · Analytics · Hakkediş · Exports) without breaking existing project-scoped routes
+- [x] **UX-01**: Dashboard presents an admin shell with persistent navigation (Overview · Projects · People · Analytics · Hakkediş · Exports) without breaking existing project-scoped routes
 - [x] **UX-02**: Admin lands on a cross-project command-center overview (portfolio KPIs, alerts, recent activity)
 - [x] **UX-03**: All analytics views support global filters: date range, project, person, status
 - [x] **UX-04**: Analytics include trend charts (throughput, earned-value / value-complete over time, burn rate)
@@ -199,7 +199,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | COST-04 | Phase 7 | Complete |
 | COST-05 | Phase 7 | Complete |
 | PERF-03 | Phase 7 | Complete |
-| UX-01 | Phase 8 | Pending |
+| UX-01 | Phase 8 | Complete |
 | UX-02 | Phase 8 | Complete |
 | I18N-03 | Phase 8 | Complete |
 | PERF-04 | Phase 8 | Complete |
