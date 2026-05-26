@@ -184,17 +184,51 @@ describeIfDb('COST-01: currency_code DEFAULT TRY on boq_items (Phase 7)', () => 
     await truncateAllTables(db);
   });
 
-  it.todo(
-    'currency_code defaults to TRY when a boq_items row is inserted without explicit currency (COST-01): ' +
-    'INSERT into boq_items omitting currency_code column; ' +
-    'SELECT currency_code → expect "TRY"'
-  );
+  it('currency_code defaults to TRY when a boq_items row is inserted without explicit currency (COST-01)', async () => {
+    const { tenants } = await import('@/db/schema/tenants');
+    const { projects } = await import('@/db/schema/projects');
+    const { boqItems } = await import('@/db/schema/boq-items');
 
-  it.todo(
-    'unit_price defaults to NULL when a boq_items row is inserted without explicit unit_price (COST-01): ' +
-    'INSERT into boq_items omitting unit_price column; ' +
-    'SELECT unit_price → expect NULL (not 0)'
-  );
+    const tenantId = '00000000-0000-0000-0000-000000000001';
+    await db.insert(tenants).values({ id: tenantId, name: 'Test Tenant' }).onConflictDoNothing();
+
+    const [project] = await db.insert(projects).values({ tenantId, name: 'Test Project' }).returning();
+
+    // Insert without explicit currency_code — should default to TRY
+    const [item] = await db.insert(boqItems).values({
+      tenantId,
+      projectId: project.id,
+      material: 'DN200 HDPE Boru',
+      unit: 'm',
+      plannedQty: '1000.000',
+      sortOrder: 1,
+    }).returning();
+
+    expect(item.currencyCode).toBe('TRY');
+  });
+
+  it('unit_price defaults to NULL when a boq_items row is inserted without explicit unit_price (COST-01)', async () => {
+    const { tenants } = await import('@/db/schema/tenants');
+    const { projects } = await import('@/db/schema/projects');
+    const { boqItems } = await import('@/db/schema/boq-items');
+
+    const tenantId = '00000000-0000-0000-0000-000000000001';
+    await db.insert(tenants).values({ id: tenantId, name: 'Test Tenant' }).onConflictDoNothing();
+
+    const [project] = await db.insert(projects).values({ tenantId, name: 'Test Project' }).returning();
+
+    // Insert without explicit unit_price — should default to NULL
+    const [item] = await db.insert(boqItems).values({
+      tenantId,
+      projectId: project.id,
+      material: 'DN200 HDPE Boru',
+      unit: 'm',
+      plannedQty: '1000.000',
+      sortOrder: 1,
+    }).returning();
+
+    expect(item.unitPrice).toBeNull();
+  });
 });
 
 // requires 0004 migration (Plan 02)
@@ -210,24 +244,146 @@ describeIfDb('Money-Math Test 5: hakedis_period_lines CHECK constraint (Phase 7)
     await truncateAllTables(db);
   });
 
-  it.todo(
-    'Money-Math Test 5 — CHECK rejects cumulative_qty_approved < previous_cumulative_qty: ' +
-    'seed the required parent rows (tenant + project + hakedis_period + boq_item); ' +
-    'INSERT hakedis_period_lines with cumulative_qty_approved = 100, previous_cumulative_qty = 150; ' +
-    'expect the INSERT to throw a Postgres CHECK constraint violation'
-  );
+  it('Money-Math Test 5 — CHECK rejects cumulative_qty_approved < previous_cumulative_qty', async () => {
+    const { tenants } = await import('@/db/schema/tenants');
+    const { projects } = await import('@/db/schema/projects');
+    const { boqItems } = await import('@/db/schema/boq-items');
+    const { hakedisPeriods } = await import('@/db/schema/hakedis-periods');
+    const { hakedisPeriodLines } = await import('@/db/schema/hakedis-period-lines');
 
-  it.todo(
-    'allows INSERT when cumulative_qty_approved == previous_cumulative_qty (boundary): ' +
-    'INSERT hakedis_period_lines with cumulative_qty_approved = 100, previous_cumulative_qty = 100; ' +
-    'expect no error (cumulative >= previous satisfied at equality)'
-  );
+    const tenantId = '00000000-0000-0000-0000-000000000001';
+    await db.insert(tenants).values({ id: tenantId, name: 'Test Tenant' }).onConflictDoNothing();
 
-  it.todo(
-    'allows INSERT when cumulative_qty_approved > previous_cumulative_qty (normal case): ' +
-    'INSERT hakedis_period_lines with cumulative = 200, previous = 100; ' +
-    'expect no error'
-  );
+    const [project] = await db.insert(projects).values({ tenantId, name: 'Test Project' }).returning();
+
+    const [boqItem] = await db.insert(boqItems).values({
+      tenantId,
+      projectId: project.id,
+      material: 'DN200 HDPE',
+      unit: 'm',
+      plannedQty: '1000.000',
+      sortOrder: 1,
+    }).returning();
+
+    const [period] = await db.insert(hakedisPeriods).values({
+      tenantId,
+      projectId: project.id,
+      periodNumber: 'HK-2026-01',
+      periodEndDate: '2026-05-31',
+    }).returning();
+
+    // cumulative_qty_approved (50) < previous_cumulative_qty (100) — must be rejected
+    await expect(
+      db.insert(hakedisPeriodLines).values({
+        tenantId,
+        periodId: period.id,
+        boqItemId: boqItem.id,
+        materialSnapshot: 'DN200 HDPE',
+        unitSnapshot: 'm',
+        currencyCodeSnapshot: 'TRY',
+        unitPriceSnapshot: '1250.0000',
+        cumulativeQtyApproved: '50.000',
+        previousCumulativeQty: '100.000',
+        periodQty: '-50.000',
+        periodValue: '-62500.00',
+        cumulativeValue: '62500.00',
+      })
+    ).rejects.toThrow();
+  });
+
+  it('allows INSERT when cumulative_qty_approved == previous_cumulative_qty (boundary)', async () => {
+    const { tenants } = await import('@/db/schema/tenants');
+    const { projects } = await import('@/db/schema/projects');
+    const { boqItems } = await import('@/db/schema/boq-items');
+    const { hakedisPeriods } = await import('@/db/schema/hakedis-periods');
+    const { hakedisPeriodLines } = await import('@/db/schema/hakedis-period-lines');
+
+    const tenantId = '00000000-0000-0000-0000-000000000001';
+    await db.insert(tenants).values({ id: tenantId, name: 'Test Tenant' }).onConflictDoNothing();
+
+    const [project] = await db.insert(projects).values({ tenantId, name: 'Test Project' }).returning();
+
+    const [boqItem] = await db.insert(boqItems).values({
+      tenantId,
+      projectId: project.id,
+      material: 'DN200 HDPE',
+      unit: 'm',
+      plannedQty: '1000.000',
+      sortOrder: 1,
+    }).returning();
+
+    const [period] = await db.insert(hakedisPeriods).values({
+      tenantId,
+      projectId: project.id,
+      periodNumber: 'HK-2026-01',
+      periodEndDate: '2026-05-31',
+    }).returning();
+
+    // cumulative == previous → should be allowed (boundary case)
+    const [line] = await db.insert(hakedisPeriodLines).values({
+      tenantId,
+      periodId: period.id,
+      boqItemId: boqItem.id,
+      materialSnapshot: 'DN200 HDPE',
+      unitSnapshot: 'm',
+      currencyCodeSnapshot: 'TRY',
+      unitPriceSnapshot: '1250.0000',
+      cumulativeQtyApproved: '100.000',
+      previousCumulativeQty: '100.000',
+      periodQty: '0.000',
+      periodValue: '0.00',
+      cumulativeValue: '125000.00',
+    }).returning();
+
+    expect(line.cumulativeQtyApproved).toBe('100.000');
+  });
+
+  it('allows INSERT when cumulative_qty_approved > previous_cumulative_qty (normal case)', async () => {
+    const { tenants } = await import('@/db/schema/tenants');
+    const { projects } = await import('@/db/schema/projects');
+    const { boqItems } = await import('@/db/schema/boq-items');
+    const { hakedisPeriods } = await import('@/db/schema/hakedis-periods');
+    const { hakedisPeriodLines } = await import('@/db/schema/hakedis-period-lines');
+
+    const tenantId = '00000000-0000-0000-0000-000000000001';
+    await db.insert(tenants).values({ id: tenantId, name: 'Test Tenant' }).onConflictDoNothing();
+
+    const [project] = await db.insert(projects).values({ tenantId, name: 'Test Project' }).returning();
+
+    const [boqItem] = await db.insert(boqItems).values({
+      tenantId,
+      projectId: project.id,
+      material: 'DN200 HDPE',
+      unit: 'm',
+      plannedQty: '1000.000',
+      sortOrder: 1,
+    }).returning();
+
+    const [period] = await db.insert(hakedisPeriods).values({
+      tenantId,
+      projectId: project.id,
+      periodNumber: 'HK-2026-01',
+      periodEndDate: '2026-05-31',
+    }).returning();
+
+    // cumulative (200) > previous (100) — normal case
+    const [line] = await db.insert(hakedisPeriodLines).values({
+      tenantId,
+      periodId: period.id,
+      boqItemId: boqItem.id,
+      materialSnapshot: 'DN200 HDPE',
+      unitSnapshot: 'm',
+      currencyCodeSnapshot: 'TRY',
+      unitPriceSnapshot: '1250.0000',
+      cumulativeQtyApproved: '200.000',
+      previousCumulativeQty: '100.000',
+      periodQty: '100.000',
+      periodValue: '125000.00',
+      cumulativeValue: '250000.00',
+    }).returning();
+
+    expect(line.cumulativeQtyApproved).toBe('200.000');
+  });
 });
 
 // requires 0004 migration (Plan 02)
@@ -243,23 +399,71 @@ describeIfDb('T-07-01: office_activity_log actor_user_id FK to users.id (Phase 7
     await truncateAllTables(db);
   });
 
-  it.todo(
-    'accepts a valid users.id (text) as actor_user_id (T-07-01): ' +
-    'INSERT into users table with a known text id; ' +
-    'INSERT into office_activity_log with actor_user_id = that user id; ' +
-    'expect no FK violation'
-  );
+  it('accepts a valid users.id (text) as actor_user_id (T-07-01)', async () => {
+    const { tenants } = await import('@/db/schema/tenants');
+    const { users } = await import('@/db/schema/auth');
+    const { officeActivityLog } = await import('@/db/schema/office-activity-log');
 
-  it.todo(
-    'rejects a non-existent user id as actor_user_id (T-07-01 FK violation): ' +
-    'INSERT into office_activity_log with actor_user_id = "non-existent-user-id"; ' +
-    'expect the INSERT to throw a Postgres FK violation'
-  );
+    const tenantId = '00000000-0000-0000-0000-000000000001';
+    await db.insert(tenants).values({ id: tenantId, name: 'Test Tenant' }).onConflictDoNothing();
 
-  it.todo(
-    'actor_user_id is NOT a people.id (uuid) — wrong table guard (T-07-01 type mismatch): ' +
-    'seed a person row (people table, uuid PK); ' +
-    'attempt INSERT into office_activity_log with actor_user_id = person.id; ' +
-    'expect FK violation (people.id is not in users table)'
-  );
+    // Insert a valid Auth.js user (text PK)
+    const userId = 'auth-user-text-id-001';
+    await db.insert(users).values({ id: userId, email: 'engineer@test.com' }).onConflictDoNothing();
+
+    // Should succeed — valid FK reference
+    const [log] = await db.insert(officeActivityLog).values({
+      tenantId,
+      actorUserId: userId,
+      actionType: 'project_created',
+      entityType: 'project',
+    }).returning();
+
+    expect(log.actorUserId).toBe(userId);
+  });
+
+  it('rejects a non-existent user id as actor_user_id (T-07-01 FK violation)', async () => {
+    const { tenants } = await import('@/db/schema/tenants');
+    const { officeActivityLog } = await import('@/db/schema/office-activity-log');
+
+    const tenantId = '00000000-0000-0000-0000-000000000001';
+    await db.insert(tenants).values({ id: tenantId, name: 'Test Tenant' }).onConflictDoNothing();
+
+    // Non-existent user id → should throw FK violation
+    await expect(
+      db.insert(officeActivityLog).values({
+        tenantId,
+        actorUserId: 'non-existent-user-id-xyz',
+        actionType: 'project_created',
+        entityType: 'project',
+      })
+    ).rejects.toThrow();
+  });
+
+  it('actor_user_id is NOT a people.id (uuid) — wrong table guard (T-07-01)', async () => {
+    const { tenants } = await import('@/db/schema/tenants');
+    const { people } = await import('@/db/schema/people');
+    const { officeActivityLog } = await import('@/db/schema/office-activity-log');
+
+    const tenantId = '00000000-0000-0000-0000-000000000001';
+    await db.insert(tenants).values({ id: tenantId, name: 'Test Tenant' }).onConflictDoNothing();
+
+    // Insert a person (uuid PK, NOT in the users table)
+    const [person] = await db.insert(people).values({
+      tenantId,
+      telegramUserId: BigInt('111222333'),
+      displayName: 'Field Worker',
+    }).returning();
+
+    // person.id is a UUID that exists in people table, NOT in users table
+    // → FK violation because office_activity_log.actor_user_id references users.id
+    await expect(
+      db.insert(officeActivityLog).values({
+        tenantId,
+        actorUserId: person.id,   // This is people.id, not users.id — should fail FK
+        actionType: 'project_created',
+        entityType: 'project',
+      })
+    ).rejects.toThrow();
+  });
 });

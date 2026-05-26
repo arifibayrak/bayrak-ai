@@ -36,6 +36,13 @@
       "when": 1779787815693,
       "tag": "0004_v2_data_foundation",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1779788400000,
+      "tag": "0005_v2_indexes",
+      "breakpoints": true
     }
   ]
 }
