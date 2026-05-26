@@ -113,27 +113,29 @@ export async function getCanonicalSubmissions(
   if (!session) throw new Error('Unauthorized');
   const tenantId = getDefaultTenantId();
 
-  // Build dynamic WHERE clauses
-  const conditions: string[] = [`s.tenant_id = '${tenantId}'`];
+  // CR-03: build the WHERE clause from PARAMETERIZED Drizzle sql`` fragments.
+  // Every caller-supplied value is interpolated as a bound parameter (${value}),
+  // never string-concatenated, so a crafted Server Action payload cannot inject SQL.
+  const conditions = [sql`s.tenant_id = ${tenantId}`];
 
   if (filters.projectIds && filters.projectIds.length > 0) {
-    const ids = filters.projectIds.map(id => `'${id}'`).join(', ');
-    conditions.push(`s.project_id IN (${ids})`);
+    // = ANY(${array}) binds the whole array as a single parameter
+    conditions.push(sql`s.project_id = ANY(${filters.projectIds})`);
   }
   if (filters.from) {
-    conditions.push(`s.submitted_at >= '${filters.from.toISOString()}'`);
+    conditions.push(sql`s.submitted_at >= ${filters.from.toISOString()}`);
   }
   if (filters.to) {
-    conditions.push(`s.submitted_at < '${filters.to.toISOString()}'`);
+    conditions.push(sql`s.submitted_at < ${filters.to.toISOString()}`);
   }
   if (filters.status) {
-    conditions.push(`s.status = '${filters.status}'`);
+    conditions.push(sql`s.status = ${filters.status}`);
   }
   if (filters.personId) {
-    conditions.push(`s.person_id = '${filters.personId}'`);
+    conditions.push(sql`s.person_id = ${filters.personId}`);
   }
 
-  const whereClause = conditions.join('\n  AND ');
+  const whereClause = sql.join(conditions, sql` AND `);
 
   const result = await db.execute(sql`
     SELECT
@@ -172,7 +174,7 @@ export async function getCanonicalSubmissions(
     JOIN   people    w   ON w.id = s.person_id
     JOIN   boq_items b   ON b.id = s.boq_item_id
     LEFT JOIN people aud ON aud.id = s.decided_by
-    WHERE  ${sql.raw(whereClause)}
+    WHERE  ${whereClause}
     ORDER BY s.submitted_at DESC
   `);
 
@@ -235,8 +237,14 @@ export async function getProjectMetrics(
     ? sql` AND s.submitted_at >= ${dateRange.from.toISOString()} AND s.submitted_at < ${dateRange.to.toISOString()}`
     : sql``;
 
-  // Run both queries in parallel
-  const [countsResult, valuesResult] = await Promise.all([
+  // Run all three queries in parallel.
+  //
+  // CR-01: BAC (Budget at Completion) MUST be computed from boq_items directly,
+  // NOT through the submissions join. Driving BAC from submissions fans the
+  // per-BOQ-item planned_qty * unit_price out once per submission, over-counting
+  // BAC by a factor equal to the submission count. EV + rework stay joined to
+  // submissions (they correctly sum per-submission s.quantity).
+  const [countsResult, valuesResult, bacResult] = await Promise.all([
     // Query 1: counts + SLA (no currency grouping)
     db.execute(sql`
       SELECT
@@ -257,15 +265,13 @@ export async function getProjectMetrics(
         ${dateConditions}
     `),
 
-    // Query 2: currency-grouped values (EV + BAC + rework)
+    // Query 2: EV + rework — driven from submissions (correct: sums per-submission s.quantity)
     // GROUP BY b.currency_code — no cross-currency summation ever occurs
     db.execute(sql`
       SELECT
         b.currency_code,
         SUM(s.quantity::numeric * b.unit_price::numeric)
           FILTER (WHERE s.status = 'approved' AND b.unit_price IS NOT NULL)  AS earned_value,
-        SUM(b.planned_qty::numeric * b.unit_price::numeric)
-          FILTER (WHERE b.unit_price IS NOT NULL)                            AS bac,
         SUM(s.quantity::numeric * b.unit_price::numeric)
           FILTER (WHERE s.status = 'rejected' AND b.unit_price IS NOT NULL)  AS rework_value
       FROM submissions s
@@ -274,6 +280,19 @@ export async function getProjectMetrics(
         AND s.tenant_id  = ${tenantId}
         ${dateConditions}
       GROUP BY b.currency_code
+    `),
+
+    // Query 3 (CR-01): BAC — aggregated directly from boq_items, NOT through submissions.
+    // Each BOQ item's planned_qty * unit_price is summed exactly once per currency.
+    db.execute(sql`
+      SELECT
+        currency_code,
+        SUM(planned_qty::numeric * unit_price::numeric)
+          FILTER (WHERE unit_price IS NOT NULL)                              AS bac
+      FROM boq_items
+      WHERE project_id = ${projectId}
+        AND tenant_id  = ${tenantId}
+      GROUP BY currency_code
     `),
   ]);
 
@@ -291,11 +310,17 @@ export async function getProjectMetrics(
     if (row.earned_value != null) {
       evByCurrency[currency] = String(row.earned_value);
     }
-    if (row.bac != null) {
-      bacByCurrency[currency] = String(row.bac);
-    }
     if (row.rework_value != null) {
       reworkValueByCurrency[currency] = String(row.rework_value);
+    }
+  }
+
+  // BAC merged from the separate boq_items aggregate (CR-01)
+  for (const row of bacResult.rows) {
+    const currency = String(row.currency_code);
+    if (!currency) continue;
+    if (row.bac != null) {
+      bacByCurrency[currency] = String(row.bac);
     }
   }
 
@@ -340,23 +365,25 @@ export async function getOfficeActivityLog(options?: {
 
   const limit = options?.limit ?? 50;
 
-  // Build dynamic WHERE clauses
-  const conditions: string[] = [`al.tenant_id = '${tenantId}'`];
+  // CR-03: build the WHERE clause from PARAMETERIZED Drizzle sql`` fragments.
+  // Caller-supplied actorUserId / projectId / dates are bound as parameters,
+  // never string-concatenated, eliminating the SQL-injection surface.
+  const conditions = [sql`al.tenant_id = ${tenantId}`];
 
   if (options?.actorUserId) {
-    conditions.push(`al.actor_user_id = '${options.actorUserId}'`);
+    conditions.push(sql`al.actor_user_id = ${options.actorUserId}`);
   }
   if (options?.projectId) {
-    conditions.push(`al.project_id = '${options.projectId}'`);
+    conditions.push(sql`al.project_id = ${options.projectId}`);
   }
   if (options?.from) {
-    conditions.push(`al.occurred_at >= '${options.from.toISOString()}'`);
+    conditions.push(sql`al.occurred_at >= ${options.from.toISOString()}`);
   }
   if (options?.to) {
-    conditions.push(`al.occurred_at < '${options.to.toISOString()}'`);
+    conditions.push(sql`al.occurred_at < ${options.to.toISOString()}`);
   }
 
-  const whereClause = conditions.join('\n  AND ');
+  const whereClause = sql.join(conditions, sql` AND `);
 
   const result = await db.execute(sql`
     SELECT
@@ -373,7 +400,7 @@ export async function getOfficeActivityLog(options?: {
     FROM office_activity_log al
     LEFT JOIN users    u ON u.id  = al.actor_user_id
     LEFT JOIN projects p ON p.id  = al.project_id
-    WHERE ${sql.raw(whereClause)}
+    WHERE ${whereClause}
     ORDER BY al.occurred_at DESC
     LIMIT ${limit}
   `);
@@ -414,9 +441,11 @@ export async function getPersonMetrics(
   if (!session) throw new Error('Unauthorized');
   const tenantId = getDefaultTenantId();
 
+  // CR-03: parameterized project filter — caller-supplied projectIds are bound
+  // as a single array parameter via = ANY(${array}), never string-concatenated.
   const projectFilter = options?.projectIds && options.projectIds.length > 0
-    ? `AND s.project_id IN (${options.projectIds.map(id => `'${id}'`).join(', ')})`
-    : '';
+    ? sql` AND s.project_id = ANY(${options.projectIds})`
+    : sql``;
 
   // Query 1: worker submission counts (scoped to person as submitter only)
   const workerResult = await db.execute(sql`
@@ -432,7 +461,7 @@ export async function getPersonMetrics(
     JOIN people w ON w.id = s.person_id
     WHERE s.person_id = ${personId}
       AND s.tenant_id = ${tenantId}
-      ${sql.raw(projectFilter)}
+      ${projectFilter}
     GROUP BY s.person_id, w.display_name
   `);
 
@@ -448,7 +477,7 @@ export async function getPersonMetrics(
     WHERE s.person_id = ${personId}
       AND s.tenant_id = ${tenantId}
       AND s.status = 'approved'
-      ${sql.raw(projectFilter)}
+      ${projectFilter}
     GROUP BY b.currency_code
   `);
 
@@ -532,23 +561,47 @@ export async function getPortfolioOverview(): Promise<ProjectSummary[]> {
   if (!session) throw new Error('Unauthorized');
   const tenantId = getDefaultTenantId();
 
+  // CR-02: aggregate each side independently in CTEs, then join to projects.
+  // A naive double LEFT JOIN (projects → submissions, projects → boq_items)
+  // produces a Cartesian product per project (S submissions × B BOQ items),
+  // inflating both the submission counts and the BOQ value sums. Pre-aggregating
+  // each side in its own CTE — boq_agg per (project, currency) and sub_agg per
+  // project — removes the fan-out entirely.
   const result = await db.execute(sql`
+    WITH boq_agg AS (
+      SELECT
+        project_id,
+        currency_code,
+        SUM(planned_qty::numeric * unit_price::numeric)
+          FILTER (WHERE unit_price IS NOT NULL)                          AS contracted_value,
+        SUM(approved_qty::numeric * unit_price::numeric)
+          FILTER (WHERE unit_price IS NOT NULL)                          AS earned_value
+      FROM boq_items
+      WHERE tenant_id = ${tenantId}
+      GROUP BY project_id, currency_code
+    ),
+    sub_agg AS (
+      SELECT
+        project_id,
+        COUNT(*) FILTER (WHERE status = 'approved')                      AS approved_count,
+        COUNT(*) FILTER (WHERE status = 'pending_audit')                 AS pending_count
+      FROM submissions
+      WHERE tenant_id = ${tenantId}
+      GROUP BY project_id
+    )
     SELECT
-      p.id                                                               AS project_id,
-      p.name                                                             AS project_name,
-      b.currency_code,
-      COUNT(s.id) FILTER (WHERE s.status = 'approved')                   AS approved_count,
-      COUNT(s.id) FILTER (WHERE s.status = 'pending_audit')              AS pending_count,
-      SUM(b.planned_qty::numeric * b.unit_price::numeric)
-        FILTER (WHERE b.unit_price IS NOT NULL)                          AS contracted_value,
-      SUM(b.approved_qty::numeric * b.unit_price::numeric)
-        FILTER (WHERE b.unit_price IS NOT NULL)                          AS earned_value
+      p.id                            AS project_id,
+      p.name                          AS project_name,
+      ba.currency_code,
+      COALESCE(sa.approved_count, 0)  AS approved_count,
+      COALESCE(sa.pending_count, 0)   AS pending_count,
+      ba.contracted_value,
+      ba.earned_value
     FROM projects p
-    LEFT JOIN submissions s ON s.project_id = p.id AND s.tenant_id = ${tenantId}
-    LEFT JOIN boq_items   b ON b.project_id = p.id AND b.tenant_id = ${tenantId}
+    LEFT JOIN boq_agg ba ON ba.project_id = p.id
+    LEFT JOIN sub_agg sa ON sa.project_id = p.id
     WHERE p.tenant_id = ${tenantId}
-    GROUP BY p.id, p.name, b.currency_code
-    ORDER BY p.name, b.currency_code
+    ORDER BY p.name, ba.currency_code
   `);
 
   // Merge rows by projectId into per-project currency maps
@@ -562,8 +615,8 @@ export async function getPortfolioOverview(): Promise<ProjectSummary[]> {
       projectMap.set(projectId, {
         projectId,
         projectName: String(row.project_name),
-        approvedCount: 0,
-        pendingCount: 0,
+        approvedCount: Number(row.approved_count ?? 0),
+        pendingCount: Number(row.pending_count ?? 0),
         contractedValueByCurrency: {},
         earnedValueByCurrency: {},
       });
@@ -571,9 +624,10 @@ export async function getPortfolioOverview(): Promise<ProjectSummary[]> {
 
     const summary = projectMap.get(projectId)!;
 
-    // Accumulate counts (same values across currency rows for same project)
-    summary.approvedCount = Math.max(summary.approvedCount, Number(row.approved_count ?? 0));
-    summary.pendingCount = Math.max(summary.pendingCount, Number(row.pending_count ?? 0));
+    // Counts are now per-project (sub_agg), identical across the project's
+    // currency rows. Assigning is safe — no fan-out to de-duplicate.
+    summary.approvedCount = Number(row.approved_count ?? 0);
+    summary.pendingCount = Number(row.pending_count ?? 0);
 
     if (currency) {
       if (row.contracted_value != null) {
