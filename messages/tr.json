@@ -154,6 +154,10 @@
         "to": "Bitiş",
         "all_projects": "Tüm Projeler",
         "all_people": "Tüm Personel",
+        "all_statuses": "Tüm Durumlar",
+        "status_pending": "Bekliyor",
+        "status_approved": "Onaylandı",
+        "status_rejected": "Reddedildi",
         "clear": "Filtreleri temizle"
       },
       "currency": {

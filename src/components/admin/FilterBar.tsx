@@ -65,6 +65,13 @@ export function FilterBar({ projectOptions, personOptions, showStatus = false }:
   const currentTo = searchParams.get('to') ?? '';
   const currentProject = searchParams.get('project') ?? '';
   const currentPerson = searchParams.get('person') ?? '';
+  const currentStatus = searchParams.get('status') ?? '';
+
+  const STATUS_OPTIONS = [
+    { value: 'pending_audit', label: t('status_pending') },
+    { value: 'approved', label: t('status_approved') },
+    { value: 'rejected', label: t('status_rejected') },
+  ] as const;
 
   return (
     <div className="grid grid-cols-2 gap-2 md:flex md:flex-wrap md:items-end md:gap-3">
@@ -157,6 +164,37 @@ export function FilterBar({ projectOptions, personOptions, showStatus = false }:
               {personOptions.map((p) => (
                 <SelectItem key={p.id} value={p.id}>
                   {p.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
+      {/* Status select (optional — records list only) */}
+      {showStatus && (
+        <div className="flex flex-col gap-1">
+          <label
+            htmlFor="filter-status"
+            className="text-sm font-semibold text-muted-foreground"
+          >
+            {/* visually hidden — select has placeholder */}
+          </label>
+          <Select
+            value={currentStatus || '__all__'}
+            onValueChange={(value: string | null) => {
+              const v = value ?? '';
+              applyFilter('status', v === '__all__' ? null : v);
+            }}
+          >
+            <SelectTrigger id="filter-status" className="w-full md:w-[180px]">
+              <SelectValue placeholder={t('all_statuses')} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">{t('all_statuses')}</SelectItem>
+              {STATUS_OPTIONS.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
                 </SelectItem>
               ))}
             </SelectContent>
