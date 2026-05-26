@@ -40,6 +40,7 @@ import {
 } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
 import { remainingBalance } from '@/lib/boq-balance';
+import { lineValue, formatCurrency } from '@/lib/boq-value';
 import { deleteBoqItem } from '@/actions/boq';
 import { BoqItemDialog } from './BoqItemDialog';
 
@@ -131,6 +132,8 @@ export function BoqTable({ projectId, items, onItemChanged }: BoqTableProps) {
             <TableHead scope="col" className="w-20">{t('col_unit')}</TableHead>
             <TableHead scope="col" className="w-[120px] text-right">{t('col_contracted_qty')}</TableHead>
             <TableHead scope="col" className="w-[120px] text-right">{t('col_approved_qty')}</TableHead>
+            <TableHead scope="col" className="w-[140px] text-right">{t('col_contracted_value')}</TableHead>
+            <TableHead scope="col" className="w-[140px] text-right">{t('col_earned_value')}</TableHead>
             <TableHead scope="col" className="w-20 text-right">{t('col_completion_pct')}</TableHead>
             <TableHead scope="col" className="min-w-[80px]">{/* Progress bar — no header text */}</TableHead>
             <TableHead scope="col" className="w-[120px] text-right">{t('col_remaining')}</TableHead>
@@ -145,6 +148,9 @@ export function BoqTable({ projectId, items, onItemChanged }: BoqTableProps) {
             const colorClass = balanceColorClass(balance, planned);
             const completionPct = planned > 0 ? Math.min((approved / planned) * 100, 100) : 0;
 
+            const bac = formatCurrency(lineValue(item.plannedQty, item.unitPrice), item.currencyCode);
+            const ev = formatCurrency(lineValue(item.approvedQty, item.unitPrice), item.currencyCode);
+
             return (
               <TableRow key={item.id}>
                 <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
@@ -152,6 +158,8 @@ export function BoqTable({ projectId, items, onItemChanged }: BoqTableProps) {
                 <TableCell>{item.unit}</TableCell>
                 <TableCell className="text-right tabular-nums">{formatQty(planned)}</TableCell>
                 <TableCell className="text-right tabular-nums">{formatQty(approved)}</TableCell>
+                <TableCell className="text-right tabular-nums text-muted-foreground">{bac}</TableCell>
+                <TableCell className="text-right tabular-nums text-muted-foreground">{ev}</TableCell>
                 <TableCell className={`text-right tabular-nums ${progressColorClass(completionPct)}`}>
                   {new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 1 }).format(completionPct) + '%'}
                 </TableCell>

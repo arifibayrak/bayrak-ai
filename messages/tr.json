@@ -57,7 +57,9 @@
       "col_unit_price": "Birim Fiyat",
       "col_currency": "Para Birimi",
       "unit_price_placeholder": "—",
-      "unit_price_hint": "İsteğe bağlı · virgül veya nokta kullanın"
+      "unit_price_hint": "İsteğe bağlı · virgül veya nokta kullanın",
+      "col_contracted_value": "Sözleşme Bedeli",
+      "col_earned_value": "Hakediş Değeri"
     },
     "route": {
       "title": "Proje Rotası",

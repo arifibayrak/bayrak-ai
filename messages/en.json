@@ -57,7 +57,9 @@
       "col_unit_price": "Unit Price",
       "col_currency": "Currency",
       "unit_price_placeholder": "—",
-      "unit_price_hint": "Optional · use comma or period"
+      "unit_price_hint": "Optional · use comma or period",
+      "col_contracted_value": "Contracted Value",
+      "col_earned_value": "Earned Value"
     },
     "route": {
       "title": "Project Route",
