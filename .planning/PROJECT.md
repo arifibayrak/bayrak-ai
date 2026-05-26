@@ -37,6 +37,7 @@ Every unit of field work flows through one trustworthy loop — **worker submits
 
 - [x] PostGIS matches a submission's lat/long to the nearest pipeline segment at submission time, storing a snapped point + segment fraction; submissions beyond a configurable 500 m threshold are flagged so the auditor's Telegram notification carries a distance-anomaly line — *Validated in Phase 4: Spatial Layer (GEO-01, GEO-02). Live-Telegram render deferred to a manual smoke-test (04-HUMAN-UAT.md).*
 - [x] Dashboard renders approved work logs as point markers / colored segments overlaying the GeoJSON route (Mapbox GL JS), with live BOQ progress per line item and a status-filterable submissions list that refreshes on focus — *Validated in Phase 5: Dashboard & Map (DASH-01..05). Canvas rendering + Mapbox token domain restriction (SC4) deferred to manual checks (05-HUMAN-UAT.md).*
+- [x] Admin experience layer: a persistent sidebar shell on every dashboard page, a fully-filterable cross-project Overview (portfolio KPIs + trend charts + currency selector), a People directory with per-person profile and activity timeline, a canonical submission detail page reachable from every surface, global URL-persisted filters with metric drill-down, and full TR/EN localization — without breaking existing project-scoped routes — *Validated in Phase 8: Admin Shell & Information Architecture (UX-01..05, PERF-04, I18N-03). 6/6 code truths verified; 7 browser behaviors deferred to manual checks (08-HUMAN-UAT.md). Known follow-up: Google Maps link on submission detail (no lat/lon on CanonicalSubmission) — todo logged.*
 
 ### Active
 
@@ -125,4 +126,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-25 — started milestone v2.0 Operations Intelligence & Hakkediş*
+*Last updated: 2026-05-27 — Phase 8 (Admin Shell & Information Architecture) complete*
