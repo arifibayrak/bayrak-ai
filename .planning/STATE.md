@@ -4,7 +4,7 @@ milestone: v2.0
 milestone_name: Operations Intelligence & Hakkediş
 status: verifying
 stopped_at: Phase 8 context gathered
-last_updated: "2026-05-26T18:02:28.837Z"
+last_updated: "2026-05-26T18:12:05.983Z"
 last_activity: 2026-05-26
 progress:
   total_phases: 11
@@ -92,6 +92,11 @@ Phase 11 [          ] 0%
 | Phase 07-data-foundation-canonical-record P04 | 15 minutes | 4 tasks | 12 files |
 
 ## Accumulated Context
+
+### Roadmap Evolution
+
+- Phase 8 edited: rescope: absorbed UX-03/04/05 + PERF-04 from Phase 9; new goal/SC for full admin experience layer
+- Phase 9 edited: trimmed to PERF-01/02/03/05/06 (scorecards, leaderboard, SLA alerts); UX-03/04/05 + PERF-04 moved to Phase 8
 
 ### Decisions
 

@@ -202,14 +202,14 @@ Which phases cover which requirements. Updated during roadmap creation.
 | UX-01 | Phase 8 | Pending |
 | UX-02 | Phase 8 | Pending |
 | I18N-03 | Phase 8 | Pending |
+| PERF-04 | Phase 8 | Pending |
+| UX-03 | Phase 8 | Pending |
+| UX-04 | Phase 8 | Pending |
+| UX-05 | Phase 8 | Pending |
 | PERF-01 | Phase 9 | Pending |
 | PERF-02 | Phase 9 | Pending |
-| PERF-04 | Phase 9 | Pending |
 | PERF-05 | Phase 9 | Pending |
 | PERF-06 | Phase 9 | Pending |
-| UX-03 | Phase 9 | Pending |
-| UX-04 | Phase 9 | Pending |
-| UX-05 | Phase 9 | Pending |
 | HAK-01 | Phase 10 | Pending |
 | HAK-02 | Phase 10 | Pending |
 | HAK-03 | Phase 10 | Pending |
@@ -229,4 +229,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-05-23*
-*Last updated: 2026-05-25 — v2.0 traceability populated (Phases 7–11, 26 requirements, 0 orphans)*
+*Last updated: 2026-05-26 — Phase 8/9 rescope: UX-03/04/05 + PERF-04 moved Phase 9 → Phase 8 (full admin experience layer); Phase 9 trimmed to scorecards/leaderboard/alerts (PERF-01/02/03/05/06)*

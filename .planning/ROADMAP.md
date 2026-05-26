@@ -266,33 +266,33 @@ Plans:
 
 ### Phase 8: Admin Shell & Information Architecture
 
-**Goal**: The admin navigation shell is live and all new v2 pages are reachable without breaking any existing project-scoped route; the cross-project command-center Overview page shows live portfolio KPIs; all new surface strings are localized in TR and EN
+**Goal**: The admin experience layer is live — a persistent sidebar shell on every dashboard page, a fully-filterable cross-project Overview with portfolio KPIs and trend charts, a People directory with per-person profile and activity timeline, a canonical submission detail page reachable from every surface, global URL-persisted filters with metric drill-down, and full TR/EN localization — without breaking any existing project-scoped route
 **Depends on**: Phase 7
-**Requirements**: UX-01, UX-02, I18N-03
+**Requirements**: UX-01, UX-02, UX-03, UX-04, UX-05, PERF-04, I18N-03
 **Success Criteria** (what must be TRUE):
 
-  1. A persistent sidebar navigation (Overview · Projects · People · Analytics · Hakkediş · Exports) is visible on all admin pages; the active item is highlighted; navigating to `/dashboard` redirects to `/dashboard/overview`
-  2. Existing routes (`/dashboard/projects`, `/dashboard/projects/[id]`) continue to work without modification and are reachable from the Projects sidebar item
-  3. The Overview page displays total pending-audit backlog count, total approvals and rejections for the rolling 30 days, earned value vs contracted value across all projects, and active worker count — all as live data requiring no manual refresh
-  4. Every new page label, column header, button, and status string on admin surfaces appears correctly in both Turkish and English when the dashboard locale is switched
-  5. Employee profile pages at `/dashboard/people` (list) and `/dashboard/people/[personId]` (profile) are reachable and render without errors using data from `getPersonMetrics()`
+  1. A persistent sidebar navigation (Overview · Projects · People · Analytics · Hakkediş · Exports) is visible on ALL dashboard pages including `/dashboard/projects/*`; the active item is highlighted; navigating to `/dashboard` redirects to `/dashboard/overview`; existing project routes and page files are unmodified
+  2. The Overview page displays portfolio KPIs (pending-audit backlog, approvals, rejections, earned value vs contracted value, active workers) and trend charts; a global filter bar (date range · project · person · status) re-scopes the page and a currency selector governs all money displays
+  3. The People directory lists approved people across all projects (Workers/Auditors tabs); each person's profile page shows KPI cards and an activity timeline (worker submissions / auditor decisions) that drills through to the submission detail page
+  4. A canonical submission detail page shows the full record (photo, location, BOQ item, quantity, status, auditor decision, rejection reason) and is reachable from the cross-project records list, the profile timeline, metric drill-downs, and the existing project Kayıtlar tab
+  5. Global filters persist across navigation via URL query parameters and scope the Overview, People, and a new cross-project `/dashboard/records` list; clicking any metric drills down to the underlying filtered records
+  6. Every new page label, column header, button, and status string on admin surfaces appears correctly in both Turkish and English when the dashboard locale is switched
 
 **Plans**: TBD
 **UI hint**: yes
 
-### Phase 9: Performance Analytics & Scorecards
+### Phase 9: Performance Scorecards, Leaderboard & Alerts
 
-**Goal**: Admin can view and compare worker, auditor, and office-engineer performance through scorecards with global filters and trend charts; every metric drills down to the underlying submission records; SLA breach alerts surface on the Overview page
+**Goal**: Admin can view and compare worker, auditor, and office-engineer performance through full scorecards and a leaderboard, and SLA-breach alerts surface on the Overview — building on the filter, drill-down, and profile surfaces delivered in Phase 8
 **Depends on**: Phase 8
-**Requirements**: PERF-01, PERF-02, PERF-03, PERF-04, PERF-05, PERF-06, UX-03, UX-04, UX-05
+**Requirements**: PERF-01, PERF-02, PERF-03, PERF-05, PERF-06
 **Success Criteria** (what must be TRUE):
 
-  1. Admin can filter all analytics views by date range, project, person, and status using controls that persist in URL query parameters; changing a filter updates all scorecards and charts on the page without a full reload
-  2. Worker scorecard shows submission volume, approval rate, rejection rate, location-compliance rate, output quantity, and value contribution; auditor scorecard shows decision count, approval/rejection split, mean decision turnaround, pending backlog, and SLA-breach rate — both scoped per project and across all projects
+  1. Worker scorecard shows submission volume, approval rate, rejection rate, location-compliance rate, output quantity, and value contribution — scoped per project and across all projects
+  2. Auditor scorecard shows decision count, approval/rejection split, mean decision turnaround, pending backlog, and SLA-breach rate — scoped per project and across all projects
   3. Office-engineer scorecard displays a list of logged actions (project creates/edits, BOQ changes, unit-price sets, person assignments) with timestamps, derived from `office_activity_log`
-  4. Analytics page renders at least three trend charts — throughput over time, earned-value/value-complete progression, and rejection rate trend — as Recharts client components receiving pre-fetched server data
-  5. Clicking any metric figure navigates to the underlying filtered record list; a submission detail page shows the full canonical record (photo, location map, BOQ item, quantity, auditor decision, rejection reason, AI flags if any)
-  6. Overview page displays SLA alerts — highlighting submissions pending for more than 4 hours, rejection-rate spikes above threshold, and projects with no approved submissions in over 48 hours
+  4. Admin can compare employees side-by-side in a leaderboard ranked by a chosen metric
+  5. Overview page displays SLA / performance alerts — submissions pending beyond a threshold, rejection-rate spikes above threshold, and projects with no approved submissions beyond a threshold
 
 **Plans**: TBD
 **UI hint**: yes
