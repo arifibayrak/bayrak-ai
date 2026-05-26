@@ -759,6 +759,60 @@ describeIfDb('getPortfolioOverview() per-project currency maps', () => {
     expect(p2).toBeDefined();
     expect(p2!.contractedValueByCurrency['USD']).toBeDefined();
   });
+
+  // WR-02 (re-review): portfolio EV and project-detail EV must agree.
+  // getPortfolioOverview previously derived earned value from
+  // boq_items.approved_qty while getProjectMetrics derived it from approved
+  // submissions — a silent divergence risk. Both must now read the same source
+  // (approved submissions), so for identical seed data the two EV maps match.
+  it('getPortfolioOverview EV equals getProjectMetrics EV for the same project (WR-02)', async () => {
+    const { getPortfolioOverview, getProjectMetrics } = await import('@/actions/analytics');
+    const Decimal = (await import('decimal.js')).default;
+
+    const tenantId  = '00000000-0000-0000-0000-000000000001';
+    const projectId = '00000000-0000-0000-0000-0000000f0101';
+    const boqItemId = '00000000-0000-0000-0000-0000000f0201';
+    const personId  = '00000000-0000-0000-0000-0000000f0301';
+
+    await db.execute(sql.raw(`INSERT INTO tenants (id, name) VALUES ('${tenantId}', 'Default') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO projects (id, tenant_id, name) VALUES ('${projectId}', '${tenantId}', 'WR02Project') ON CONFLICT DO NOTHING`));
+    // unit_price 250, planned 1000 — but approved_qty is intentionally set to a
+    // VALUE THAT DISAGREES with the approved submissions below (5) so the test
+    // would fail if EV were still sourced from approved_qty.
+    await db.execute(sql.raw(`INSERT INTO boq_items (id, tenant_id, project_id, material, unit, planned_qty, approved_qty, sort_order, unit_price, currency_code) VALUES ('${boqItemId}', '${tenantId}', '${projectId}', 'Pipe', 'm', 1000, 999, 1, '250.0000', 'TRY') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO people (id, tenant_id, telegram_user_id, display_name) VALUES ('${personId}', '${tenantId}', 880001, 'WR02Worker') ON CONFLICT DO NOTHING`));
+
+    // 5 approved submissions of qty 1 each → approved submission qty total = 5.
+    // EV from submissions = 5 * 250 = 1250. EV from approved_qty (999) would be
+    // 249750 — wildly different, proving the source.
+    for (let i = 0; i < 5; i++) {
+      const subId  = `00000000-0000-0000-0000-0000f1000${String(i).padStart(3, '0')}`;
+      const flowId = `00000000-f000-0000-0000-0000f1000${String(i).padStart(3, '0')}`;
+      await db.execute(sql.raw(`
+        INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at)
+        VALUES ('${subId}', '${flowId}', '${tenantId}', '${projectId}', '${personId}', '${boqItemId}', 'approved', '1.000', 'https://example.com/photo.jpg', NOW())
+        ON CONFLICT DO NOTHING
+      `));
+    }
+
+    const overview = await getPortfolioOverview();
+    const p = overview.find(x => x.projectId === projectId);
+    expect(p).toBeDefined();
+
+    const metrics = await getProjectMetrics(projectId);
+
+    // The two EV maps must be identical for this project on identical data.
+    const portfolioEv = p!.earnedValueByCurrency['TRY'];
+    const detailEv    = metrics.evByCurrency['TRY'];
+    expect(portfolioEv).toBeDefined();
+    expect(detailEv).toBeDefined();
+    expect(new Decimal(portfolioEv!).equals(new Decimal(detailEv!))).toBe(true);
+
+    // And it equals the submission-derived value (5 * 250 = 1250), NOT the
+    // approved_qty-derived value (999 * 250 = 249750).
+    expect(new Decimal(portfolioEv!).equals(new Decimal('1250'))).toBe(true);
+    expect(new Decimal(portfolioEv!).equals(new Decimal('249750'))).toBe(false);
+  });
 });
 
 // ── REGRESSION: Phase 7 code-review fixes (CR-01..CR-05) ────────────────────

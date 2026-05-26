@@ -555,6 +555,9 @@ export async function getPersonMetrics(
  *
  * Security: auth-guarded; tenant-scoped.
  * COST-03: % complete can be derived by caller per currency pair from ev/contracted maps.
+ * WR-02: earnedValueByCurrency is derived from APPROVED submissions (same source
+ *   as getProjectMetrics.evByCurrency) — never from boq_items.approved_qty — so
+ *   the portfolio EV and the project-detail EV are identical on the same data.
  */
 export async function getPortfolioOverview(): Promise<ProjectSummary[]> {
   const session = await auth();
@@ -565,20 +568,53 @@ export async function getPortfolioOverview(): Promise<ProjectSummary[]> {
   // A naive double LEFT JOIN (projects → submissions, projects → boq_items)
   // produces a Cartesian product per project (S submissions × B BOQ items),
   // inflating both the submission counts and the BOQ value sums. Pre-aggregating
-  // each side in its own CTE — boq_agg per (project, currency) and sub_agg per
-  // project — removes the fan-out entirely.
+  // each side in its own CTE removes the fan-out entirely.
+  //
+  // WR-02 (re-review): Earned Value MUST be derived the SAME way as
+  // getProjectMetrics Query 2 — SUM(s.quantity * b.unit_price) over APPROVED
+  // submissions — NOT from the denormalized boq_items.approved_qty. The prior
+  // version read approved_qty here, which is a separate source maintained by the
+  // bot audit flow; if that field ever diverges from the submissions ledger
+  // (partial-commit bug, manual edit) the portfolio EV and the project-detail EV
+  // would silently disagree for the same project. Sourcing both from approved
+  // submissions makes the two views provably identical on the same data.
+  //
+  // ev_agg is pre-aggregated per (project_id, currency_code) so it cannot
+  // fan out the boq_agg or sub_agg rows. A project/currency that has approved
+  // submissions but no priced BOQ item (or vice versa) is preserved via the
+  // FULL OUTER JOIN between boq_agg and ev_agg on (project_id, currency_code).
   const result = await db.execute(sql`
     WITH boq_agg AS (
       SELECT
         project_id,
         currency_code,
         SUM(planned_qty::numeric * unit_price::numeric)
-          FILTER (WHERE unit_price IS NOT NULL)                          AS contracted_value,
-        SUM(approved_qty::numeric * unit_price::numeric)
-          FILTER (WHERE unit_price IS NOT NULL)                          AS earned_value
+          FILTER (WHERE unit_price IS NOT NULL)                          AS contracted_value
       FROM boq_items
       WHERE tenant_id = ${tenantId}
       GROUP BY project_id, currency_code
+    ),
+    ev_agg AS (
+      SELECT
+        s.project_id,
+        b.currency_code,
+        SUM(s.quantity::numeric * b.unit_price::numeric)
+          FILTER (WHERE s.status = 'approved' AND b.unit_price IS NOT NULL) AS earned_value
+      FROM submissions s
+      JOIN boq_items b ON b.id = s.boq_item_id
+      WHERE s.tenant_id = ${tenantId}
+      GROUP BY s.project_id, b.currency_code
+    ),
+    val_agg AS (
+      SELECT
+        COALESCE(ba.project_id, ea.project_id)        AS project_id,
+        COALESCE(ba.currency_code, ea.currency_code)  AS currency_code,
+        ba.contracted_value,
+        ea.earned_value
+      FROM boq_agg ba
+      FULL OUTER JOIN ev_agg ea
+        ON ea.project_id = ba.project_id
+       AND ea.currency_code = ba.currency_code
     ),
     sub_agg AS (
       SELECT
@@ -592,16 +628,16 @@ export async function getPortfolioOverview(): Promise<ProjectSummary[]> {
     SELECT
       p.id                            AS project_id,
       p.name                          AS project_name,
-      ba.currency_code,
+      va.currency_code,
       COALESCE(sa.approved_count, 0)  AS approved_count,
       COALESCE(sa.pending_count, 0)   AS pending_count,
-      ba.contracted_value,
-      ba.earned_value
+      va.contracted_value,
+      va.earned_value
     FROM projects p
-    LEFT JOIN boq_agg ba ON ba.project_id = p.id
+    LEFT JOIN val_agg va ON va.project_id = p.id
     LEFT JOIN sub_agg sa ON sa.project_id = p.id
     WHERE p.tenant_id = ${tenantId}
-    ORDER BY p.name, ba.currency_code
+    ORDER BY p.name, va.currency_code
   `);
 
   // Merge rows by projectId into per-project currency maps
