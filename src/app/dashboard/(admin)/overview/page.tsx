@@ -75,12 +75,16 @@ export default async function OverviewPage({ searchParams }: Props) {
 
   const projectOptions = projectsData.map((p) => ({ id: p.id, name: p.name }));
 
-  // Range-aware subtitle
+  // Range-aware subtitle — "filtered" when any filter is active
   const hasFilter = !!(from || to || project || person);
   const subtitle = hasFilter ? t('subtitle_filtered') : t('subtitle_all_time');
 
-  // Range-aware sub-labels for date-scoped KPIs
-  const dateSubLabel = (from || to) ? t('kpi_sub_filtered') : t('kpi_sub_all_time');
+  // WR-01: getPortfolioKPIs only applies the date filter when BOTH from AND to are present
+  // (analytics.ts line 323: dateCondition = filters.from && filters.to ? ... : sql``).
+  // Show "selected period" sub-label only when both dates are set so the label matches the
+  // actual query behavior — a one-sided date param leaves KPI counts as all-time.
+  const isDateFiltered = !!(validatedFrom && validatedTo);
+  const dateSubLabel = isDateFiltered ? t('kpi_sub_filtered') : t('kpi_sub_all_time');
 
   // Pending backlog drill: NO date filter (D-66 / Pitfall 5)
   const pendingDrillHref = '/dashboard/records?status=pending_audit';
