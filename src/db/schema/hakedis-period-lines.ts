@@ -3,9 +3,12 @@ import { tenants } from './tenants';
 import { hakedisPeriods } from './hakedis-periods';
 import { boqItems } from './boq-items';
 
-// NOTE: CHECK (cumulative_qty_approved >= previous_cumulative_qty) is added by
-// hand-editing the migration SQL in Plan 02 (drizzle-kit cannot emit CHECK constraints
-// on numeric columns). See 0004_v2_data_foundation.sql bottom section.
+// NOTE: CHECK constraints are hand-written in the migration SQL (drizzle-kit cannot
+// emit CHECK constraints on numeric columns):
+//   - cumulative_qty_approved >= previous_cumulative_qty  (0004_v2_data_foundation.sql)
+//   - period_qty >= 0  and  unit_price_snapshot >= 0  (WR-05: 0006_v2_period_qty_check.sql)
+// The 0006 constraints prevent a negative period_qty / negative period_value from
+// entering a hakkediş certificate.
 export const hakedisPeriodLines = pgTable('hakedis_period_lines', {
   id:                    uuid('id').primaryKey().defaultRandom(),
   tenantId:              uuid('tenant_id').references(() => tenants.id),              // nullable D-09
@@ -22,10 +25,12 @@ export const hakedisPeriodLines = pgTable('hakedis_period_lines', {
 
   // ── Quantity columns ────────────────────────────────────────────────────────
   // Both stored so the cumulative model (yeşil defter) is auditable.
-  // DB CHECK: cumulative_qty_approved >= previous_cumulative_qty (hand-edited migration)
+  // DB CHECK: cumulative_qty_approved >= previous_cumulative_qty (0004 migration)
   cumulativeQtyApproved: numeric('cumulative_qty_approved', { precision: 12, scale: 3 }).notNull(),
   previousCumulativeQty: numeric('previous_cumulative_qty', { precision: 12, scale: 3 }).notNull().default('0'),
   // periodQty = cumulativeQtyApproved - previousCumulativeQty (enforced in computePeriodLines())
+  // DB CHECK (WR-05): period_qty >= 0 — guards against negative period quantities /
+  // negative period_value (added in 0006_v2_period_qty_check.sql).
   periodQty:             numeric('period_qty', { precision: 12, scale: 3 }).notNull(),
 
   // ── Computed value columns — stored for post-finalization immutability ──────

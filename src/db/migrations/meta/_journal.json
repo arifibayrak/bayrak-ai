@@ -43,6 +43,13 @@
       "when": 1779788400000,
       "tag": "0005_v2_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1779789000000,
+      "tag": "0006_v2_period_qty_check",
+      "breakpoints": true
     }
   ]
 }
