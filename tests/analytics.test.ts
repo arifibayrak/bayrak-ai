@@ -1038,6 +1038,176 @@ describeIfDb('REGRESSION CR-05: setUnitPrice accepts allowed currency', () => {
   });
 });
 
+// ── UX-04: getPortfolioTrends() ────────────────────────────────────────────
+
+describeIfDb('UX-04: getPortfolioTrends() — Istanbul-tz time-bucketed throughput + EV', () => {
+  let db: Awaited<ReturnType<typeof getTestDb>>;
+
+  beforeEach(async () => {
+    db = await getTestDb();
+    await truncateAllTables(db);
+  });
+
+  afterEach(async () => {
+    await truncateAllTables(db);
+  });
+
+  it('returns monthly buckets ordered ASC with correct counts and non-null earnedValue', async () => {
+    const { getPortfolioTrends } = await import('@/actions/analytics');
+
+    const tenantId  = '00000000-0000-0000-0000-000000000001';
+    const projectId = '00000000-0000-0000-0000-00000d040001';
+    const boqItemId = '00000000-0000-0000-0000-00000d040101';
+    const personId  = '00000000-0000-0000-0000-00000d040201';
+
+    await db.execute(sql.raw(`INSERT INTO tenants (id, name) VALUES ('${tenantId}', 'T1') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO projects (id, tenant_id, name) VALUES ('${projectId}', '${tenantId}', 'TrendsTest') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO boq_items (id, tenant_id, project_id, material, unit, planned_qty, approved_qty, sort_order, unit_price, currency_code) VALUES ('${boqItemId}', '${tenantId}', '${projectId}', 'Pipe', 'm', 1000, 0, 1, '50.0000', 'TRY') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO people (id, tenant_id, telegram_user_id, display_name) VALUES ('${personId}', '${tenantId}', 910001, 'TrendWorker') ON CONFLICT DO NOTHING`));
+
+    // Two approved submissions in April 2025 (Istanbul: April)
+    await db.execute(sql.raw(`
+      INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at)
+      VALUES ('00000000-0000-0000-0000-d04000000001', '00000000-f000-0000-0000-d04000000001', '${tenantId}', '${projectId}', '${personId}', '${boqItemId}', 'approved', '10.000', 'https://example.com/p.jpg', '2025-04-10T10:00:00Z')
+      ON CONFLICT DO NOTHING
+    `));
+    await db.execute(sql.raw(`
+      INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at)
+      VALUES ('00000000-0000-0000-0000-d04000000002', '00000000-f000-0000-0000-d04000000002', '${tenantId}', '${projectId}', '${personId}', '${boqItemId}', 'approved', '5.000', 'https://example.com/p.jpg', '2025-04-20T10:00:00Z')
+      ON CONFLICT DO NOTHING
+    `));
+    // One rejected submission in June 2025 (Istanbul: June)
+    await db.execute(sql.raw(`
+      INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at)
+      VALUES ('00000000-0000-0000-0000-d04000000003', '00000000-f000-0000-0000-d04000000003', '${tenantId}', '${projectId}', '${personId}', '${boqItemId}', 'rejected', '3.000', 'https://example.com/p.jpg', '2025-06-15T10:00:00Z')
+      ON CONFLICT DO NOTHING
+    `));
+
+    // No date filter → monthly bucketing (range > 60 days)
+    const trends = await getPortfolioTrends({});
+
+    expect(trends.length).toBeGreaterThanOrEqual(2);
+
+    // Buckets must be ordered ASC
+    for (let i = 1; i < trends.length; i++) {
+      expect(trends[i].bucket >= trends[i - 1].bucket).toBe(true);
+    }
+
+    // Find the April bucket (approved submissions)
+    const aprilBucket = trends.find(t => t.bucket.startsWith('2025-04'));
+    expect(aprilBucket).toBeDefined();
+    expect(aprilBucket!.approvedCount).toBe(2);
+    expect(aprilBucket!.rejectedCount).toBe(0);
+    // earnedValue = (10 + 5) * 50 = 750 TRY
+    expect(aprilBucket!.earnedValue).not.toBeNull();
+    const ev = parseFloat(aprilBucket!.earnedValue ?? '0');
+    expect(ev).toBeCloseTo(750, 1);
+
+    // Find the June bucket (rejected submission)
+    const juneBucket = trends.find(t => t.bucket.startsWith('2025-06'));
+    expect(juneBucket).toBeDefined();
+    expect(juneBucket!.rejectedCount).toBe(1);
+    // earnedValue for June is null (no approved priced submissions)
+    expect(juneBucket!.earnedValue).toBeNull();
+  });
+
+  it('produces weekly buckets when date range is ≤60 days', async () => {
+    const { getPortfolioTrends } = await import('@/actions/analytics');
+
+    const tenantId  = '00000000-0000-0000-0000-000000000001';
+    const projectId = '00000000-0000-0000-0000-00000d040002';
+    const boqItemId = '00000000-0000-0000-0000-00000d040102';
+    const personId  = '00000000-0000-0000-0000-00000d040202';
+
+    await db.execute(sql.raw(`INSERT INTO tenants (id, name) VALUES ('${tenantId}', 'T1') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO projects (id, tenant_id, name) VALUES ('${projectId}', '${tenantId}', 'WeeklyBuckets') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO boq_items (id, tenant_id, project_id, material, unit, planned_qty, approved_qty, sort_order) VALUES ('${boqItemId}', '${tenantId}', '${projectId}', 'Pipe', 'm', 1000, 0, 1) ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO people (id, tenant_id, telegram_user_id, display_name) VALUES ('${personId}', '${tenantId}', 910002, 'WeeklyWorker') ON CONFLICT DO NOTHING`));
+
+    // 2 submissions in different weeks within a 30-day window
+    await db.execute(sql.raw(`
+      INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at)
+      VALUES ('00000000-0000-0000-0000-d04000000010', '00000000-f000-0000-0000-d04000000010', '${tenantId}', '${projectId}', '${personId}', '${boqItemId}', 'approved', '1.000', 'https://example.com/p.jpg', '2025-06-01T10:00:00Z')
+      ON CONFLICT DO NOTHING
+    `));
+    await db.execute(sql.raw(`
+      INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at)
+      VALUES ('00000000-0000-0000-0000-d04000000011', '00000000-f000-0000-0000-d04000000011', '${tenantId}', '${projectId}', '${personId}', '${boqItemId}', 'approved', '1.000', 'https://example.com/p.jpg', '2025-06-16T10:00:00Z')
+      ON CONFLICT DO NOTHING
+    `));
+
+    const from = new Date('2025-06-01T00:00:00Z');
+    const to   = new Date('2025-06-30T23:59:59Z');
+    const trends = await getPortfolioTrends({ from, to });
+
+    // Range ≤60 days → weekly buckets → two different submissions in different weeks → ≥2 buckets
+    expect(trends.length).toBeGreaterThanOrEqual(2);
+    // Total approvedCount across all buckets should equal 2
+    const totalApproved = trends.reduce((s, t) => s + t.approvedCount, 0);
+    expect(totalApproved).toBe(2);
+  });
+
+  it('throws Unauthorized when auth() returns null', async () => {
+    const { auth } = await import('@/lib/auth');
+    (auth as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null);
+    const { getPortfolioTrends } = await import('@/actions/analytics');
+    await expect(getPortfolioTrends()).rejects.toThrow('Unauthorized');
+  });
+});
+
+// ── PERF-04 extension: getPersonMetrics with dateRange ──────────────────────
+
+describeIfDb('PERF-04: getPersonMetrics() with dateRange scopes all sub-queries', () => {
+  let db: Awaited<ReturnType<typeof getTestDb>>;
+
+  beforeEach(async () => {
+    db = await getTestDb();
+    await truncateAllTables(db);
+  });
+
+  afterEach(async () => {
+    await truncateAllTables(db);
+  });
+
+  it('dateRange scopes submission counts to the selected period only', async () => {
+    const { getPersonMetrics } = await import('@/actions/analytics');
+
+    const tenantId  = '00000000-0000-0000-0000-000000000001';
+    const projectId = '00000000-0000-0000-0000-00000d040003';
+    const boqItemId = '00000000-0000-0000-0000-00000d040103';
+    const personId  = '00000000-0000-0000-0000-00000d040203';
+
+    await db.execute(sql.raw(`INSERT INTO tenants (id, name) VALUES ('${tenantId}', 'T1') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO projects (id, tenant_id, name) VALUES ('${projectId}', '${tenantId}', 'DateRangeTest') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO boq_items (id, tenant_id, project_id, material, unit, planned_qty, approved_qty, sort_order, unit_price, currency_code) VALUES ('${boqItemId}', '${tenantId}', '${projectId}', 'Pipe', 'm', 1000, 0, 1, '100.0000', 'TRY') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO people (id, tenant_id, telegram_user_id, display_name) VALUES ('${personId}', '${tenantId}', 920001, 'DateRangeWorker') ON CONFLICT DO NOTHING`));
+
+    // 1 approved submission in April (in-range)
+    await db.execute(sql.raw(`
+      INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at)
+      VALUES ('00000000-0000-0000-0000-d04000000020', '00000000-f000-0000-0000-d04000000020', '${tenantId}', '${projectId}', '${personId}', '${boqItemId}', 'approved', '5.000', 'https://example.com/p.jpg', '2025-04-15T10:00:00Z')
+      ON CONFLICT DO NOTHING
+    `));
+    // 1 approved submission in January (out-of-range)
+    await db.execute(sql.raw(`
+      INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at)
+      VALUES ('00000000-0000-0000-0000-d04000000021', '00000000-f000-0000-0000-d04000000021', '${tenantId}', '${projectId}', '${personId}', '${boqItemId}', 'approved', '5.000', 'https://example.com/p.jpg', '2025-01-10T10:00:00Z')
+      ON CONFLICT DO NOTHING
+    `));
+
+    const aprilFrom = new Date('2025-04-01T00:00:00Z');
+    const aprilTo   = new Date('2025-04-30T23:59:59Z');
+
+    // With dateRange: only the April submission counts
+    const metricsWithRange = await getPersonMetrics(personId, { dateRange: { from: aprilFrom, to: aprilTo } });
+    expect(metricsWithRange.submissionsApproved).toBe(1);
+
+    // Without dateRange: both submissions count (backward-compatible all-time path)
+    const metricsAllTime = await getPersonMetrics(personId);
+    expect(metricsAllTime.submissionsApproved).toBe(2);
+  });
+});
+
 // ── UX-02: getPortfolioKPIs() ──────────────────────────────────────────────
 
 describeIfDb('UX-02: getPortfolioKPIs() — pending backlog + in-range counts', () => {
