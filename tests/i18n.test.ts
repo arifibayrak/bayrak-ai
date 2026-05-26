@@ -144,3 +144,145 @@ describe('message catalog key parity', () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// (d) dashboard.admin.* namespace coverage (I18N-03)
+// ---------------------------------------------------------------------------
+
+describe("dashboard.admin.* namespace coverage (I18N-03)", () => {
+  it("representative keys exist in both en.json and tr.json", async () => {
+    const tr = (await import('../messages/tr.json')).default as Record<string, unknown>;
+    const en = (await import('../messages/en.json')).default as Record<string, unknown>;
+
+    const trFlat = new Set(flattenKeys(tr));
+    const enFlat = new Set(flattenKeys(en));
+
+    const requiredAdminKeys = [
+      // nav sub-namespace
+      'dashboard.admin.nav.overview',
+      'dashboard.admin.nav.projects',
+      'dashboard.admin.nav.people',
+      'dashboard.admin.nav.analytics',
+      'dashboard.admin.nav.hakedis',
+      'dashboard.admin.nav.exports',
+      'dashboard.admin.nav.main_nav_aria',
+      'dashboard.admin.nav.open_nav',
+      'dashboard.admin.nav.close_nav',
+      'dashboard.admin.nav.expand_sidebar',
+      'dashboard.admin.nav.collapse_sidebar',
+      // overview sub-namespace
+      'dashboard.admin.overview.heading',
+      'dashboard.admin.overview.subtitle_all_time',
+      'dashboard.admin.overview.subtitle_filtered',
+      'dashboard.admin.overview.kpi_pending_label',
+      'dashboard.admin.overview.kpi_pending_sub',
+      'dashboard.admin.overview.kpi_approvals_label',
+      'dashboard.admin.overview.kpi_rejections_label',
+      'dashboard.admin.overview.kpi_workers_label',
+      'dashboard.admin.overview.kpi_sub_all_time',
+      'dashboard.admin.overview.kpi_sub_filtered',
+      'dashboard.admin.overview.ev_heading',
+      'dashboard.admin.overview.ev_col_project',
+      'dashboard.admin.overview.ev_col_bac',
+      'dashboard.admin.overview.ev_col_ev',
+      'dashboard.admin.overview.ev_col_complete',
+      'dashboard.admin.overview.chart_throughput',
+      'dashboard.admin.overview.chart_earned_value',
+      'dashboard.admin.overview.chart_rejection_rate',
+      'dashboard.admin.overview.empty_no_projects',
+      'dashboard.admin.overview.chart_no_data',
+      'dashboard.admin.overview.error_load',
+      // filters sub-namespace
+      'dashboard.admin.filters.from',
+      'dashboard.admin.filters.to',
+      'dashboard.admin.filters.all_projects',
+      'dashboard.admin.filters.all_people',
+      'dashboard.admin.filters.clear',
+      // currency sub-namespace
+      'dashboard.admin.currency.label',
+      // people sub-namespace
+      'dashboard.admin.people.heading',
+      'dashboard.admin.people.subtitle',
+      'dashboard.admin.people.tab_workers',
+      'dashboard.admin.people.tab_auditors',
+      'dashboard.admin.people.empty_state',
+      'dashboard.admin.people.col_name',
+      'dashboard.admin.people.col_submissions',
+      'dashboard.admin.people.col_approved',
+      'dashboard.admin.people.col_rejected',
+      'dashboard.admin.people.col_pending',
+      'dashboard.admin.people.col_value',
+      'dashboard.admin.people.col_decisions',
+      'dashboard.admin.people.col_turnaround',
+      'dashboard.admin.people.col_backlog',
+      'dashboard.admin.people.back_to_people',
+      'dashboard.admin.people.role_worker',
+      'dashboard.admin.people.role_auditor',
+      'dashboard.admin.people.kpi_worker_metrics',
+      'dashboard.admin.people.kpi_auditor_metrics',
+      'dashboard.admin.people.no_records_alert',
+      'dashboard.admin.people.error_load',
+      // records sub-namespace
+      'dashboard.admin.records.heading',
+      'dashboard.admin.records.col_status',
+      'dashboard.admin.records.col_worker',
+      'dashboard.admin.records.col_project',
+      'dashboard.admin.records.col_boq',
+      'dashboard.admin.records.col_quantity',
+      'dashboard.admin.records.col_submitted',
+      'dashboard.admin.records.col_auditor',
+      'dashboard.admin.records.details_header',
+      'dashboard.admin.records.details',
+      'dashboard.admin.records.prev',
+      'dashboard.admin.records.next',
+      'dashboard.admin.records.pagination',
+      'dashboard.admin.records.empty',
+      'dashboard.admin.records.error_load',
+      // detail sub-namespace
+      'dashboard.admin.detail.heading',
+      'dashboard.admin.detail.back',
+      'dashboard.admin.detail.field_worker',
+      'dashboard.admin.detail.field_project',
+      'dashboard.admin.detail.field_boq',
+      'dashboard.admin.detail.field_quantity',
+      'dashboard.admin.detail.field_submitted',
+      'dashboard.admin.detail.field_location',
+      'dashboard.admin.detail.field_location_warning',
+      'dashboard.admin.detail.field_auditor',
+      'dashboard.admin.detail.field_decided',
+      'dashboard.admin.detail.field_rejection_reason',
+      'dashboard.admin.detail.ai_slot_label',
+      'dashboard.admin.detail.ai_slot_body',
+      'dashboard.admin.detail.view_on_maps',
+      'dashboard.admin.detail.photo_alt',
+      'dashboard.admin.detail.no_photo',
+      // stubs sub-namespace
+      'dashboard.admin.stubs.coming_soon',
+      'dashboard.admin.stubs.analytics_heading',
+      'dashboard.admin.stubs.analytics_body',
+      'dashboard.admin.stubs.hakedis_heading',
+      'dashboard.admin.stubs.hakedis_body',
+      'dashboard.admin.stubs.exports_heading',
+      'dashboard.admin.stubs.exports_body',
+    ];
+
+    for (const key of requiredAdminKeys) {
+      expect(trFlat.has(key), `tr.json missing dashboard.admin key: ${key}`).toBe(true);
+      expect(enFlat.has(key), `en.json missing dashboard.admin key: ${key}`).toBe(true);
+    }
+  });
+
+  it("tr.json and en.json still have identical key sets after admin namespace addition", async () => {
+    const tr = (await import('../messages/tr.json')).default as Record<string, unknown>;
+    const en = (await import('../messages/en.json')).default as Record<string, unknown>;
+
+    const trKeys = new Set(flattenKeys(tr));
+    const enKeys = new Set(flattenKeys(en));
+
+    const missingFromEn = [...trKeys].filter((k) => !enKeys.has(k));
+    const missingFromTr = [...enKeys].filter((k) => !trKeys.has(k));
+
+    expect(missingFromEn, 'Keys in tr.json but missing from en.json').toEqual([]);
+    expect(missingFromTr, 'Keys in en.json but missing from tr.json').toEqual([]);
+  });
+});
