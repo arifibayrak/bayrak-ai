@@ -1637,13 +1637,13 @@ describeIfDb('D-69/PERF-04: getPortfolioPeople() bulk aggregation', () => {
     await db.execute(sql.raw(`INSERT INTO assignments (id, tenant_id, person_id, project_id, role_on_project) VALUES ('00000000-0000-0000-0000-e0000000a003', '${tenantId}', '${workerOnB}', '${projectB}', 'worker') ON CONFLICT DO NOTHING`));
 
     // Worker submissions for dualId on projectA: 2 approved, 1 rejected
-    await db.execute(sql.raw(`INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at) VALUES ('00000000-0000-0000-0000-e00s00000001', '00000000-f000-0000-0000-e00s00000001', '${tenantId}', '${projectA}', '${dualId}', '${boqA}', 'approved', '10.000', 'https://example.com/p.jpg', NOW()) ON CONFLICT DO NOTHING`));
-    await db.execute(sql.raw(`INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at) VALUES ('00000000-0000-0000-0000-e00s00000002', '00000000-f000-0000-0000-e00s00000002', '${tenantId}', '${projectA}', '${dualId}', '${boqA}', 'approved', '5.000', 'https://example.com/p.jpg', NOW()) ON CONFLICT DO NOTHING`));
-    await db.execute(sql.raw(`INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at) VALUES ('00000000-0000-0000-0000-e00s00000003', '00000000-f000-0000-0000-e00s00000003', '${tenantId}', '${projectA}', '${dualId}', '${boqA}', 'rejected', '2.000', 'https://example.com/p.jpg', NOW()) ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at) VALUES ('00000000-0000-0000-0000-e00500000001', '00000000-f000-0000-0000-e00500000001', '${tenantId}', '${projectA}', '${dualId}', '${boqA}', 'approved', '10.000', 'https://example.com/p.jpg', NOW()) ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at) VALUES ('00000000-0000-0000-0000-e00500000002', '00000000-f000-0000-0000-e00500000002', '${tenantId}', '${projectA}', '${dualId}', '${boqA}', 'approved', '5.000', 'https://example.com/p.jpg', NOW()) ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at) VALUES ('00000000-0000-0000-0000-e00500000003', '00000000-f000-0000-0000-e00500000003', '${tenantId}', '${projectA}', '${dualId}', '${boqA}', 'rejected', '2.000', 'https://example.com/p.jpg', NOW()) ON CONFLICT DO NOTHING`));
 
     // Auditor decisions by dualId on projectB: workerOnB submits, dualId decides
-    await db.execute(sql.raw(`INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at, decided_by, decided_at) VALUES ('00000000-0000-0000-0000-e00s00000004', '00000000-f000-0000-0000-e00s00000004', '${tenantId}', '${projectB}', '${workerOnB}', '${boqB}', 'approved', '3.000', 'https://example.com/p.jpg', NOW(), '${dualId}', NOW()) ON CONFLICT DO NOTHING`));
-    await db.execute(sql.raw(`INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at, decided_by, decided_at) VALUES ('00000000-0000-0000-0000-e00s00000005', '00000000-f000-0000-0000-e00s00000005', '${tenantId}', '${projectB}', '${workerOnB}', '${boqB}', 'rejected', '1.000', 'https://example.com/p.jpg', NOW(), '${dualId}', NOW()) ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at, decided_by, decided_at) VALUES ('00000000-0000-0000-0000-e00500000004', '00000000-f000-0000-0000-e00500000004', '${tenantId}', '${projectB}', '${workerOnB}', '${boqB}', 'approved', '3.000', 'https://example.com/p.jpg', NOW(), '${dualId}', NOW()) ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at, decided_by, decided_at) VALUES ('00000000-0000-0000-0000-e00500000005', '00000000-f000-0000-0000-e00500000005', '${tenantId}', '${projectB}', '${workerOnB}', '${boqB}', 'rejected', '1.000', 'https://example.com/p.jpg', NOW(), '${dualId}', NOW()) ON CONFLICT DO NOTHING`));
 
     const [workers, auditors] = await Promise.all([
       getPortfolioPeople({ role: 'worker' }),
@@ -1674,7 +1674,8 @@ describeIfDb('D-69/PERF-04: getPortfolioPeople() bulk aggregation', () => {
     await db.execute(sql.raw(`INSERT INTO tenants (id, name) VALUES ('${tenantId}', 'T1') ON CONFLICT DO NOTHING`));
     await db.execute(sql.raw(`INSERT INTO projects (id, tenant_id, name) VALUES ('${projectId}', '${tenantId}', 'PendingTest') ON CONFLICT DO NOTHING`));
     // Insert into pending_people only — not people table
-    await db.execute(sql.raw(`INSERT INTO pending_people (id, tenant_id, telegram_user_id, telegram_display_name, requested_at) VALUES ('${pendingPersonId}', '${tenantId}', 666661, 'PendingGuy', NOW()) ON CONFLICT DO NOTHING`));
+    // pending_people schema: id, tenant_id, telegram_user_id, telegram_name, started_at
+    await db.execute(sql.raw(`INSERT INTO pending_people (id, tenant_id, telegram_user_id, telegram_name, started_at) VALUES ('${pendingPersonId}', '${tenantId}', 666661, 'PendingGuy', NOW()) ON CONFLICT DO NOTHING`));
 
     const workers  = await getPortfolioPeople({ role: 'worker' });
     const auditors = await getPortfolioPeople({ role: 'auditor' });
@@ -1702,8 +1703,8 @@ describeIfDb('D-69/PERF-04: getPortfolioPeople() bulk aggregation', () => {
     await db.execute(sql.raw(`INSERT INTO projects (id, tenant_id, name) VALUES ('${projectId}', '${tenantId}', 'ValueTest') ON CONFLICT DO NOTHING`));
     await db.execute(sql.raw(`INSERT INTO boq_items (id, tenant_id, project_id, material, unit, planned_qty, approved_qty, sort_order, unit_price, currency_code) VALUES ('${boqId}', '${tenantId}', '${projectId}', 'Pipe', 'm', 500, 0, 1, '200.0000', 'TRY') ON CONFLICT DO NOTHING`));
     await db.execute(sql.raw(`INSERT INTO people (id, tenant_id, telegram_user_id, display_name) VALUES ('${personId}', '${tenantId}', 777771, 'ValueWorker') ON CONFLICT DO NOTHING`));
-    await db.execute(sql.raw(`INSERT INTO assignments (id, tenant_id, person_id, project_id, role_on_project) VALUES ('00000000-0000-0000-0000-e0000000v001', '${tenantId}', '${personId}', '${projectId}', 'worker') ON CONFLICT DO NOTHING`));
-    await db.execute(sql.raw(`INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at) VALUES ('00000000-0000-0000-0000-e00v00000001', '00000000-f000-0000-0000-e00v00000001', '${tenantId}', '${projectId}', '${personId}', '${boqId}', 'approved', '5.000', 'https://example.com/p.jpg', NOW()) ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO assignments (id, tenant_id, person_id, project_id, role_on_project) VALUES ('00000000-0000-0000-0000-e04000000001', '${tenantId}', '${personId}', '${projectId}', 'worker') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at) VALUES ('00000000-0000-0000-0000-e04100000001', '00000000-f000-0000-0000-e04100000001', '${tenantId}', '${projectId}', '${personId}', '${boqId}', 'approved', '5.000', 'https://example.com/p.jpg', NOW()) ON CONFLICT DO NOTHING`));
 
     const workers = await getPortfolioPeople({ role: 'worker' });
     const row = workers.find(w => w.personId === personId);
@@ -1729,11 +1730,11 @@ describeIfDb('D-69/PERF-04: getPortfolioPeople() bulk aggregation', () => {
     await db.execute(sql.raw(`INSERT INTO projects (id, tenant_id, name) VALUES ('${projectId}', '${tenantId}', 'DateRangeWorker') ON CONFLICT DO NOTHING`));
     await db.execute(sql.raw(`INSERT INTO boq_items (id, tenant_id, project_id, material, unit, planned_qty, approved_qty, sort_order) VALUES ('${boqId}', '${tenantId}', '${projectId}', 'Pipe', 'm', 500, 0, 1) ON CONFLICT DO NOTHING`));
     await db.execute(sql.raw(`INSERT INTO people (id, tenant_id, telegram_user_id, display_name) VALUES ('${personId}', '${tenantId}', 888881, 'RangeWorker') ON CONFLICT DO NOTHING`));
-    await db.execute(sql.raw(`INSERT INTO assignments (id, tenant_id, person_id, project_id, role_on_project) VALUES ('00000000-0000-0000-0000-e0000000r001', '${tenantId}', '${personId}', '${projectId}', 'worker') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO assignments (id, tenant_id, person_id, project_id, role_on_project) VALUES ('00000000-0000-0000-0000-e05000000001', '${tenantId}', '${personId}', '${projectId}', 'worker') ON CONFLICT DO NOTHING`));
 
     // 1 approved in April (in-range), 1 approved in January (out-of-range)
-    await db.execute(sql.raw(`INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at) VALUES ('00000000-0000-0000-0000-e00r00000001', '00000000-f000-0000-0000-e00r00000001', '${tenantId}', '${projectId}', '${personId}', '${boqId}', 'approved', '1.000', 'https://example.com/p.jpg', '2025-04-15T10:00:00Z') ON CONFLICT DO NOTHING`));
-    await db.execute(sql.raw(`INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at) VALUES ('00000000-0000-0000-0000-e00r00000002', '00000000-f000-0000-0000-e00r00000002', '${tenantId}', '${projectId}', '${personId}', '${boqId}', 'approved', '1.000', 'https://example.com/p.jpg', '2025-01-10T10:00:00Z') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at) VALUES ('00000000-0000-0000-0000-e05100000001', '00000000-f000-0000-0000-e05100000001', '${tenantId}', '${projectId}', '${personId}', '${boqId}', 'approved', '1.000', 'https://example.com/p.jpg', '2025-04-15T10:00:00Z') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at) VALUES ('00000000-0000-0000-0000-e05100000002', '00000000-f000-0000-0000-e05100000002', '${tenantId}', '${projectId}', '${personId}', '${boqId}', 'approved', '1.000', 'https://example.com/p.jpg', '2025-01-10T10:00:00Z') ON CONFLICT DO NOTHING`));
 
     const from = new Date('2025-04-01T00:00:00Z');
     const to   = new Date('2025-04-30T23:59:59Z');

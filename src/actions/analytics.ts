@@ -912,6 +912,216 @@ export async function getPortfolioOverview(): Promise<ProjectSummary[]> {
   return Array.from(projectMap.values());
 }
 
+// ── getPortfolioPeople ────────────────────────────────────────────────────────
+
+/**
+ * PortfolioWorker — one row per approved person who has a 'worker' assignment.
+ *
+ * Aggregated in a SINGLE SQL query (no N× getPersonMetrics). D-69/PERF-04.
+ * - valueContributedByCurrency: approved EV grouped by currency_code — NEVER cross-currency summed.
+ *   Returned as separate rows (one per currency) and merged in JS into a Record map.
+ */
+export type PortfolioWorker = {
+  personId: string;
+  displayName: string;
+  submissionsApproved: number;
+  submissionsRejected: number;
+  submissionsPending: number;
+  /** Approved EV grouped by ISO-4217 currency — never cross-currency summed */
+  valueContributedByCurrency: Record<string, string>;
+};
+
+/**
+ * PortfolioAuditor — one row per approved person who has an 'auditor' assignment.
+ *
+ * Aggregated in a SINGLE SQL query. pendingBacklogCount is point-in-time (D-66).
+ * avgDecisionLatencyHours: computed via FILTER (WHERE decided_at IS NOT NULL) —
+ * NULL decidedAt never poisons the average (split-query pattern from D-AuditorSource).
+ */
+export type PortfolioAuditor = {
+  personId: string;
+  displayName: string;
+  decisionsCount: number;
+  avgDecisionLatencyHours: number | null;
+  pendingBacklogCount: number;
+};
+
+/**
+ * getPortfolioPeople — bulk directory query. ONE round-trip per role.
+ *
+ * Workers: JOIN people → assignments (role='worker') → submissions grouped by person.
+ *   Counts: FILTER WHERE status=... for approved/rejected/pending.
+ *   Value: a sub-query per person-currency pair — returned as extra rows and merged in JS.
+ *
+ * Auditors: JOIN people → assignments (role='auditor').
+ *   decisionsCount: submissions WHERE decided_by=person AND status IN ('approved','rejected').
+ *   avgDecisionLatencyHours: AVG FILTER (WHERE decided_at IS NOT NULL) — NULL-safe.
+ *   pendingBacklogCount: submissions pending on the auditor's projects (point-in-time, D-66).
+ *
+ * Security: auth-guarded + tenant-scoped (T-08-05-ID).
+ * T-08-05-IV: all filter values bound as Drizzle sql`` parameters (CR-03).
+ * D-69: person with worker + auditor assignments appears in BOTH result sets.
+ * D-66: pending backlog is NOT date-filtered (point-in-time snapshot).
+ * COST-04: valueContributedByCurrency grouped by currency — never cross-currency summed.
+ */
+export async function getPortfolioPeople(options: {
+  role: 'worker';
+  dateRange?: { from: Date; to: Date };
+  projectIds?: string[];
+}): Promise<PortfolioWorker[]>;
+export async function getPortfolioPeople(options: {
+  role: 'auditor';
+  dateRange?: { from: Date; to: Date };
+  projectIds?: string[];
+}): Promise<PortfolioAuditor[]>;
+export async function getPortfolioPeople(options: {
+  role: 'worker' | 'auditor';
+  dateRange?: { from: Date; to: Date };
+  projectIds?: string[];
+}): Promise<PortfolioWorker[] | PortfolioAuditor[]> {
+  const session = await auth();
+  if (!session) throw new Error('Unauthorized');
+  const tenantId = getDefaultTenantId();
+
+  // T-08-05-IV: CR-03 parameterized filters
+  const dateCondition = options.dateRange
+    ? sql` AND s.submitted_at >= ${options.dateRange.from.toISOString()} AND s.submitted_at < ${options.dateRange.to.toISOString()}`
+    : sql``;
+
+  const projectFilter = options.projectIds && options.projectIds.length > 0
+    ? sql` AND s.project_id = ANY(${options.projectIds})`
+    : sql``;
+
+  if (options.role === 'worker') {
+    // ── Workers bulk query ─────────────────────────────────────────────────
+    // One row per person (submission counts only, no currency in this result set).
+    // Currency-grouped value is fetched in a separate query and merged in JS (COST-04).
+    // We JOIN to assignments to ensure only people with a worker assignment are included
+    // (not every person who submitted — they must have an explicit assignment).
+    // pending_people are in a separate table; people join excludes them automatically.
+    const [countsResult, valueResult] = await Promise.all([
+      db.execute(sql`
+        SELECT
+          p.id                                                            AS person_id,
+          p.display_name,
+          COUNT(s.id) FILTER (WHERE s.status = 'approved' ${dateCondition} ${projectFilter})   AS submissions_approved,
+          COUNT(s.id) FILTER (WHERE s.status = 'rejected' ${dateCondition} ${projectFilter})   AS submissions_rejected,
+          COUNT(s.id) FILTER (WHERE s.status = 'pending_audit' ${dateCondition} ${projectFilter}) AS submissions_pending
+        FROM people p
+        JOIN assignments a
+          ON a.person_id    = p.id
+         AND a.tenant_id    = ${tenantId}
+         AND a.role_on_project = 'worker'
+        LEFT JOIN submissions s
+          ON s.person_id  = p.id
+         AND s.tenant_id  = ${tenantId}
+        WHERE p.tenant_id = ${tenantId}
+        GROUP BY p.id, p.display_name
+        ORDER BY p.display_name
+      `),
+      db.execute(sql`
+        SELECT
+          p.id              AS person_id,
+          b.currency_code,
+          SUM(s.quantity::numeric * b.unit_price::numeric)
+            FILTER (WHERE s.status = 'approved' AND b.unit_price IS NOT NULL ${dateCondition} ${projectFilter}) AS value_contributed
+        FROM people p
+        JOIN assignments a
+          ON a.person_id       = p.id
+         AND a.tenant_id       = ${tenantId}
+         AND a.role_on_project = 'worker'
+        LEFT JOIN submissions s
+          ON s.person_id  = p.id
+         AND s.tenant_id  = ${tenantId}
+        LEFT JOIN boq_items b ON b.id = s.boq_item_id
+        WHERE p.tenant_id = ${tenantId}
+          AND b.currency_code IS NOT NULL
+        GROUP BY p.id, b.currency_code
+      `),
+    ]);
+
+    // Build currency map keyed by personId
+    const valueMap = new Map<string, Record<string, string>>();
+    for (const row of valueResult.rows) {
+      const personId = String(row.person_id);
+      const currency = row.currency_code != null ? String(row.currency_code) : null;
+      if (!currency) continue;
+      if (row.value_contributed == null) continue;
+      if (!valueMap.has(personId)) valueMap.set(personId, {});
+      valueMap.get(personId)![currency] = String(row.value_contributed);
+    }
+
+    return countsResult.rows.map((r): PortfolioWorker => ({
+      personId: String(r.person_id),
+      displayName: String(r.display_name),
+      submissionsApproved: Number(r.submissions_approved ?? 0),
+      submissionsRejected: Number(r.submissions_rejected ?? 0),
+      submissionsPending: Number(r.submissions_pending ?? 0),
+      valueContributedByCurrency: valueMap.get(String(r.person_id)) ?? {},
+    }));
+  } else {
+    // ── Auditors bulk query ────────────────────────────────────────────────
+    // decisionsCount + avgDecisionLatencyHours: decisions by this auditor.
+    //   FILTER (WHERE decided_at IS NOT NULL) ensures NULL decidedAt never poisons avg.
+    // pendingBacklogCount: pending on the auditor's assigned projects (D-66: point-in-time,
+    //   NO dateCondition applied to pending count).
+    const [decisionsResult, backlogResult] = await Promise.all([
+      db.execute(sql`
+        SELECT
+          p.id                                                            AS person_id,
+          p.display_name,
+          COUNT(s.id) FILTER (WHERE s.status IN ('approved', 'rejected') ${dateCondition}) AS decisions_count,
+          ROUND(
+            AVG(
+              EXTRACT(EPOCH FROM (s.decided_at - s.submitted_at)) / 3600.0
+            ) FILTER (WHERE s.decided_at IS NOT NULL AND s.status IN ('approved', 'rejected') ${dateCondition}),
+            2
+          )                                                               AS avg_decision_latency_hours
+        FROM people p
+        JOIN assignments a
+          ON a.person_id       = p.id
+         AND a.tenant_id       = ${tenantId}
+         AND a.role_on_project = 'auditor'
+        LEFT JOIN submissions s
+          ON s.decided_by = p.id
+         AND s.tenant_id  = ${tenantId}
+        WHERE p.tenant_id = ${tenantId}
+        GROUP BY p.id, p.display_name
+        ORDER BY p.display_name
+      `),
+      db.execute(sql`
+        SELECT
+          a.person_id,
+          COUNT(s.id) AS pending_backlog_count
+        FROM assignments a
+        JOIN submissions s
+          ON s.project_id = a.project_id
+         AND s.tenant_id  = ${tenantId}
+         AND s.status     = 'pending_audit'
+        WHERE a.tenant_id       = ${tenantId}
+          AND a.role_on_project = 'auditor'
+        GROUP BY a.person_id
+      `),
+    ]);
+
+    // Build backlog map keyed by personId
+    const backlogMap = new Map<string, number>();
+    for (const row of backlogResult.rows) {
+      backlogMap.set(String(row.person_id), Number(row.pending_backlog_count ?? 0));
+    }
+
+    return decisionsResult.rows.map((r): PortfolioAuditor => ({
+      personId: String(r.person_id),
+      displayName: String(r.display_name),
+      decisionsCount: Number(r.decisions_count ?? 0),
+      avgDecisionLatencyHours: r.avg_decision_latency_hours != null
+        ? Number(r.avg_decision_latency_hours)
+        : null,
+      pendingBacklogCount: backlogMap.get(String(r.person_id)) ?? 0,
+    }));
+  }
+}
+
 // ── getAuditorDecisions ───────────────────────────────────────────────────────
 
 /**
