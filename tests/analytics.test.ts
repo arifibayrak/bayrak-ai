@@ -50,27 +50,73 @@ describeIfDb('COST-01: setUnitPrice() Server Action', () => {
     await truncateAllTables(db);
   });
 
-  it.todo(
-    'persists unit_price and currency_code on the BOQ item row (COST-01): ' +
-    'given a seeded BOQ item with no price, call setUnitPrice({ boqItemId, unitPrice: "1250.0000", currencyCode: "TRY" }), ' +
-    'then SELECT unit_price + currency_code — expect "1250.0000" and "TRY"'
-  );
+  it('persists unit_price and currency_code on the BOQ item row (COST-01)', async () => {
+    const { setUnitPrice } = await import('@/actions/boq');
 
-  it.todo(
-    'returns { ok: false, error: "Unauthorized" } when auth() returns null (COST-01 auth guard): ' +
-    'mock auth to return null, call setUnitPrice() — expect ok: false + error contains "Unauthorized"'
-  );
+    const tenantId  = '00000000-0000-0000-0000-000000000001';
+    const projectId = '00000000-0000-0000-0000-000000000120';
+    const boqItemId = '00000000-0000-0000-0000-000000000220';
+    const userId    = 'test-user-id';
 
-  it.todo(
-    'accepts null unitPrice to clear an existing price (COST-01 null clear): ' +
-    'seed BOQ item with unit_price set, call setUnitPrice({ unitPrice: null, currencyCode: "TRY" }), ' +
-    'verify unit_price IS NULL in DB'
-  );
+    await db.execute(sql.raw(`INSERT INTO tenants (id, name) VALUES ('${tenantId}', 'Test') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO users (id, email) VALUES ('${userId}', 'test@example.com') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO projects (id, tenant_id, name) VALUES ('${projectId}', '${tenantId}', 'PriceTest') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO boq_items (id, tenant_id, project_id, material, unit, planned_qty, approved_qty, sort_order) VALUES ('${boqItemId}', '${tenantId}', '${projectId}', 'Pipe', 'm', '1000', '0', 1) ON CONFLICT DO NOTHING`));
 
-  it.todo(
-    'rejects negative unitPrice with { ok: false } (COST-01 validation): ' +
-    'call setUnitPrice({ unitPrice: "-1", currencyCode: "TRY" }) — expect ok: false'
-  );
+    const result = await setUnitPrice({ boqItemId, unitPrice: '1250.0000', currencyCode: 'TRY' });
+    expect(result.ok).toBe(true);
+
+    const rows = await db.execute(sql.raw(`SELECT unit_price, currency_code FROM boq_items WHERE id = '${boqItemId}'`));
+    expect(rows.rows[0].unit_price).toBe('1250.0000');
+    expect(rows.rows[0].currency_code).toBe('TRY');
+  });
+
+  it('throws Unauthorized when auth() returns null (COST-01 auth guard)', async () => {
+    const { auth } = await import('@/lib/auth');
+    (auth as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null);
+
+    const { setUnitPrice } = await import('@/actions/boq');
+
+    await expect(
+      setUnitPrice({ boqItemId: '00000000-0000-0000-0000-000000000220', unitPrice: '100', currencyCode: 'TRY' })
+    ).rejects.toThrow('Unauthorized');
+  });
+
+  it('accepts null unitPrice to clear an existing price (COST-01 null clear)', async () => {
+    const { setUnitPrice } = await import('@/actions/boq');
+
+    const tenantId  = '00000000-0000-0000-0000-000000000001';
+    const projectId = '00000000-0000-0000-0000-000000000121';
+    const boqItemId = '00000000-0000-0000-0000-000000000221';
+
+    await db.execute(sql.raw(`INSERT INTO tenants (id, name) VALUES ('${tenantId}', 'Test') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO users (id, email) VALUES ('test-user-id', 'test@example.com') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO projects (id, tenant_id, name) VALUES ('${projectId}', '${tenantId}', 'ClearTest') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO boq_items (id, tenant_id, project_id, material, unit, planned_qty, approved_qty, sort_order, unit_price, currency_code) VALUES ('${boqItemId}', '${tenantId}', '${projectId}', 'Pipe', 'm', '1000', '0', 1, '500.0000', 'TRY') ON CONFLICT DO NOTHING`));
+
+    const result = await setUnitPrice({ boqItemId, unitPrice: null, currencyCode: 'TRY' });
+    expect(result.ok).toBe(true);
+
+    const rows = await db.execute(sql.raw(`SELECT unit_price FROM boq_items WHERE id = '${boqItemId}'`));
+    expect(rows.rows[0].unit_price).toBeNull();
+  });
+
+  it('rejects negative unitPrice with { ok: false } (COST-01 validation)', async () => {
+    const { setUnitPrice } = await import('@/actions/boq');
+
+    const tenantId  = '00000000-0000-0000-0000-000000000001';
+    const projectId = '00000000-0000-0000-0000-000000000122';
+    const boqItemId = '00000000-0000-0000-0000-000000000222';
+
+    await db.execute(sql.raw(`INSERT INTO tenants (id, name) VALUES ('${tenantId}', 'Test') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO users (id, email) VALUES ('test-user-id', 'test@example.com') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO projects (id, tenant_id, name) VALUES ('${projectId}', '${tenantId}', 'NegTest') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO boq_items (id, tenant_id, project_id, material, unit, planned_qty, approved_qty, sort_order) VALUES ('${boqItemId}', '${tenantId}', '${projectId}', 'Pipe', 'm', '1000', '0', 1) ON CONFLICT DO NOTHING`));
+
+    const result = await setUnitPrice({ boqItemId, unitPrice: '-1', currencyCode: 'TRY' });
+    expect(result.ok).toBe(false);
+    expect((result as { ok: false; error: string }).error).toMatch(/non-negative/i);
+  });
 });
 
 // ── COST-02: getProjectMetrics() EV + BAC + float safety ───────────────────
@@ -546,6 +592,24 @@ describeIfDb('PERF-03: logOfficeActivity() inserts + getOfficeActivityLog() filt
         metadata: { name: 'test' },
       });
     }).not.toThrow();
+  });
+
+  it('Money-Math Test 3b — createProject succeeds even when log INSERT throws (PERF-03)', async () => {
+    const { createProject } = await import('@/actions/projects');
+
+    const tenantId = '00000000-0000-0000-0000-000000000001';
+    // Do NOT insert a user — this causes the logOfficeActivity FK insert to fail
+    // The project INSERT should succeed regardless
+    await db.execute(sql.raw(`INSERT INTO tenants (id, name) VALUES ('${tenantId}', 'Test') ON CONFLICT DO NOTHING`));
+
+    // auth() returns test-user-id which has no corresponding users row → FK violation on log insert
+    const project = await createProject({ name: 'LogFailProject' });
+    expect(project).toBeDefined();
+    expect(project.name).toBe('LogFailProject');
+
+    // Verify project row exists in DB
+    const rows = await db.execute(sql.raw(`SELECT id FROM projects WHERE name = 'LogFailProject'`));
+    expect(rows.rows.length).toBeGreaterThan(0);
   });
 
   it('getOfficeActivityLog() filters by actorUserId (PERF-03)', async () => {
