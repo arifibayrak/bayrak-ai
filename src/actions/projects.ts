@@ -40,13 +40,16 @@ export async function createProject(input: { name: string; description?: string 
     })
     .returning();
 
-  logOfficeActivity({
-    actorUserId: session.user?.id ?? '',
-    actionType: 'project_created',
-    entityType: 'project',
-    entityId: project.id,
-    metadata: { name: project.name },
-  });
+  // CR-04: skip the log rather than pass an empty-string actorUserId (FK to users.id).
+  if (session.user?.id) {
+    logOfficeActivity({
+      actorUserId: session.user.id,
+      actionType: 'project_created',
+      entityType: 'project',
+      entityId: project.id,
+      metadata: { name: project.name },
+    });
+  }
 
   revalidatePath('/dashboard/projects');
   return project;
@@ -80,13 +83,15 @@ export async function updateProject(
     )
     .returning();
 
-  logOfficeActivity({
-    actorUserId: session.user?.id ?? '',
-    actionType: 'project_updated',
-    entityType: 'project',
-    entityId: id,
-    metadata: { name: parsed.name, description: parsed.description },
-  });
+  if (session.user?.id) {
+    logOfficeActivity({
+      actorUserId: session.user.id,
+      actionType: 'project_updated',
+      entityType: 'project',
+      entityId: id,
+      metadata: { name: parsed.name, description: parsed.description },
+    });
+  }
 
   revalidatePath('/dashboard/projects');
   revalidatePath(`/dashboard/projects/${id}`);
@@ -108,13 +113,15 @@ export async function deleteProject(id: string) {
       )
     );
 
-  logOfficeActivity({
-    actorUserId: session.user?.id ?? '',
-    actionType: 'project_deleted',
-    entityType: 'project',
-    entityId: id,
-    metadata: {},
-  });
+  if (session.user?.id) {
+    logOfficeActivity({
+      actorUserId: session.user.id,
+      actionType: 'project_deleted',
+      entityType: 'project',
+      entityId: id,
+      metadata: {},
+    });
+  }
 
   revalidatePath('/dashboard/projects');
 }

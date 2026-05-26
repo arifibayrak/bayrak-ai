@@ -65,14 +65,17 @@ export async function uploadRoute(projectId: string, fileContent: string) {
     },
   }).returning({ id: routes.id });
 
-  logOfficeActivity({
-    actorUserId: session.user?.id ?? '',
-    actionType: 'route_uploaded',
-    entityType: 'project',
-    entityId: projectId,
-    projectId,
-    metadata: { coordinateCount: result.count },
-  });
+  // CR-04: skip the log rather than pass an empty-string actorUserId (FK to users.id).
+  if (session.user?.id) {
+    logOfficeActivity({
+      actorUserId: session.user.id,
+      actionType: 'route_uploaded',
+      entityType: 'project',
+      entityId: projectId,
+      projectId,
+      metadata: { coordinateCount: result.count },
+    });
+  }
 
   revalidatePath(`/dashboard/projects/${projectId}`);
   return { ok: true as const, count: result.count, id: row.id };

@@ -117,14 +117,17 @@ export async function approvePending(
     await tx.delete(pendingPeople).where(eq(pendingPeople.id, pendingId));
   });
 
-  logOfficeActivity({
-    actorUserId: session.user?.id ?? '',
-    actionType: 'person_approved',
-    entityType: 'person',
-    entityId: approvedPersonId,
-    projectId: parsed.projectId,
-    metadata: { role: parsed.role, displayName: parsed.displayName },
-  });
+  // CR-04: skip the log rather than pass an empty-string actorUserId (FK to users.id).
+  if (session.user?.id) {
+    logOfficeActivity({
+      actorUserId: session.user.id,
+      actionType: 'person_approved',
+      entityType: 'person',
+      entityId: approvedPersonId,
+      projectId: parsed.projectId,
+      metadata: { role: parsed.role, displayName: parsed.displayName },
+    });
+  }
 
   revalidatePath('/dashboard/projects');
 }
@@ -188,14 +191,16 @@ export async function addManualPerson(input: {
     });
   });
 
-  logOfficeActivity({
-    actorUserId: session.user?.id ?? '',
-    actionType: 'person_assigned',
-    entityType: 'person',
-    entityId: manualPersonId,
-    projectId: parsed.projectId,
-    metadata: { personId: manualPersonId, role: parsed.role, projectId: parsed.projectId },
-  });
+  if (session.user?.id) {
+    logOfficeActivity({
+      actorUserId: session.user.id,
+      actionType: 'person_assigned',
+      entityType: 'person',
+      entityId: manualPersonId,
+      projectId: parsed.projectId,
+      metadata: { personId: manualPersonId, role: parsed.role, projectId: parsed.projectId },
+    });
+  }
 
   revalidatePath('/dashboard/projects');
 }
@@ -224,14 +229,16 @@ export async function removeAssignment(assignmentId: string) {
       )
     );
 
-  logOfficeActivity({
-    actorUserId: session.user?.id ?? '',
-    actionType: 'person_unassigned',
-    entityType: 'person',
-    entityId: assignmentRow?.personId,
-    projectId: assignmentRow?.projectId,
-    metadata: { assignmentId },
-  });
+  if (session.user?.id) {
+    logOfficeActivity({
+      actorUserId: session.user.id,
+      actionType: 'person_unassigned',
+      entityType: 'person',
+      entityId: assignmentRow?.personId,
+      projectId: assignmentRow?.projectId,
+      metadata: { assignmentId },
+    });
+  }
 
   revalidatePath('/dashboard/projects');
 }
