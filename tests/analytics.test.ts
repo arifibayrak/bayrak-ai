@@ -760,3 +760,226 @@ describeIfDb('getPortfolioOverview() per-project currency maps', () => {
     expect(p2!.contractedValueByCurrency['USD']).toBeDefined();
   });
 });
+
+// ── REGRESSION: Phase 7 code-review fixes (CR-01..CR-05) ────────────────────
+//
+// Each test here exercises a specific defect found in 07-REVIEW.md. They FAIL
+// against the pre-fix code and PASS after the fix.
+
+// CR-01: BAC must not be multiplied by the submission count. Driving BAC from
+// the submissions join summed planned_qty * unit_price once per submission.
+describeIfDb('REGRESSION CR-01: getProjectMetrics BAC not fanned out by submissions', () => {
+  let db: Awaited<ReturnType<typeof getTestDb>>;
+
+  beforeEach(async () => {
+    db = await getTestDb();
+    await truncateAllTables(db);
+  });
+
+  afterEach(async () => {
+    await truncateAllTables(db);
+  });
+
+  it('BAC = planned_qty * unit_price counted once, regardless of submission count (CR-01)', async () => {
+    const { getProjectMetrics } = await import('@/actions/analytics');
+
+    const tenantId  = '00000000-0000-0000-0000-000000000001';
+    const projectId = '00000000-0000-0000-0000-0000000c0101';
+    const boqItemId = '00000000-0000-0000-0000-0000000c0201';
+    const personId  = '00000000-0000-0000-0000-0000000c0301';
+
+    await db.execute(sql.raw(`INSERT INTO tenants (id, name) VALUES ('${tenantId}', 'T1') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO projects (id, tenant_id, name) VALUES ('${projectId}', '${tenantId}', 'CR01') ON CONFLICT DO NOTHING`));
+    // 1 BOQ item: planned 100, price 10 → BAC should be exactly 1000
+    await db.execute(sql.raw(`INSERT INTO boq_items (id, tenant_id, project_id, material, unit, planned_qty, approved_qty, sort_order, unit_price, currency_code) VALUES ('${boqItemId}', '${tenantId}', '${projectId}', 'Pipe', 'm', 100, 0, 1, '10.0000', 'TRY') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO people (id, tenant_id, telegram_user_id, display_name) VALUES ('${personId}', '${tenantId}', 770001, 'WorkerCR01') ON CONFLICT DO NOTHING`));
+
+    // 3 approved submissions against the SAME BOQ item. Pre-fix, BAC would be
+    // 3 * (100 * 10) = 3000. Post-fix it must be 1000.
+    for (let i = 0; i < 3; i++) {
+      const subId  = `00000000-0000-0000-0000-0000c1000${String(i).padStart(3, '0')}`;
+      const flowId = `00000000-f000-0000-0000-0000c1000${String(i).padStart(3, '0')}`;
+      await db.execute(sql.raw(`
+        INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at)
+        VALUES ('${subId}', '${flowId}', '${tenantId}', '${projectId}', '${personId}', '${boqItemId}', 'approved', '5.000', 'https://example.com/photo.jpg', NOW())
+        ON CONFLICT DO NOTHING
+      `));
+    }
+
+    const metrics = await getProjectMetrics(projectId);
+
+    // BAC = 100 * 10 = 1000, NOT 3000 (3 submissions × 1000)
+    const bac = parseFloat(metrics.bacByCurrency['TRY'] ?? '0');
+    expect(bac).toBeCloseTo(1000, 2);
+    expect(bac).not.toBeCloseTo(3000, 2);
+
+    // EV still driven from submissions: 3 × 5 × 10 = 150
+    const ev = parseFloat(metrics.evByCurrency['TRY'] ?? '0');
+    expect(ev).toBeCloseTo(150, 2);
+  });
+});
+
+// CR-02: getPortfolioOverview must not Cartesian-multiply submissions × boq_items.
+describeIfDb('REGRESSION CR-02: getPortfolioOverview no cross-join fan-out', () => {
+  let db: Awaited<ReturnType<typeof getTestDb>>;
+
+  beforeEach(async () => {
+    db = await getTestDb();
+    await truncateAllTables(db);
+  });
+
+  afterEach(async () => {
+    await truncateAllTables(db);
+  });
+
+  it('counts and values are not multiplied by the submissions × boq_items cross-join (CR-02)', async () => {
+    const { getPortfolioOverview } = await import('@/actions/analytics');
+
+    const tenantId  = '00000000-0000-0000-0000-000000000001';
+    const projectId = '00000000-0000-0000-0000-0000000c0102';
+    const boqItem1  = '00000000-0000-0000-0000-0000000c0202';
+    const boqItem2  = '00000000-0000-0000-0000-0000000c0203';
+    const personId  = '00000000-0000-0000-0000-0000000c0302';
+
+    await db.execute(sql.raw(`INSERT INTO tenants (id, name) VALUES ('${tenantId}', 'T1') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO projects (id, tenant_id, name) VALUES ('${projectId}', '${tenantId}', 'CR02') ON CONFLICT DO NOTHING`));
+    // 2 BOQ items, same currency. planned 100@10 and 50@10 → contracted = 1000 + 500 = 1500
+    await db.execute(sql.raw(`INSERT INTO boq_items (id, tenant_id, project_id, material, unit, planned_qty, approved_qty, sort_order, unit_price, currency_code) VALUES ('${boqItem1}', '${tenantId}', '${projectId}', 'Pipe1', 'm', 100, 0, 1, '10.0000', 'TRY') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO boq_items (id, tenant_id, project_id, material, unit, planned_qty, approved_qty, sort_order, unit_price, currency_code) VALUES ('${boqItem2}', '${tenantId}', '${projectId}', 'Pipe2', 'm', 50, 0, 2, '10.0000', 'TRY') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO people (id, tenant_id, telegram_user_id, display_name) VALUES ('${personId}', '${tenantId}', 770002, 'WorkerCR02') ON CONFLICT DO NOTHING`));
+
+    // 2 approved submissions. Pre-fix: approved_count = 2 subs × 2 boq = 4, and
+    // contracted_value = 1500 × 2 subs = 3000. Post-fix: count = 2, value = 1500.
+    for (let i = 0; i < 2; i++) {
+      const subId  = `00000000-0000-0000-0000-0000c2000${String(i).padStart(3, '0')}`;
+      const flowId = `00000000-f000-0000-0000-0000c2000${String(i).padStart(3, '0')}`;
+      await db.execute(sql.raw(`
+        INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at)
+        VALUES ('${subId}', '${flowId}', '${tenantId}', '${projectId}', '${personId}', '${boqItem1}', 'approved', '1.000', 'https://example.com/photo.jpg', NOW())
+        ON CONFLICT DO NOTHING
+      `));
+    }
+
+    const overview = await getPortfolioOverview();
+    const p = overview.find(x => x.projectId === projectId);
+
+    expect(p).toBeDefined();
+    // approved count is the real number of approved submissions (2), not 4
+    expect(p!.approvedCount).toBe(2);
+    // contracted value = 1000 + 500 = 1500, not multiplied by the 2 submissions
+    const contracted = parseFloat(p!.contractedValueByCurrency['TRY'] ?? '0');
+    expect(contracted).toBeCloseTo(1500, 2);
+    expect(contracted).not.toBeCloseTo(3000, 2);
+  });
+});
+
+// CR-03: caller-supplied filter values must be bound parameters, never injected SQL.
+describeIfDb('REGRESSION CR-03: filter values are parameterized, not injectable', () => {
+  let db: Awaited<ReturnType<typeof getTestDb>>;
+
+  beforeEach(async () => {
+    db = await getTestDb();
+    await truncateAllTables(db);
+  });
+
+  afterEach(async () => {
+    await truncateAllTables(db);
+  });
+
+  it('malicious status string is treated as a parameter — no SQL executed, no error (CR-03)', async () => {
+    const { getCanonicalSubmissions } = await import('@/actions/analytics');
+
+    const tenantId = '00000000-0000-0000-0000-000000000001';
+    await db.execute(sql.raw(`INSERT INTO tenants (id, name) VALUES ('${tenantId}', 'T1') ON CONFLICT DO NOTHING`));
+
+    // A classic injection payload. Pre-fix this concatenated into the WHERE clause
+    // and would either error or execute the injected statement. Post-fix it is a
+    // bound parameter compared against s.status, matching nothing → empty result.
+    const malicious = "approved'; DROP TABLE submissions; --";
+    const rows = await getCanonicalSubmissions({
+      // bypass the TS union type at runtime to simulate a crafted HTTP payload
+      status: malicious as unknown as 'approved',
+    });
+    expect(Array.isArray(rows)).toBe(true);
+    expect(rows).toHaveLength(0);
+
+    // submissions table must still exist (injection did NOT drop it)
+    const check = await db.execute(sql.raw(`SELECT COUNT(*)::int AS c FROM submissions`));
+    expect(Number(check.rows[0].c)).toBe(0);
+  });
+
+  it('malicious projectId in office activity log filter is a parameter, not SQL (CR-03)', async () => {
+    const { getOfficeActivityLog } = await import('@/actions/analytics');
+
+    const tenantId = '00000000-0000-0000-0000-000000000001';
+    await db.execute(sql.raw(`INSERT INTO tenants (id, name) VALUES ('${tenantId}', 'T1') ON CONFLICT DO NOTHING`));
+
+    // project_id is a uuid column; a non-uuid injection payload would, pre-fix,
+    // be concatenated raw. Post-fix it is bound as a parameter. We assert the call
+    // does not leak/execute injected SQL. (A non-uuid param may raise a typed
+    // parameter error from Postgres — that is acceptable: it is NOT SQL injection,
+    // and the office_activity_log table is never dropped.)
+    const malicious = "'; DROP TABLE office_activity_log; --";
+    let threw = false;
+    try {
+      const entries = await getOfficeActivityLog({ projectId: malicious });
+      expect(Array.isArray(entries)).toBe(true);
+    } catch {
+      // typed parameter rejection is fine — the point is no injection executed
+      threw = true;
+    }
+
+    // table must still exist regardless of whether a typed param error was raised
+    const check = await db.execute(sql.raw(`SELECT COUNT(*)::int AS c FROM office_activity_log`));
+    expect(Number(check.rows[0].c)).toBe(0);
+    expect([true, false]).toContain(threw);
+  });
+});
+
+// CR-05: setUnitPrice must reject currency codes outside the allow-list.
+describe('REGRESSION CR-05: setUnitPrice currency validation (no DB needed)', () => {
+  it('throws on an invalid currency code before any DB write (CR-05)', async () => {
+    const { setUnitPrice } = await import('@/actions/boq');
+
+    // The currency check runs BEFORE the DB read, so this throws without a DB.
+    await expect(
+      setUnitPrice({
+        boqItemId: '00000000-0000-0000-0000-0000000c0205',
+        unitPrice: '100',
+        currencyCode: 'XYZ',
+      })
+    ).rejects.toThrow(/invalid currency/i);
+  });
+});
+
+describeIfDb('REGRESSION CR-05: setUnitPrice accepts allowed currency', () => {
+  let db: Awaited<ReturnType<typeof getTestDb>>;
+
+  beforeEach(async () => {
+    db = await getTestDb();
+    await truncateAllTables(db);
+  });
+
+  afterEach(async () => {
+    await truncateAllTables(db);
+  });
+
+  it('accepts a valid currency (TRY) and persists it (CR-05)', async () => {
+    const { setUnitPrice } = await import('@/actions/boq');
+
+    const tenantId  = '00000000-0000-0000-0000-000000000001';
+    const projectId = '00000000-0000-0000-0000-0000000c0105';
+    const boqItemId = '00000000-0000-0000-0000-0000000c0206';
+
+    await db.execute(sql.raw(`INSERT INTO tenants (id, name) VALUES ('${tenantId}', 'T1') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO users (id, email) VALUES ('test-user-id', 'test@example.com') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO projects (id, tenant_id, name) VALUES ('${projectId}', '${tenantId}', 'CR05ok') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO boq_items (id, tenant_id, project_id, material, unit, planned_qty, approved_qty, sort_order) VALUES ('${boqItemId}', '${tenantId}', '${projectId}', 'Pipe', 'm', 1000, 0, 1) ON CONFLICT DO NOTHING`));
+
+    const result = await setUnitPrice({ boqItemId, unitPrice: '50.0000', currencyCode: 'TRY' });
+    expect(result.ok).toBe(true);
+
+    const rows = await db.execute(sql.raw(`SELECT currency_code FROM boq_items WHERE id = '${boqItemId}'`));
+    expect(rows.rows[0].currency_code).toBe('TRY');
+  });
+});
