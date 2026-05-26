@@ -99,6 +99,35 @@ type SubmissionFilters = {
   offset?: number;
 };
 
+// ── getAuditorDecisions types ─────────────────────────────────────────────────
+
+/**
+ * AuditorDecision — one approve/reject decision record for an auditor's timeline.
+ *
+ * Sources ONLY from submissions (status IN approved/rejected, decided_by = personId).
+ * NEVER reads office_activity_log (Pitfall 7 — that table is office-engineer-only).
+ *
+ * - submissionId: the submission being decided on
+ * - status: 'approved' | 'rejected'
+ * - material / unit: from boq_items join
+ * - quantity: submission quantity as string (money-math safe)
+ * - workerName: display_name of the submitting person
+ * - projectName: project name from projects join
+ * - decidedAt: ISO datetime string of the decision
+ * - auditLatencyHours: EXTRACT(EPOCH...) / 3600; null if decided_at IS NULL
+ */
+export type AuditorDecision = {
+  submissionId: string;
+  status: 'approved' | 'rejected';
+  material: string;
+  unit: string;
+  quantity: string;
+  workerName: string;
+  projectName: string;
+  decidedAt: string;
+  auditLatencyHours: number | null;
+};
+
 // ── Portfolio trend + KPI types ───────────────────────────────────────────────
 
 /**
@@ -881,4 +910,93 @@ export async function getPortfolioOverview(): Promise<ProjectSummary[]> {
   }
 
   return Array.from(projectMap.values());
+}
+
+// ── getAuditorDecisions ───────────────────────────────────────────────────────
+
+/**
+ * getAuditorDecisions — return the approve/reject decision history for an auditor.
+ *
+ * Reads ONLY from submissions (WHERE decided_by = personId AND status IN approved/rejected).
+ * MUST NOT read office_activity_log (Pitfall 7 — that table is for office engineer events).
+ *
+ * Security:
+ *   T-08-02-ID: auth-guarded + tenant-scoped; tenant_id first condition.
+ *   T-08-02-IV: all caller-supplied values are bound parameters (never string-concat).
+ *   T-08-02-AV: latency computed via EXTRACT; decided_at IS NOT NULL guard on computation.
+ *
+ * Returns rows ordered by decided_at DESC.
+ * Supports optional dateRange (on submitted_at), projectIds, limit, offset.
+ */
+export async function getAuditorDecisions(options: {
+  personId: string;
+  dateRange?: { from: Date; to: Date };
+  projectIds?: string[];
+  limit?: number;
+  offset?: number;
+}): Promise<AuditorDecision[]> {
+  const session = await auth();
+  if (!session) throw new Error('Unauthorized');
+  const tenantId = getDefaultTenantId();
+
+  // T-08-02-ID: tenant scope is the FIRST condition (Information Disclosure guard)
+  const conditions = [
+    sql`s.tenant_id = ${tenantId}`,
+    sql`s.decided_by = ${options.personId}`,
+    sql`s.status IN ('approved', 'rejected')`,
+  ];
+
+  if (options.projectIds && options.projectIds.length > 0) {
+    conditions.push(sql`s.project_id = ANY(${options.projectIds})`);
+  }
+  if (options.dateRange) {
+    conditions.push(sql`s.submitted_at >= ${options.dateRange.from.toISOString()}`);
+    conditions.push(sql`s.submitted_at < ${options.dateRange.to.toISOString()}`);
+  }
+
+  const whereClause = sql.join(conditions, sql` AND `);
+
+  // T-08-02-IV: LIMIT/OFFSET as bound params — never string-concatenated
+  const limitVal = options.limit ?? 1000;
+  const offsetVal = options.offset ?? 0;
+
+  const result = await db.execute(sql`
+    SELECT
+      s.id                                                               AS submission_id,
+      s.status,
+      b.material,
+      b.unit,
+      s.quantity,
+      w.display_name                                                     AS worker_name,
+      p.name                                                             AS project_name,
+      s.decided_at,
+      CASE
+        WHEN s.decided_at IS NOT NULL
+        THEN EXTRACT(EPOCH FROM (s.decided_at - s.submitted_at)) / 3600.0
+        ELSE NULL
+      END                                                                AS audit_latency_hours
+    FROM submissions s
+    JOIN people    w ON w.id = s.person_id
+    JOIN boq_items b ON b.id = s.boq_item_id
+    JOIN projects  p ON p.id = s.project_id
+    WHERE ${whereClause}
+    ORDER BY s.decided_at DESC
+    LIMIT  ${limitVal} OFFSET ${offsetVal}
+  `);
+
+  return result.rows.map((r) => ({
+    submissionId: String(r.submission_id),
+    status: r.status as 'approved' | 'rejected',
+    material: String(r.material),
+    unit: String(r.unit),
+    quantity: String(r.quantity),
+    workerName: String(r.worker_name),
+    projectName: String(r.project_name),
+    decidedAt: r.decided_at instanceof Date
+      ? r.decided_at.toISOString()
+      : String(r.decided_at),
+    auditLatencyHours: r.audit_latency_hours != null
+      ? Number(r.audit_latency_hours)
+      : null,
+  }));
 }
