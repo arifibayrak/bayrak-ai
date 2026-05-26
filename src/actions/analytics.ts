@@ -99,7 +99,27 @@ type SubmissionFilters = {
   offset?: number;
 };
 
-// ── Portfolio KPI types ────────────────────────────────────────────────────────
+// ── Portfolio trend + KPI types ───────────────────────────────────────────────
+
+/**
+ * TrendPoint — one time bucket in a portfolio trend series.
+ *
+ * - bucket: ISO date-time string representing the start of the period (Istanbul tz)
+ * - currencyCode: ISO-4217 currency for the earnedValue aggregation in this bucket
+ * - approvedCount / rejectedCount / totalCount: submission counts in this bucket
+ * - earnedValue: SUM(quantity * unit_price) for approved submissions; null when no priced rows
+ *
+ * Note: each currency generates a separate TrendPoint per bucket. Callers filter by
+ * currencyCode to display one series at a time — never cross-currency summed.
+ */
+export type TrendPoint = {
+  bucket: string;
+  currencyCode: string;
+  approvedCount: number;
+  rejectedCount: number;
+  totalCount: number;
+  earnedValue: string | null;
+};
 
 /**
  * PortfolioKPIs — cross-project command-center overview counts.
@@ -304,6 +324,86 @@ export async function getPortfolioKPIs(
     rejectionsInRange: Number(counts.rejections_in_range ?? 0),
     activeWorkers:     Number(workers.active_workers    ?? 0),
   };
+}
+
+// ── getPortfolioTrends ────────────────────────────────────────────────────────
+
+/**
+ * getPortfolioTrends — time-bucketed throughput + earned value series.
+ *
+ * Bucketing uses Istanbul timezone (AT TIME ZONE 'Europe/Istanbul' — v2.0 locked rule).
+ * Granularity: weekly (date_trunc 'week') when from/to range ≤ 60 days; monthly otherwise.
+ * Money: SUM(quantity * unit_price) for approved, grouped by currency_code — never cross-currency.
+ * Returns per-bucket, per-currency TrendPoint rows ordered by bucket ASC.
+ *
+ * Security: auth-guarded; tenant-scoped (T-08-02-ID).
+ * T-08-02-IV: all filter values bound as parameters.
+ */
+export async function getPortfolioTrends(
+  filters: SubmissionFilters = {}
+): Promise<TrendPoint[]> {
+  const session = await auth();
+  if (!session) throw new Error('Unauthorized');
+  const tenantId = getDefaultTenantId();
+
+  // Choose weekly vs monthly bucketing from the date range delta (UI-SPEC + D-68)
+  const useWeekly = Boolean(
+    filters.from && filters.to &&
+    (filters.to.getTime() - filters.from.getTime()) <= 60 * 24 * 60 * 60 * 1000
+  );
+  const bucketTrunc = useWeekly ? 'week' : 'month';
+
+  // CR-03: parameterized WHERE clause fragments
+  const conditions = [sql`s.tenant_id = ${tenantId}`];
+  if (filters.projectIds && filters.projectIds.length > 0) {
+    conditions.push(sql`s.project_id = ANY(${filters.projectIds})`);
+  }
+  if (filters.from) {
+    conditions.push(sql`s.submitted_at >= ${filters.from.toISOString()}`);
+  }
+  if (filters.to) {
+    conditions.push(sql`s.submitted_at < ${filters.to.toISOString()}`);
+  }
+  if (filters.personId) {
+    conditions.push(sql`s.person_id = ${filters.personId}`);
+  }
+  const whereClause = sql.join(conditions, sql` AND `);
+
+  // Istanbul tz bucketing — bucketTrunc is a safe TS-derived string ('week' | 'month'),
+  // NOT a user-supplied value. date_trunc() requires a string LITERAL (not a bound param)
+  // so we use sql.raw() for the truncation type only. All user-supplied filter values
+  // remain bound parameters via ${...} (T-08-02-IV).
+  //
+  // We cast the truncated Istanbul local timestamp to TEXT directly in Postgres to preserve
+  // the local date (e.g. '2025-04-01 00:00:00') — avoids the UTC conversion that would
+  // change '2025-04-01 00:00:00 Istanbul' → '2025-03-31 21:00:00 UTC'.
+  const bucketExpr = sql.raw(`date_trunc('${bucketTrunc}', s.submitted_at AT TIME ZONE 'Europe/Istanbul')`);
+  const result = await db.execute(sql`
+    SELECT
+      to_char(${bucketExpr}, 'YYYY-MM-DD"T"HH24:MI:SS') AS bucket,
+      b.currency_code,
+      COUNT(*) FILTER (WHERE s.status = 'approved')                                    AS approved_count,
+      COUNT(*) FILTER (WHERE s.status = 'rejected')                                    AS rejected_count,
+      COUNT(*)                                                                          AS total_count,
+      SUM(s.quantity::numeric * b.unit_price::numeric)
+        FILTER (WHERE s.status = 'approved' AND b.unit_price IS NOT NULL)              AS earned_value
+    FROM submissions s
+    JOIN boq_items b ON b.id = s.boq_item_id
+    WHERE ${whereClause}
+    GROUP BY ${bucketExpr}, b.currency_code
+    ORDER BY ${bucketExpr} ASC
+  `);
+
+  return result.rows.map((r) => ({
+    bucket: r.bucket instanceof Date
+      ? r.bucket.toISOString()
+      : String(r.bucket),
+    currencyCode: r.currency_code != null ? String(r.currency_code) : 'TRY',
+    approvedCount: Number(r.approved_count ?? 0),
+    rejectedCount: Number(r.rejected_count ?? 0),
+    totalCount: Number(r.total_count ?? 0),
+    earnedValue: r.earned_value != null ? String(r.earned_value) : null,
+  }));
 }
 
 // ── getProjectMetrics ────────────────────────────────────────────────────────
@@ -531,7 +631,7 @@ export async function getOfficeActivityLog(options?: {
  */
 export async function getPersonMetrics(
   personId: string,
-  options?: { projectIds?: string[]; asAuditor?: boolean }
+  options?: { projectIds?: string[]; asAuditor?: boolean; dateRange?: { from: Date; to: Date } }
 ): Promise<PersonMetrics> {
   const session = await auth();
   if (!session) throw new Error('Unauthorized');
@@ -541,6 +641,11 @@ export async function getPersonMetrics(
   // as a single array parameter via = ANY(${array}), never string-concatenated.
   const projectFilter = options?.projectIds && options.projectIds.length > 0
     ? sql` AND s.project_id = ANY(${options.projectIds})`
+    : sql``;
+
+  // D-75: optional dateRange scopes all sub-queries. Empty fragment when not set (all-time).
+  const dateConditions = options?.dateRange
+    ? sql` AND s.submitted_at >= ${options.dateRange.from.toISOString()} AND s.submitted_at < ${options.dateRange.to.toISOString()}`
     : sql``;
 
   // Query 1: worker submission counts (scoped to person as submitter only)
@@ -558,6 +663,7 @@ export async function getPersonMetrics(
     WHERE s.person_id = ${personId}
       AND s.tenant_id = ${tenantId}
       ${projectFilter}
+      ${dateConditions}
     GROUP BY s.person_id, w.display_name
   `);
 
@@ -574,6 +680,7 @@ export async function getPersonMetrics(
       AND s.tenant_id = ${tenantId}
       AND s.status = 'approved'
       ${projectFilter}
+      ${dateConditions}
     GROUP BY b.currency_code
   `);
 
@@ -615,6 +722,7 @@ export async function getPersonMetrics(
       WHERE s.decided_by = ${personId}
         AND s.tenant_id  = ${tenantId}
         AND s.status IN ('approved', 'rejected')
+        ${dateConditions}
     `);
 
     // Query 4: pending-backlog count — separate from decided avg (NULL decidedAt isolation)
@@ -627,6 +735,7 @@ export async function getPersonMetrics(
       )
       AND s.status = 'pending_audit'
       AND s.tenant_id = ${tenantId}
+      ${dateConditions}
     `);
 
     const auditorRow = auditorResult.rows[0];
