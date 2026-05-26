@@ -1418,3 +1418,177 @@ describeIfDb('UX-05: getCanonicalSubmissions — submissionId lookup + limit/off
     expect(page3).toHaveLength(1);
   });
 });
+
+// ── PERF-04: getAuditorDecisions() ────────────────────────────────────────────
+//
+// Returns approved+rejected decisions where decided_by = personId, ordered DESC.
+// MUST NOT read office_activity_log (Pitfall 7 — that table is office-engineer-only).
+
+describeIfDb('PERF-04: getAuditorDecisions() — auditor decision history from submissions', () => {
+  let db: Awaited<ReturnType<typeof getTestDb>>;
+
+  beforeEach(async () => {
+    db = await getTestDb();
+    await truncateAllTables(db);
+  });
+
+  afterEach(async () => {
+    await truncateAllTables(db);
+  });
+
+  it('returns only approved+rejected decisions by auditorId, excluding pending rows, ordered decided_at DESC', async () => {
+    const { getAuditorDecisions } = await import('@/actions/analytics');
+
+    const tenantId  = '00000000-0000-0000-0000-000000000001';
+    const projectId = '00000000-0000-0000-0000-00000d060001';
+    const boqItemId = '00000000-0000-0000-0000-00000d060101';
+    const auditorId = '00000000-0000-0000-0000-00000d060201';
+    const workerId  = '00000000-0000-0000-0000-00000d060202';
+
+    await db.execute(sql.raw(`INSERT INTO tenants (id, name) VALUES ('${tenantId}', 'T1') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO projects (id, tenant_id, name) VALUES ('${projectId}', '${tenantId}', 'AuditorDecisions') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO boq_items (id, tenant_id, project_id, material, unit, planned_qty, approved_qty, sort_order, unit_price, currency_code) VALUES ('${boqItemId}', '${tenantId}', '${projectId}', 'Steel Pipe', 'm', 500, 0, 1, '75.0000', 'TRY') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO people (id, tenant_id, telegram_user_id, display_name) VALUES ('${auditorId}', '${tenantId}', 960001, 'Auditor1') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO people (id, tenant_id, telegram_user_id, display_name) VALUES ('${workerId}', '${tenantId}', 960002, 'FieldWorker1') ON CONFLICT DO NOTHING`));
+
+    // Approved submission — decided June 10
+    await db.execute(sql.raw(`
+      INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at, decided_by, decided_at)
+      VALUES ('00000000-0000-0000-0000-d06000000001', '00000000-f000-0000-0000-d06000000001',
+              '${tenantId}', '${projectId}', '${workerId}', '${boqItemId}',
+              'approved', '8.000', 'https://example.com/p.jpg',
+              '2025-06-09T10:00:00Z', '${auditorId}', '2025-06-10T08:00:00Z')
+      ON CONFLICT DO NOTHING
+    `));
+    // Rejected submission — decided June 12 (should appear FIRST in DESC order)
+    await db.execute(sql.raw(`
+      INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at, decided_by, decided_at)
+      VALUES ('00000000-0000-0000-0000-d06000000002', '00000000-f000-0000-0000-d06000000002',
+              '${tenantId}', '${projectId}', '${workerId}', '${boqItemId}',
+              'rejected', '3.000', 'https://example.com/p.jpg',
+              '2025-06-11T10:00:00Z', '${auditorId}', '2025-06-12T09:00:00Z')
+      ON CONFLICT DO NOTHING
+    `));
+    // pending_audit submission — decided_by is auditor but status is pending → MUST be excluded
+    await db.execute(sql.raw(`
+      INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at)
+      VALUES ('00000000-0000-0000-0000-d06000000003', '00000000-f000-0000-0000-d06000000003',
+              '${tenantId}', '${projectId}', '${workerId}', '${boqItemId}',
+              'pending_audit', '2.000', 'https://example.com/p.jpg',
+              '2025-06-13T10:00:00Z')
+      ON CONFLICT DO NOTHING
+    `));
+
+    const decisions = await getAuditorDecisions({ personId: auditorId });
+
+    // Only approved + rejected rows (2 rows, pending excluded)
+    expect(decisions).toHaveLength(2);
+
+    // Ordered decided_at DESC: rejected (June 12) before approved (June 10)
+    expect(decisions[0].status).toBe('rejected');
+    expect(decisions[1].status).toBe('approved');
+
+    // Each row carries required fields
+    expect(decisions[0].submissionId).toBe('00000000-0000-0000-0000-d06000000002');
+    expect(decisions[0].workerName).toBe('FieldWorker1');
+    expect(decisions[0].material).toBe('Steel Pipe');
+    expect(decisions[0].unit).toBe('m');
+    expect(typeof decisions[0].quantity).toBe('string');
+    expect(decisions[0].projectName).toBe('AuditorDecisions');
+    expect(typeof decisions[0].decidedAt).toBe('string');
+  });
+
+  it('respects dateRange filter on submitted_at', async () => {
+    const { getAuditorDecisions } = await import('@/actions/analytics');
+
+    const tenantId  = '00000000-0000-0000-0000-000000000001';
+    const projectId = '00000000-0000-0000-0000-00000d060002';
+    const boqItemId = '00000000-0000-0000-0000-00000d060102';
+    const auditorId = '00000000-0000-0000-0000-00000d060203';
+    const workerId  = '00000000-0000-0000-0000-00000d060204';
+
+    await db.execute(sql.raw(`INSERT INTO tenants (id, name) VALUES ('${tenantId}', 'T1') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO projects (id, tenant_id, name) VALUES ('${projectId}', '${tenantId}', 'AuditorDateRange') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO boq_items (id, tenant_id, project_id, material, unit, planned_qty, approved_qty, sort_order) VALUES ('${boqItemId}', '${tenantId}', '${projectId}', 'Gravel', 'm3', 200, 0, 1) ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO people (id, tenant_id, telegram_user_id, display_name) VALUES ('${auditorId}', '${tenantId}', 960003, 'Auditor2') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO people (id, tenant_id, telegram_user_id, display_name) VALUES ('${workerId}', '${tenantId}', 960004, 'Worker2') ON CONFLICT DO NOTHING`));
+
+    // submission IN April range
+    await db.execute(sql.raw(`
+      INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at, decided_by, decided_at)
+      VALUES ('00000000-0000-0000-0000-d06000000010', '00000000-f000-0000-0000-d06000000010',
+              '${tenantId}', '${projectId}', '${workerId}', '${boqItemId}',
+              'approved', '5.000', 'https://example.com/p.jpg',
+              '2025-04-15T10:00:00Z', '${auditorId}', '2025-04-15T12:00:00Z')
+      ON CONFLICT DO NOTHING
+    `));
+    // submission in January (outside April range)
+    await db.execute(sql.raw(`
+      INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at, decided_by, decided_at)
+      VALUES ('00000000-0000-0000-0000-d06000000011', '00000000-f000-0000-0000-d06000000011',
+              '${tenantId}', '${projectId}', '${workerId}', '${boqItemId}',
+              'approved', '3.000', 'https://example.com/p.jpg',
+              '2025-01-10T10:00:00Z', '${auditorId}', '2025-01-10T14:00:00Z')
+      ON CONFLICT DO NOTHING
+    `));
+
+    const from = new Date('2025-04-01T00:00:00Z');
+    const to   = new Date('2025-04-30T23:59:59Z');
+
+    const inRange = await getAuditorDecisions({ personId: auditorId, dateRange: { from, to } });
+    expect(inRange).toHaveLength(1);
+    expect(inRange[0].submissionId).toBe('00000000-0000-0000-0000-d06000000010');
+
+    // Without dateRange → both rows
+    const allTime = await getAuditorDecisions({ personId: auditorId });
+    expect(allTime).toHaveLength(2);
+  });
+
+  it('respects limit and offset', async () => {
+    const { getAuditorDecisions } = await import('@/actions/analytics');
+
+    const tenantId  = '00000000-0000-0000-0000-000000000001';
+    const projectId = '00000000-0000-0000-0000-00000d060003';
+    const boqItemId = '00000000-0000-0000-0000-00000d060103';
+    const auditorId = '00000000-0000-0000-0000-00000d060205';
+    const workerId  = '00000000-0000-0000-0000-00000d060206';
+
+    await db.execute(sql.raw(`INSERT INTO tenants (id, name) VALUES ('${tenantId}', 'T1') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO projects (id, tenant_id, name) VALUES ('${projectId}', '${tenantId}', 'AuditorPaginate') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO boq_items (id, tenant_id, project_id, material, unit, planned_qty, approved_qty, sort_order) VALUES ('${boqItemId}', '${tenantId}', '${projectId}', 'Sand', 'm3', 300, 0, 1) ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO people (id, tenant_id, telegram_user_id, display_name) VALUES ('${auditorId}', '${tenantId}', 960005, 'Auditor3') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO people (id, tenant_id, telegram_user_id, display_name) VALUES ('${workerId}', '${tenantId}', 960006, 'Worker3') ON CONFLICT DO NOTHING`));
+
+    // Insert 4 decisions with different decided_at timestamps
+    for (let i = 0; i < 4; i++) {
+      const subId  = `00000000-0000-0000-0000-d060000000${String(20 + i).padStart(2, '0')}`;
+      const flowId = `00000000-f000-0000-0000-d060000000${String(20 + i).padStart(2, '0')}`;
+      const dayNum = String(i + 10).padStart(2, '0');
+      await db.execute(sql.raw(`
+        INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at, decided_by, decided_at)
+        VALUES ('${subId}', '${flowId}', '${tenantId}', '${projectId}', '${workerId}', '${boqItemId}',
+                'approved', '1.000', 'https://example.com/p.jpg',
+                '2025-06-${dayNum}T10:00:00Z', '${auditorId}', '2025-06-${dayNum}T12:00:00Z')
+        ON CONFLICT DO NOTHING
+      `));
+    }
+
+    const page1 = await getAuditorDecisions({ personId: auditorId, limit: 2, offset: 0 });
+    expect(page1).toHaveLength(2);
+
+    const page2 = await getAuditorDecisions({ personId: auditorId, limit: 2, offset: 2 });
+    expect(page2).toHaveLength(2);
+
+    // No overlap
+    const p1Ids = page1.map(r => r.submissionId);
+    const p2Ids = page2.map(r => r.submissionId);
+    expect(p1Ids.some(id => p2Ids.includes(id))).toBe(false);
+  });
+
+  it('throws Unauthorized when auth() returns null', async () => {
+    const { auth } = await import('@/lib/auth');
+    (auth as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null);
+    const { getAuditorDecisions } = await import('@/actions/analytics');
+    await expect(getAuditorDecisions({ personId: '00000000-0000-0000-0000-00000d060201' })).rejects.toThrow('Unauthorized');
+  });
+});
