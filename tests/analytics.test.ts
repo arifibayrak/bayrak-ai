@@ -1592,3 +1592,156 @@ describeIfDb('PERF-04: getAuditorDecisions() — auditor decision history from s
     await expect(getAuditorDecisions({ personId: '00000000-0000-0000-0000-00000d060201' })).rejects.toThrow('Unauthorized');
   });
 });
+
+// ── D-69/PERF-04: getPortfolioPeople() bulk aggregation ───────────────────────
+//
+// Requirement: one bulk query per role — no N× getPersonMetrics loop.
+// D-69: dual-role person appears in BOTH workers and auditors result sets.
+// pending_people and office-engineers (auth users) are excluded.
+
+describeIfDb('D-69/PERF-04: getPortfolioPeople() bulk aggregation', () => {
+  let db: Awaited<ReturnType<typeof getTestDb>>;
+
+  beforeEach(async () => {
+    db = await getTestDb();
+    await truncateAllTables(db);
+  });
+
+  afterEach(async () => {
+    await truncateAllTables(db);
+  });
+
+  it('dual-role person appears in BOTH worker and auditor result sets (D-69)', async () => {
+    const { getPortfolioPeople } = await import('@/actions/analytics');
+
+    const tenantId  = '00000000-0000-0000-0000-000000000001';
+    const projectA  = '00000000-0000-0000-0000-e00000000001';
+    const projectB  = '00000000-0000-0000-0000-e00000000002';
+    const boqA      = '00000000-0000-0000-0000-e00000000101';
+    const boqB      = '00000000-0000-0000-0000-e00000000102';
+    const dualId    = '00000000-0000-0000-0000-e00000000201'; // worker on A, auditor on B
+    const workerOnB = '00000000-0000-0000-0000-e00000000202'; // helper worker for auditor submissions
+
+    await db.execute(sql.raw(`INSERT INTO tenants (id, name) VALUES ('${tenantId}', 'T1') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO projects (id, tenant_id, name) VALUES ('${projectA}', '${tenantId}', 'ProjectA') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO projects (id, tenant_id, name) VALUES ('${projectB}', '${tenantId}', 'ProjectB') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO boq_items (id, tenant_id, project_id, material, unit, planned_qty, approved_qty, sort_order, unit_price, currency_code) VALUES ('${boqA}', '${tenantId}', '${projectA}', 'Pipe', 'm', 1000, 0, 1, '100.0000', 'TRY') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO boq_items (id, tenant_id, project_id, material, unit, planned_qty, approved_qty, sort_order) VALUES ('${boqB}', '${tenantId}', '${projectB}', 'Cable', 'm', 500, 0, 1) ON CONFLICT DO NOTHING`));
+    // Dual-role person: approved person in people table
+    await db.execute(sql.raw(`INSERT INTO people (id, tenant_id, telegram_user_id, display_name) VALUES ('${dualId}', '${tenantId}', 555551, 'DualPerson') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO people (id, tenant_id, telegram_user_id, display_name) VALUES ('${workerOnB}', '${tenantId}', 555552, 'WorkerB') ON CONFLICT DO NOTHING`));
+
+    // Assignments: dualId is worker on A AND auditor on B
+    await db.execute(sql.raw(`INSERT INTO assignments (id, tenant_id, person_id, project_id, role_on_project) VALUES ('00000000-0000-0000-0000-e0000000a001', '${tenantId}', '${dualId}', '${projectA}', 'worker') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO assignments (id, tenant_id, person_id, project_id, role_on_project) VALUES ('00000000-0000-0000-0000-e0000000a002', '${tenantId}', '${dualId}', '${projectB}', 'auditor') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO assignments (id, tenant_id, person_id, project_id, role_on_project) VALUES ('00000000-0000-0000-0000-e0000000a003', '${tenantId}', '${workerOnB}', '${projectB}', 'worker') ON CONFLICT DO NOTHING`));
+
+    // Worker submissions for dualId on projectA: 2 approved, 1 rejected
+    await db.execute(sql.raw(`INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at) VALUES ('00000000-0000-0000-0000-e00s00000001', '00000000-f000-0000-0000-e00s00000001', '${tenantId}', '${projectA}', '${dualId}', '${boqA}', 'approved', '10.000', 'https://example.com/p.jpg', NOW()) ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at) VALUES ('00000000-0000-0000-0000-e00s00000002', '00000000-f000-0000-0000-e00s00000002', '${tenantId}', '${projectA}', '${dualId}', '${boqA}', 'approved', '5.000', 'https://example.com/p.jpg', NOW()) ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at) VALUES ('00000000-0000-0000-0000-e00s00000003', '00000000-f000-0000-0000-e00s00000003', '${tenantId}', '${projectA}', '${dualId}', '${boqA}', 'rejected', '2.000', 'https://example.com/p.jpg', NOW()) ON CONFLICT DO NOTHING`));
+
+    // Auditor decisions by dualId on projectB: workerOnB submits, dualId decides
+    await db.execute(sql.raw(`INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at, decided_by, decided_at) VALUES ('00000000-0000-0000-0000-e00s00000004', '00000000-f000-0000-0000-e00s00000004', '${tenantId}', '${projectB}', '${workerOnB}', '${boqB}', 'approved', '3.000', 'https://example.com/p.jpg', NOW(), '${dualId}', NOW()) ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at, decided_by, decided_at) VALUES ('00000000-0000-0000-0000-e00s00000005', '00000000-f000-0000-0000-e00s00000005', '${tenantId}', '${projectB}', '${workerOnB}', '${boqB}', 'rejected', '1.000', 'https://example.com/p.jpg', NOW(), '${dualId}', NOW()) ON CONFLICT DO NOTHING`));
+
+    const [workers, auditors] = await Promise.all([
+      getPortfolioPeople({ role: 'worker' }),
+      getPortfolioPeople({ role: 'auditor' }),
+    ]);
+
+    // dual-role person MUST appear in workers
+    const workerRow = workers.find(w => w.personId === dualId);
+    expect(workerRow).toBeDefined();
+    expect(workerRow!.displayName).toBe('DualPerson');
+    expect(workerRow!.submissionsApproved).toBe(2);
+    expect(workerRow!.submissionsRejected).toBe(1);
+
+    // dual-role person MUST appear in auditors
+    const auditorRow = auditors.find(a => a.personId === dualId);
+    expect(auditorRow).toBeDefined();
+    expect(auditorRow!.decisionsCount).toBe(2);
+  });
+
+  it('pending_people person is NOT returned in either role result (D-69)', async () => {
+    const { getPortfolioPeople } = await import('@/actions/analytics');
+
+    const tenantId  = '00000000-0000-0000-0000-000000000001';
+    const projectId = '00000000-0000-0000-0000-e00000000003';
+    // pending_person: in pending_people table, NOT in people table
+    const pendingPersonId = '00000000-0000-0000-0000-e00000000301';
+
+    await db.execute(sql.raw(`INSERT INTO tenants (id, name) VALUES ('${tenantId}', 'T1') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO projects (id, tenant_id, name) VALUES ('${projectId}', '${tenantId}', 'PendingTest') ON CONFLICT DO NOTHING`));
+    // Insert into pending_people only — not people table
+    await db.execute(sql.raw(`INSERT INTO pending_people (id, tenant_id, telegram_user_id, telegram_display_name, requested_at) VALUES ('${pendingPersonId}', '${tenantId}', 666661, 'PendingGuy', NOW()) ON CONFLICT DO NOTHING`));
+
+    const workers  = await getPortfolioPeople({ role: 'worker' });
+    const auditors = await getPortfolioPeople({ role: 'auditor' });
+
+    expect(workers.find(w => w.personId === pendingPersonId)).toBeUndefined();
+    expect(auditors.find(a => a.personId === pendingPersonId)).toBeUndefined();
+  });
+
+  it('throws Unauthorized when auth() returns null', async () => {
+    const { auth } = await import('@/lib/auth');
+    (auth as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null);
+    const { getPortfolioPeople } = await import('@/actions/analytics');
+    await expect(getPortfolioPeople({ role: 'worker' })).rejects.toThrow('Unauthorized');
+  });
+
+  it('worker row has valueContributedByCurrency map (not cross-currency summed)', async () => {
+    const { getPortfolioPeople } = await import('@/actions/analytics');
+
+    const tenantId  = '00000000-0000-0000-0000-000000000001';
+    const projectId = '00000000-0000-0000-0000-e00000000004';
+    const boqId     = '00000000-0000-0000-0000-e00000000401';
+    const personId  = '00000000-0000-0000-0000-e00000000402';
+
+    await db.execute(sql.raw(`INSERT INTO tenants (id, name) VALUES ('${tenantId}', 'T1') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO projects (id, tenant_id, name) VALUES ('${projectId}', '${tenantId}', 'ValueTest') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO boq_items (id, tenant_id, project_id, material, unit, planned_qty, approved_qty, sort_order, unit_price, currency_code) VALUES ('${boqId}', '${tenantId}', '${projectId}', 'Pipe', 'm', 500, 0, 1, '200.0000', 'TRY') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO people (id, tenant_id, telegram_user_id, display_name) VALUES ('${personId}', '${tenantId}', 777771, 'ValueWorker') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO assignments (id, tenant_id, person_id, project_id, role_on_project) VALUES ('00000000-0000-0000-0000-e0000000v001', '${tenantId}', '${personId}', '${projectId}', 'worker') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at) VALUES ('00000000-0000-0000-0000-e00v00000001', '00000000-f000-0000-0000-e00v00000001', '${tenantId}', '${projectId}', '${personId}', '${boqId}', 'approved', '5.000', 'https://example.com/p.jpg', NOW()) ON CONFLICT DO NOTHING`));
+
+    const workers = await getPortfolioPeople({ role: 'worker' });
+    const row = workers.find(w => w.personId === personId);
+    expect(row).toBeDefined();
+    // valueContributedByCurrency must be a Record keyed by currency — never a flat number
+    expect(row!.valueContributedByCurrency).toBeDefined();
+    expect(typeof row!.valueContributedByCurrency).toBe('object');
+    expect(row!.valueContributedByCurrency['TRY']).toBeDefined();
+    // 5 * 200 = 1000
+    const val = parseFloat(row!.valueContributedByCurrency['TRY'] ?? '0');
+    expect(val).toBeCloseTo(1000, 1);
+  });
+
+  it('dateRange scopes worker submission counts', async () => {
+    const { getPortfolioPeople } = await import('@/actions/analytics');
+
+    const tenantId  = '00000000-0000-0000-0000-000000000001';
+    const projectId = '00000000-0000-0000-0000-e00000000005';
+    const boqId     = '00000000-0000-0000-0000-e00000000501';
+    const personId  = '00000000-0000-0000-0000-e00000000502';
+
+    await db.execute(sql.raw(`INSERT INTO tenants (id, name) VALUES ('${tenantId}', 'T1') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO projects (id, tenant_id, name) VALUES ('${projectId}', '${tenantId}', 'DateRangeWorker') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO boq_items (id, tenant_id, project_id, material, unit, planned_qty, approved_qty, sort_order) VALUES ('${boqId}', '${tenantId}', '${projectId}', 'Pipe', 'm', 500, 0, 1) ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO people (id, tenant_id, telegram_user_id, display_name) VALUES ('${personId}', '${tenantId}', 888881, 'RangeWorker') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO assignments (id, tenant_id, person_id, project_id, role_on_project) VALUES ('00000000-0000-0000-0000-e0000000r001', '${tenantId}', '${personId}', '${projectId}', 'worker') ON CONFLICT DO NOTHING`));
+
+    // 1 approved in April (in-range), 1 approved in January (out-of-range)
+    await db.execute(sql.raw(`INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at) VALUES ('00000000-0000-0000-0000-e00r00000001', '00000000-f000-0000-0000-e00r00000001', '${tenantId}', '${projectId}', '${personId}', '${boqId}', 'approved', '1.000', 'https://example.com/p.jpg', '2025-04-15T10:00:00Z') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at) VALUES ('00000000-0000-0000-0000-e00r00000002', '00000000-f000-0000-0000-e00r00000002', '${tenantId}', '${projectId}', '${personId}', '${boqId}', 'approved', '1.000', 'https://example.com/p.jpg', '2025-01-10T10:00:00Z') ON CONFLICT DO NOTHING`));
+
+    const from = new Date('2025-04-01T00:00:00Z');
+    const to   = new Date('2025-04-30T23:59:59Z');
+
+    const inRange = await getPortfolioPeople({ role: 'worker', dateRange: { from, to } });
+    const row = inRange.find(w => w.personId === personId);
+    expect(row).toBeDefined();
+    // Only the April submission is in-range
+    expect(row!.submissionsApproved).toBe(1);
+  });
+});
