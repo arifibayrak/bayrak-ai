@@ -127,7 +127,7 @@ Phase 8 delivers, as a read-only navigation + display layer over Phases 1–7 da
   accepts `projectIds`). Consistent global filter model on every surface.
 
 ### Roadmap rescope (governance)
-- **D-76:** Phase 8 absorbs **UX-03, UX-04, UX-05, PERF-04** from Phase 9. Phase 9 is trimmed to
+- **D-76 [informational]:** (governance/process decision — already executed via the roadmap rescope; not a plan deliverable). Phase 8 absorbs **UX-03, UX-04, UX-05, PERF-04** from Phase 9. Phase 9 is trimmed to
   **PERF-01, PERF-02, PERF-05, PERF-06**. The ROADMAP Phase 8 goal + success criteria and the
   REQUIREMENTS.md traceability table **MUST be updated via `/gsd:phase`** before planning, so the
   plan-checker and gsd-verifier (which check against ROADMAP success criteria) stay coherent.
