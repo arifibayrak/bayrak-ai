@@ -250,7 +250,7 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 07-01-PLAN.md — Install decimal.js + author all 4 schema changes (unit_price/currency + 3 new tables) + CanonicalSubmission type + barrel + FK-safe truncate + Wave 0 test scaffold
+- [x] 07-01-PLAN.md — Install decimal.js + author all 4 schema changes (unit_price/currency + 3 new tables) + CanonicalSubmission type + barrel + FK-safe truncate + Wave 0 test scaffold
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -342,7 +342,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 4. Spatial Layer | 4/4 | Complete    | 2026-05-24 |
 | 5. Dashboard & Map | 6/6 | Complete   | 2026-05-24 |
 | 6. AI Vision Assist | 0/TBD | Not started | - |
-| 7. Data Foundation & Canonical Record | 0/4 | Planned | - |
+| 7. Data Foundation & Canonical Record | 1/4 | In Progress|  |
 | 8. Admin Shell & Information Architecture | 0/TBD | Not started | - |
 | 9. Performance Analytics & Scorecards | 0/TBD | Not started | - |
 | 10. Hakkediş Billing | 0/TBD | Not started | - |

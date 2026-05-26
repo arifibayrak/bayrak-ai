@@ -2,15 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Operations Intelligence & Hakkediş
-status: active
-last_updated: "2026-05-25T22:00:56.803Z"
-last_activity: 2026-05-25
+status: executing
+stopped_at: v2.0 roadmap creation — Phases 7–11 defined, ready to plan Phase 7
+last_updated: "2026-05-26T09:26:35.142Z"
+last_activity: 2026-05-26
 progress:
-  total_phases: 5
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  total_phases: 11
+  completed_phases: 5
+  total_plans: 32
+  completed_plans: 29
+  percent: 45
 ---
 
 # Project State
@@ -20,16 +21,17 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-25)
 
 **Core value:** Every unit of field work flows through one trustworthy loop — worker submits → auditor approves on-site → central project data (BOQ + map) updates automatically
-**Current focus:** Phase 7 — Data Foundation & Canonical Record
+**Current focus:** Phase 07 — data-foundation-canonical-record
 
 ## Current Position
 
-Phase: 7 — Data Foundation & Canonical Record
-Plan: —
-Status: Ready to plan (roadmap created; awaiting /gsd:plan-phase 7)
-Last activity: 2026-05-25 — Milestone v2.0 roadmap created (Phases 7–11)
+Phase: 07 (data-foundation-canonical-record) — EXECUTING
+Plan: 2 of 4
+Status: Ready to execute
+Last activity: 2026-05-26
 
 **Progress bar (v2.0 phases only):**
+
 ```
 Phase 7  [          ] 0%
 Phase 8  [          ] 0%
@@ -85,6 +87,7 @@ Phase 11 [          ] 0%
 | Phase 05 P04 | 20 | 2 tasks | 2 files |
 | Phase 05-dashboard-map P03 | 30 | 3 tasks | 3 files |
 | Phase 05-dashboard-map P06 | 25 | 3 tasks | 2 files |
+| Phase 07-data-foundation-canonical-record P01 | 5 minutes | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -135,15 +138,18 @@ Recent decisions affecting current work:
 - [v2.0 Roadmap]: Istanbul timezone in date-range filters — all date boundaries use AT TIME ZONE 'Europe/Istanbul' in Postgres or explicit +03:00 offset in UI
 - [v2.0 Roadmap]: NULL decidedAt handling — always split: AVG latency WHERE decided_at IS NOT NULL (decided), COUNT for pending backlog separately; never let NULL poison SLA averages
 - [v2.0 Roadmap]: Role lives on assignments not people — all scorecard queries join assignments table and include project_id scope
+- [Phase ?]: [Phase 07-01]
 
 ### Open Questions / Conflicts (surface before relevant phases)
 
 **Phase 10 (Hakkediş Billing) — must resolve before planning:**
+
 - KDV tevkifat fraction: FEATURES.md cites 4/10 (multi-source verified); PITFALLS.md example used 3/10 without citation. Accountant must confirm before any billing calculation is written.
 - Stopaj applicability: 5% applies only to multi-year (yıllara yaygın) contracts. Confirm contract type with user before Phase 10 planning.
 - Avans kesintisi rate: no default — office engineer enters recovery rate per period.
 
 **Phase 11 (Exports) — must resolve before planning:**
+
 - PDF library: re-verify @react-pdf/renderer GitHub issue #3074 status. If still unresolved in Next.js 15 App Router route handlers, use pdf-lib + @pdf-lib/fontkit instead.
 - Turkish font coverage: confirm whether Noto Sans, Open Sans, or DejaVu has full ğ ş ı ö ü ç glyph support.
 
@@ -176,6 +182,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-25T22:00:56.803Z
+Last session: 2026-05-26T09:26:35.136Z
 Stopped at: v2.0 roadmap creation — Phases 7–11 defined, ready to plan Phase 7
 Resume file: None

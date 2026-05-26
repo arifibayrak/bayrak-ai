@@ -77,18 +77,18 @@ Current milestone. Admin-grade performance + cost analytics, Turkish hakkediş b
 
 - [ ] **PERF-01**: Admin can view a worker performance scorecard (submission volume, approval rate, rejection rate, location-compliance rate, output quantity, throughput) per project and across all projects
 - [ ] **PERF-02**: Admin can view an auditor performance scorecard (decision count, approval/rejection split, mean decision turnaround `decidedAt − submittedAt`, pending backlog, SLA-breach rate)
-- [ ] **PERF-03**: Office-engineer actions (project create/edit, BOQ import, unit-price edits, person approval/assignment, hakkediş create/finalize) are recorded in an activity log and shown as an office-engineer activity scorecard
+- [x] **PERF-03**: Office-engineer actions (project create/edit, BOQ import, unit-price edits, person approval/assignment, hakkediş create/finalize) are recorded in an activity log and shown as an office-engineer activity scorecard
 - [ ] **PERF-04**: Admin can open a per-employee profile page showing that person's metrics, an activity timeline, and (for workers) value contribution
 - [ ] **PERF-05**: Admin can compare employees side-by-side in a leaderboard ranked by a chosen metric
 - [ ] **PERF-06**: Admin sees performance & SLA alerts on the overview (audits slower than a threshold, rejection-rate spikes, location-warning spikes, stalled progress)
 
 ### Earned-Value Cost Analytics
 
-- [ ] **COST-01**: Office engineer can set a unit price (birim fiyat) and currency per BOQ line item (multi-currency; price nullable)
-- [ ] **COST-02**: System computes contracted value (BAC = Σ planned_qty × unit_price) and earned value (EV = Σ approved_qty × unit_price) per project and per BOQ item
-- [ ] **COST-03**: System shows % complete by value (EV / BAC) per project and per BOQ item
-- [ ] **COST-04**: System shows per-worker value contribution (Σ approved_qty × unit_price attributed to each worker)
-- [ ] **COST-05**: System shows rework / rejected value (Σ rejected_qty × unit_price) as a waste indicator
+- [x] **COST-01**: Office engineer can set a unit price (birim fiyat) and currency per BOQ line item (multi-currency; price nullable)
+- [x] **COST-02**: System computes contracted value (BAC = Σ planned_qty × unit_price) and earned value (EV = Σ approved_qty × unit_price) per project and per BOQ item
+- [x] **COST-03**: System shows % complete by value (EV / BAC) per project and per BOQ item
+- [x] **COST-04**: System shows per-worker value contribution (Σ approved_qty × unit_price attributed to each worker)
+- [x] **COST-05**: System shows rework / rejected value (Σ rejected_qty × unit_price) as a waste indicator
 
 ### Hakkediş / Billing
 
@@ -193,12 +193,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | AI-03 | Phase 6 | Pending |
 | AI-04 | Phase 6 | Pending |
 | AI-05 | Phase 6 | Pending |
-| COST-01 | Phase 7 | Pending |
-| COST-02 | Phase 7 | Pending |
-| COST-03 | Phase 7 | Pending |
-| COST-04 | Phase 7 | Pending |
-| COST-05 | Phase 7 | Pending |
-| PERF-03 | Phase 7 | Pending |
+| COST-01 | Phase 7 | Complete |
+| COST-02 | Phase 7 | Complete |
+| COST-03 | Phase 7 | Complete |
+| COST-04 | Phase 7 | Complete |
+| COST-05 | Phase 7 | Complete |
+| PERF-03 | Phase 7 | Complete |
 | UX-01 | Phase 8 | Pending |
 | UX-02 | Phase 8 | Pending |
 | I18N-03 | Phase 8 | Pending |
