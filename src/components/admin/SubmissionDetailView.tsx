@@ -74,15 +74,16 @@ interface SubmissionDetailViewProps {
 
 export function SubmissionDetailView({ submission }: SubmissionDetailViewProps) {
   const t = useTranslations('dashboard.admin.detail');
+  const tStatus = useTranslations('dashboard.submissions');
 
   const [lightboxOpen, setLightboxOpen] = useState(false);
 
   const statusLabel =
     submission.status === 'approved'
-      ? 'Onaylandı'
+      ? tStatus('status_approved')
       : submission.status === 'rejected'
-      ? 'Reddedildi'
-      : 'Bekliyor';
+      ? tStatus('status_rejected')
+      : tStatus('status_pending');
 
   // ── Render ──────────────────────────────────────────────────────────────────
 

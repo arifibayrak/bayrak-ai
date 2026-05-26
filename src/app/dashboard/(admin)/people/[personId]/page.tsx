@@ -56,6 +56,7 @@ export default async function PersonProfilePage({ params, searchParams }: Props)
   const projectIds = project ? [project] : undefined;
 
   const t = await getTranslations('dashboard.admin.people');
+  const tTimeline = await getTranslations('dashboard.admin.timeline');
 
   // Check person existence + determine roles from assignments
   const [activePeople, projectsData] = await Promise.all([
@@ -117,7 +118,7 @@ export default async function PersonProfilePage({ params, searchParams }: Props)
     date: new Date(d.decidedAt),
     workerName: d.workerName,
     latencyLabel:
-      d.auditLatencyHours !== null ? `${d.auditLatencyHours.toFixed(1)} sa` : undefined,
+      d.auditLatencyHours !== null ? `${d.auditLatencyHours.toFixed(1)} ${t('unit_hours')}` : undefined,
   }));
 
   // Worker KPI values
@@ -152,7 +153,7 @@ export default async function PersonProfilePage({ params, searchParams }: Props)
   const auditorAvgTurnaround =
     auditorMetrics?.avgDecisionLatencyHours !== null &&
     auditorMetrics?.avgDecisionLatencyHours !== undefined
-      ? `${(auditorMetrics.avgDecisionLatencyHours ?? 0).toFixed(1)} sa`
+      ? `${(auditorMetrics.avgDecisionLatencyHours ?? 0).toFixed(1)} ${t('unit_hours')}`
       : '—';
   const auditorPendingBacklog = auditorMetrics?.pendingBacklogCount ?? 0;
 
@@ -216,7 +217,7 @@ export default async function PersonProfilePage({ params, searchParams }: Props)
                   valueColor="destructive"
                 />
                 <KpiCard
-                  label="Konum Uyumu"
+                  label={t('col_location_compliance')}
                   subLabel=""
                   value={workerLocationRate}
                   icon={<MapPin className="size-5 text-muted-foreground" />}
@@ -250,7 +251,7 @@ export default async function PersonProfilePage({ params, searchParams }: Props)
                   icon={<Gavel className="size-5 text-muted-foreground" />}
                 />
                 <KpiCard
-                  label="Onay Oranı"
+                  label={t('col_approval_rate')}
                   subLabel=""
                   value={auditorApprovalRate}
                   icon={<TrendingUp className="size-5 text-muted-foreground" />}
@@ -279,8 +280,7 @@ export default async function PersonProfilePage({ params, searchParams }: Props)
       <div className="space-y-4">
         <Separator />
         <h2 className="text-base font-semibold">
-          {/* "dashboard.admin.timeline" heading key is not in en.json, use a literal */}
-          Aktivite
+          {tTimeline('heading')}
         </h2>
 
         {isWorker && (

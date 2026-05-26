@@ -184,7 +184,10 @@
         "kpi_worker_metrics": "İşçi Metrikleri",
         "kpi_auditor_metrics": "Denetçi Metrikleri",
         "no_records_alert": "Bu kişinin henüz tamamlanmış bir kaydı yok.",
-        "error_load": "Personel listesi yüklenemedi. Sayfayı yenileyiniz."
+        "error_load": "Personel listesi yüklenemedi. Sayfayı yenileyiniz.",
+        "col_location_compliance": "Konum Uyumu",
+        "col_approval_rate": "Onay Oranı",
+        "unit_hours": "sa"
       },
       "timeline": {
         "heading": "Aktivite",

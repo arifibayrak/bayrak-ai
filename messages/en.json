@@ -184,7 +184,10 @@
         "kpi_worker_metrics": "Worker Metrics",
         "kpi_auditor_metrics": "Auditor Metrics",
         "no_records_alert": "This person has no completed records yet.",
-        "error_load": "Failed to load people. Please refresh the page."
+        "error_load": "Failed to load people. Please refresh the page.",
+        "col_location_compliance": "Location Compliance",
+        "col_approval_rate": "Approval Rate",
+        "unit_hours": "h"
       },
       "timeline": {
         "heading": "Activity",
