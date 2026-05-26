@@ -52,7 +52,11 @@ export function formatCurrency(
 ): string {
   if (value === null) return '—';
   const code = currencyCode || 'TRY';
-  const numeric = parseFloat(value);
+  // WR-04: do NOT parseFloat — it can yield artefacts like 1234567890.1199999.
+  // `value` is already a pre-rounded 2-decimal string produced by lineValue()'s
+  // Decimal.toFixed(2), so Number() reproduces it exactly at 2dp. Intl.NumberFormat
+  // requires a number, and Number() is the precise bridge for an already-rounded value.
+  const numeric = Number(value);
   try {
     return new Intl.NumberFormat('tr-TR', {
       style: 'currency',
