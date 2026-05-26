@@ -48,9 +48,9 @@ decisions:
   - "SidebarTrigger rendered md:hidden in TopNav; SidebarTrigger is inside SidebarInset tree (required)"
   - "T-08-03-AC mitigated: await auth() runs BEFORE SidebarProvider/client tree mounts"
 metrics:
-  duration: "~4 minutes (autonomous tasks only; paused at Task 3 checkpoint)"
+  duration: "~4 minutes (autonomous tasks) + human verification of browser render behaviors"
   completed: "2026-05-26"
-  tasks_completed: 2
+  tasks_completed: 3
   files_created: 7
   files_modified: 2
 ---
@@ -65,7 +65,7 @@ metrics:
 |------|------|--------|-------|
 | 1 | Build AppSidebar + SidebarNav and wire shell into root layout + TopNav | eab4905 | SidebarNav.tsx, AppSidebar.tsx, layout.tsx, TopNav.tsx |
 | 2 | Redirect page, (admin) passthrough layout, and 3 Coming-soon stub pages | 92a9592 | page.tsx, (admin)/layout.tsx, analytics/page.tsx, hakedis/page.tsx, exports/page.tsx |
-| 3 | Browser verification checkpoint | PENDING — awaiting human verify | — |
+| 3 | Browser verification checkpoint | APPROVED (human-verified) | — |
 
 ## Deviations from Plan
 
