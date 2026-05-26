@@ -207,6 +207,7 @@
         "prev": "Previous",
         "next": "Next",
         "pagination": "Page {page} of {pages}",
+        "pagination_page_only": "Page {page}",
         "empty": "No records match the current filters.",
         "error_load": "Failed to load records. Please refresh the page."
       },

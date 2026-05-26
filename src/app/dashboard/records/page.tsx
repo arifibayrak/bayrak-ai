@@ -248,8 +248,10 @@ export default async function RecordsPage({ searchParams }: Props) {
               </span>
             )}
 
+            {/* WR-05: show current page number only — lookahead gives no real total page count.
+                Fabricating "Page N of N+1" is actively misleading on large datasets. */}
             <span className="text-sm text-muted-foreground tabular-nums">
-              {t('records.pagination', { page: pageNum, pages: hasNextPage ? pageNum + 1 : pageNum })}
+              {t('records.pagination_page_only', { page: pageNum })}
             </span>
 
             {hasNextPage ? (

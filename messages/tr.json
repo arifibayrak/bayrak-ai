@@ -207,6 +207,7 @@
         "prev": "Önceki",
         "next": "Sonraki",
         "pagination": "Sayfa {page} / {pages}",
+        "pagination_page_only": "Sayfa {page}",
         "empty": "Filtrelerle eşleşen kayıt bulunamadı.",
         "error_load": "Kayıtlar yüklenemedi. Sayfayı yenileyiniz."
       },
