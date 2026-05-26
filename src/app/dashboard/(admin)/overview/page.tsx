@@ -194,9 +194,6 @@ export default async function OverviewPage({ searchParams }: Props) {
         tEmptyNoProjects={t('empty_no_projects')}
         tChartNoData={t('chart_no_data')}
         tChartThroughput={t('chart_throughput')}
-        tChartEV={t('chart_earned_value')}
-        tChartRejection={t('chart_rejection_rate')}
-        currencyLabel=""
       />
     </div>
   );

@@ -64,9 +64,6 @@ interface EVTableClientProps {
   tEmptyNoProjects: string;
   tChartNoData: string;
   tChartThroughput: string;
-  tChartEV: string;
-  tChartRejection: string;
-  currencyLabel: string;
 }
 
 export function EVTableClient({
@@ -81,7 +78,6 @@ export function EVTableClient({
   tEmptyNoProjects,
   tChartNoData,
   tChartThroughput,
-  tChartRejection,
 }: EVTableClientProps) {
   const [currency, setCurrency] = useState('TRY');
 
