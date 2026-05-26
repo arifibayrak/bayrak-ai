@@ -112,7 +112,7 @@ Current milestone. Admin-grade performance + cost analytics, Turkish hakkediş b
 - [ ] **UX-03**: All analytics views support global filters: date range, project, person, status
 - [ ] **UX-04**: Analytics include trend charts (throughput, earned-value / value-complete over time, burn rate)
 - [ ] **UX-05**: Every metric drills down to the underlying filtered records, and a structured submission detail view shows the full canonical record (photo, location, decision trail)
-- [ ] **I18N-03**: All new v2.0 dashboard surfaces are localized TR/EN
+- [x] **I18N-03**: All new v2.0 dashboard surfaces are localized TR/EN
 
 ## Future Requirements (post-v2.0)
 
@@ -201,7 +201,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PERF-03 | Phase 7 | Complete |
 | UX-01 | Phase 8 | Pending |
 | UX-02 | Phase 8 | Pending |
-| I18N-03 | Phase 8 | Pending |
+| I18N-03 | Phase 8 | Complete |
 | PERF-04 | Phase 8 | Pending |
 | UX-03 | Phase 8 | Pending |
 | UX-04 | Phase 8 | Pending |

@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Operations Intelligence & Hakkediş
 status: executing
-stopped_at: Phase 8 UI-SPEC approved
-last_updated: "2026-05-26T19:19:51.587Z"
-last_activity: 2026-05-26 -- Phase 08 planning complete
+stopped_at: Completed 08-01-PLAN.md — shadcn primitives + dashboard.admin.* i18n namespace
+last_updated: "2026-05-26T20:24:43.049Z"
+last_activity: 2026-05-26
 progress:
   total_phases: 11
   completed_phases: 6
   total_plans: 39
-  completed_plans: 33
+  completed_plans: 34
   percent: 55
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-25)
 
 **Core value:** Every unit of field work flows through one trustworthy loop — worker submits → auditor approves on-site → central project data (BOQ + map) updates automatically
-**Current focus:** Phase 07 — data-foundation-canonical-record
+**Current focus:** Phase 08 — admin-shell-information-architecture
 
 ## Current Position
 
-Phase: 07 (data-foundation-canonical-record) — EXECUTING
-Plan: 4 of 4
+Phase: 08 (admin-shell-information-architecture) — EXECUTING
+Plan: 2 of 6
 Status: Ready to execute
-Last activity: 2026-05-26 -- Phase 08 planning complete
+Last activity: 2026-05-26
 
 **Progress bar (v2.0 phases only):**
 
@@ -90,6 +90,7 @@ Phase 11 [          ] 0%
 | Phase 07-data-foundation-canonical-record P01 | 5 minutes | 3 tasks | 10 files |
 | Phase 07-data-foundation-canonical-record P02 | 7 minutes | 2 tasks | 5 files |
 | Phase 07-data-foundation-canonical-record P04 | 15 minutes | 4 tasks | 12 files |
+| Phase 08-admin-shell-information-architecture P01 | 8 | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -151,6 +152,9 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 07-04]: setUnitPrice fetches old row before UPDATE to capture oldPrice in logOfficeActivity metadata — audit trail carries oldPrice/newPrice/currencyCode
 - [Phase ?]: [Phase 07-04]: Empty unit price submits as null (clears), never '0'; dialog initialises from item?.unitPrice ?? '' so null shows placeholder not zero
 - [Phase ?]: [Phase 07-04]: after() mock needed in boq/people/projects test suites after logOfficeActivity wiring — all Server Action tests importing wired actions need vi.mock('next/server')
+- [Phase ?]: [Phase 08-01]: shadcn CLI must be invoked as node_modules/.bin/shadcn — npx shadcn@latest triggers npm script lookup and fails
+- [Phase ?]: [Phase 08-01]: sidebar.tsx SidebarMenuButton has isActive prop + asChild — downstream plans use these for active nav item detection
+- [Phase ?]: [Phase 08-01]: dashboard.admin.stubs.exports_heading = Dışa Aktarma vs nav.exports = Dışa Aktar — kept distinct per UI-SPEC
 
 ### Open Questions / Conflicts (surface before relevant phases)
 
@@ -194,6 +198,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-26T18:22:27.466Z
-Stopped at: Phase 8 UI-SPEC approved
-Resume file: .planning/phases/08-admin-shell-information-architecture/08-UI-SPEC.md
+Last session: 2026-05-26T20:24:43.044Z
+Stopped at: Completed 08-01-PLAN.md — shadcn primitives + dashboard.admin.* i18n namespace
+Resume file: None
