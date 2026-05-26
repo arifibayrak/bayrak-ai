@@ -53,14 +53,14 @@ describe('people actions - unauthorized guard', () => {
         projectId: '00000000-0000-0000-0000-000000000099',
       })
     ).rejects.toThrow('Unauthorized');
-    mockSession = { user: { email: 'test@example.com' } };
+    mockSession = { user: { id: 'test-user-id', email: 'test@example.com' } };
   });
 
   it('rejectPending throws Unauthorized when session is null', async () => {
     mockSession = null;
     const { rejectPending } = await getPeopleActions();
     await expect(rejectPending('00000000-0000-0000-0000-000000000099')).rejects.toThrow('Unauthorized');
-    mockSession = { user: { email: 'test@example.com' } };
+    mockSession = { user: { id: 'test-user-id', email: 'test@example.com' } };
   });
 
   it('addManualPerson throws Unauthorized when session is null', async () => {
@@ -74,14 +74,14 @@ describe('people actions - unauthorized guard', () => {
         projectId: '00000000-0000-0000-0000-000000000099',
       })
     ).rejects.toThrow('Unauthorized');
-    mockSession = { user: { email: 'test@example.com' } };
+    mockSession = { user: { id: 'test-user-id', email: 'test@example.com' } };
   });
 
   it('removeAssignment throws Unauthorized when session is null', async () => {
     mockSession = null;
     const { removeAssignment } = await getPeopleActions();
     await expect(removeAssignment('00000000-0000-0000-0000-000000000099')).rejects.toThrow('Unauthorized');
-    mockSession = { user: { email: 'test@example.com' } };
+    mockSession = { user: { id: 'test-user-id', email: 'test@example.com' } };
   });
 });
 
@@ -92,7 +92,7 @@ describeIfDb('People approval workflow (DB integration)', () => {
   let testProjectId: string;
 
   beforeEach(async () => {
-    mockSession = { user: { email: 'test@example.com' } };
+    mockSession = { user: { id: 'test-user-id', email: 'test@example.com' } };
     db = await getTestDb();
     await truncateAllTables(db);
 

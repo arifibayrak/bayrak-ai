@@ -43,11 +43,11 @@ describe('createProject - unauthorized guard', () => {
     mockSession = null;
     const { createProject } = await getActions();
     await expect(createProject({ name: 'Test', description: '' })).rejects.toThrow('Unauthorized');
-    mockSession = { user: { email: 'test@example.com' } }; // reset
+    mockSession = { user: { id: 'test-user-id', email: 'test@example.com' } }; // reset
   });
 
   it('throws on empty name', async () => {
-    mockSession = { user: { email: 'test@example.com' } };
+    mockSession = { user: { id: 'test-user-id', email: 'test@example.com' } };
     const { createProject } = await getActions();
     await expect(createProject({ name: '', description: '' })).rejects.toThrow();
   });
@@ -58,7 +58,7 @@ describe('updateProject - unauthorized guard', () => {
     mockSession = null;
     const { updateProject } = await getActions();
     await expect(updateProject('00000000-0000-0000-0000-000000000099', { name: 'X' })).rejects.toThrow('Unauthorized');
-    mockSession = { user: { email: 'test@example.com' } };
+    mockSession = { user: { id: 'test-user-id', email: 'test@example.com' } };
   });
 });
 
@@ -67,7 +67,7 @@ describe('deleteProject - unauthorized guard', () => {
     mockSession = null;
     const { deleteProject } = await getActions();
     await expect(deleteProject('00000000-0000-0000-0000-000000000099')).rejects.toThrow('Unauthorized');
-    mockSession = { user: { email: 'test@example.com' } };
+    mockSession = { user: { id: 'test-user-id', email: 'test@example.com' } };
   });
 });
 
@@ -77,7 +77,7 @@ describeIfDb('Project CRUD lifecycle (DB integration)', () => {
   let db: Awaited<ReturnType<typeof getTestDb>>;
 
   beforeEach(async () => {
-    mockSession = { user: { email: 'test@example.com' } };
+    mockSession = { user: { id: 'test-user-id', email: 'test@example.com' } };
     db = await getTestDb();
     await truncateAllTables(db);
 
