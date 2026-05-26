@@ -111,8 +111,16 @@ export function BoqItemDialog({
       }
 
       if (result.ok && boqItemId) {
-        // Set unit price (separately from the primary mutation — COST-01)
-        await setUnitPriceAction({ boqItemId, unitPrice: normalizedPrice, currencyCode });
+        // Set unit price (separately from the primary mutation — COST-01).
+        // WR-02: check the result. setUnitPrice can fail (item not found, price
+        // rejected, DB error); if we ignore it the row is saved without a price
+        // and the user is falsely told it succeeded. Surface the error and keep
+        // the dialog open so the user can retry.
+        const priceResult = await setUnitPriceAction({ boqItemId, unitPrice: normalizedPrice, currencyCode });
+        if (!priceResult.ok) {
+          toast.error(priceResult.error ?? tc('error_generic'));
+          return; // keep dialog open; do not call onSuccess
+        }
         toast.success(tc('save'));
         onSuccess();
       } else {

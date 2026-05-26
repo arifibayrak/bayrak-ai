@@ -205,8 +205,12 @@ export function BoqTable({ projectId, items, onItemChanged }: BoqTableProps) {
       </Table>
 
       {/* Edit dialog */}
+      {/* WR-03: key={editItem.id} forces a structural remount when a different
+          item is edited, so the dialog's useState initializers re-read the new
+          item prop instead of showing the previously-edited item's stale values. */}
       {editItem && (
         <BoqItemDialog
+          key={editItem.id}
           projectId={projectId}
           item={editItem}
           open={!!editItem}
