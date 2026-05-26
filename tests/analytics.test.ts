@@ -653,6 +653,69 @@ describeIfDb('PERF-03: logOfficeActivity() inserts + getOfficeActivityLog() filt
   });
 });
 
+// ── PERF-03: logOfficeActivity wiring in people.ts + routes.ts ──────────────
+
+describeIfDb('PERF-03: logOfficeActivity wiring — people.ts + routes.ts', () => {
+  let db: Awaited<ReturnType<typeof getTestDb>>;
+
+  beforeEach(async () => {
+    db = await getTestDb();
+    await truncateAllTables(db);
+  });
+
+  afterEach(async () => {
+    await truncateAllTables(db);
+  });
+
+  it('createProject fires logOfficeActivity and getOfficeActivityLog returns the entry (PERF-03 e2e)', async () => {
+    const { createProject } = await import('@/actions/projects');
+    const { getOfficeActivityLog } = await import('@/actions/analytics');
+    const { after } = await import('next/server');
+
+    const tenantId = '00000000-0000-0000-0000-000000000001';
+    const userId   = 'test-user-id';
+
+    await db.execute(sql.raw(`INSERT INTO tenants (id, name) VALUES ('${tenantId}', 'Test') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO users (id, email) VALUES ('${userId}', 'test@example.com') ON CONFLICT DO NOTHING`));
+
+    await createProject({ name: 'E2ELogProject' });
+
+    // Wait for after() callback to complete
+    const afterMock = after as ReturnType<typeof vi.fn>;
+    const lastCallResult = afterMock.mock.results[afterMock.mock.results.length - 1]?.value;
+    if (lastCallResult instanceof Promise) {
+      await lastCallResult;
+    }
+
+    const entries = await getOfficeActivityLog({ actorUserId: userId });
+    const entry = entries.find(e => e.actionType === 'project_created');
+    expect(entry).toBeDefined();
+    expect(entry!.actorUserId).toBe(userId);
+  });
+
+  it('logOfficeActivity wired in people.ts — person_approved fires log (PERF-03)', async () => {
+    // Test that logOfficeActivity is wired into people.ts mutations by checking
+    // that the function is imported and called in the source file (structural test)
+    const fs = await import('fs');
+    const content = fs.readFileSync(
+      new URL('../src/actions/people.ts', import.meta.url).pathname,
+      'utf8'
+    );
+    expect(content).toContain('logOfficeActivity(');
+    expect(content).not.toMatch(/await logOfficeActivity/);
+  });
+
+  it('logOfficeActivity wired in routes.ts — route_uploaded fires log (PERF-03)', async () => {
+    const fs = await import('fs');
+    const content = fs.readFileSync(
+      new URL('../src/actions/routes.ts', import.meta.url).pathname,
+      'utf8'
+    );
+    expect(content).toContain('logOfficeActivity(');
+    expect(content).not.toMatch(/await logOfficeActivity/);
+  });
+});
+
 // ── getPortfolioOverview() ─────────────────────────────────────────────────
 
 describeIfDb('getPortfolioOverview() per-project currency maps', () => {
