@@ -63,6 +63,7 @@ Exceptions for Phase 8:
 ## Typography
 
 All sizes use Inter (`--font-sans`). Inherited from Phase 05 with one Phase-8-specific addition.
+Exactly 4 distinct sizes and exactly 2 weights are in use across this phase.
 
 | Role | Size | Weight | Line Height | Tailwind class |
 |------|------|--------|-------------|----------------|
@@ -70,15 +71,18 @@ All sizes use Inter (`--font-sans`). Inherited from Phase 05 with one Phase-8-sp
 | Label | 14px | 600 (semibold) | 1.4 | `text-sm font-semibold` |
 | Heading | 16px | 600 (semibold) | 1.4 | `text-base font-semibold` |
 | Display | 20px | 600 (semibold) | 1.2 | `text-xl font-semibold` |
-| KPI stat number | 28px | 700 (bold) | 1.1 | `text-3xl font-bold` |
+| KPI stat number | 28px | 600 (semibold) | 1.1 | `text-3xl font-semibold` |
 
 Rules (carried from Phase 05):
-- Standard dashboard data roles use only 2 weights: 400 and 600. The KPI stat number at 700 is
-  permitted only for the Overview command-center stat figures — not for any other surface.
+- All text uses exactly 2 weights: 400 (regular) and 600 (semibold). No weight 700 is used anywhere in this phase.
+- The 28px KPI stat number uses 600 (semibold); its size alone (vs 20px Display) provides sufficient visual dominance for command-center figures.
 - Numbers in KPI cards and tables: `tabular-nums` class.
 - Locale formatting: `Intl.NumberFormat('tr-TR')` for quantities and counts;
   `toLocaleDateString('tr-TR')` for dates — established pattern.
 - Sidebar nav label text: Body (14px / 400). Active sidebar item label: Label (14px / 600).
+
+> Note on distinct sizes: Body and Label both sit at 14px, so the 4 distinct pixel sizes in use
+> are 14, 16, 20, and 28. The Body/Label split is a weight distinction, not a size distinction.
 
 ---
 
@@ -258,8 +262,8 @@ and active worker count. These are lightweight queries on existing indexed colum
 Each card uses shadcn `<Card>` with `<CardHeader>` and `<CardContent>`:
 - Icon (lucide, 20px, `text-muted-foreground`) — top-left of header
 - Label (Body 14px / 400, `text-muted-foreground`) — card header
-- Stat number (28px / 700, `tabular-nums`) — card content, prominent
-- Optional sub-label (Body 12px / 400, muted) e.g. "son 30 gün" / "last 30 days"
+- Stat number (28px / 600, `font-semibold tabular-nums`) — card content, prominent
+- Optional sub-label (Body 14px / 400, muted) e.g. "son 30 gün" / "last 30 days"
 
 | KPI | Icon | EN label | TR label | Stat color rule |
 |-----|------|----------|----------|-----------------|
