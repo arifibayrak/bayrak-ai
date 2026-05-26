@@ -13,6 +13,7 @@
  */
 
 import { eq, and, sql } from 'drizzle-orm';
+import Decimal from 'decimal.js';
 import { revalidatePath } from 'next/cache';
 import { db } from '@/db';
 import { boqItems } from '@/db/schema/boq-items';
@@ -21,6 +22,30 @@ import { auth } from '@/lib/auth';
 import { getDefaultTenantId } from '@/lib/tenant';
 import { parseBoqExcel, type BoqRow } from '@/lib/excel';
 import { logOfficeActivity } from '@/lib/log-office-activity';
+
+// ── plannedQty validation ──────────────────────────────────────────────────
+//
+// IN-02: the client (BoqItemDialog) now sends plannedQty as the trimmed string
+// the user typed — it no longer round-trips through parseFloat, which stripped
+// trailing zeros ("1500.000" → "1500") and risked silent truncation on
+// higher-precision columns. The server is the single validation/parse authority:
+// it validates with decimal.js (NOT parseFloat — keeps the "no parseFloat on
+// numeric strings" rule) and returns the canonical numeric string to insert
+// into the numeric(12,3) column. A number is still accepted for backward
+// compatibility with existing callers/tests.
+//
+// Returns the normalized numeric string, or null when the value is not a
+// positive finite number.
+function normalizePositiveQty(value: string | number): string | null {
+  let dec: Decimal;
+  try {
+    dec = new Decimal(typeof value === 'string' ? value.trim() : value);
+  } catch {
+    return null;
+  }
+  if (!dec.isFinite() || dec.lte(0)) return null;
+  return dec.toString();
+}
 
 // ── Currency allow-list ───────────────────────────────────────────────────────
 //
@@ -42,7 +67,7 @@ export async function addBoqItem(params: {
   projectId: string;
   material: string;
   unit: string;
-  plannedQty: number;
+  plannedQty: string | number;
 }) {
   const session = await auth();
   if (!session) throw new Error('Unauthorized');
@@ -69,7 +94,9 @@ export async function addBoqItem(params: {
   if (!unit.trim()) {
     return { ok: false as const, error: 'Unit is required' };
   }
-  if (isNaN(plannedQty) || plannedQty <= 0) {
+  // IN-02: validate via decimal.js; keep the canonical string for the insert.
+  const normalizedQty = normalizePositiveQty(plannedQty);
+  if (normalizedQty === null) {
     return { ok: false as const, error: 'Planned quantity must be a positive number' };
   }
 
@@ -87,7 +114,7 @@ export async function addBoqItem(params: {
       tenantId: getDefaultTenantId(),
       material: material.trim(),
       unit: unit.trim(),
-      plannedQty: String(plannedQty),
+      plannedQty: normalizedQty,
       sortOrder,
     })
     .returning({ id: boqItems.id });
@@ -103,7 +130,7 @@ export async function addBoqItem(params: {
       entityType: 'boq_item',
       entityId: inserted.id,
       projectId,
-      metadata: { material, unit, plannedQty },
+      metadata: { material, unit, plannedQty: normalizedQty },
     });
   }
 
@@ -121,7 +148,7 @@ export async function updateBoqItem(
   params: {
     material?: string;
     unit?: string;
-    plannedQty?: number;
+    plannedQty?: string | number;
   }
 ) {
   const session = await auth();
@@ -138,10 +165,12 @@ export async function updateBoqItem(
     updates.unit = params.unit.trim();
   }
   if (params.plannedQty !== undefined) {
-    if (isNaN(params.plannedQty) || params.plannedQty <= 0) {
+    // IN-02: validate via decimal.js (NOT parseFloat); keep the canonical string.
+    const normalizedQty = normalizePositiveQty(params.plannedQty);
+    if (normalizedQty === null) {
       return { ok: false as const, error: 'Planned quantity must be a positive number' };
     }
-    updates.plannedQty = String(params.plannedQty);
+    updates.plannedQty = normalizedQty;
   }
 
   if (Object.keys(updates).length === 0) {
@@ -232,7 +261,11 @@ export async function setUnitPrice(params: {
   // client could otherwise persist arbitrary text into currency_code, poisoning
   // the financial schema and breaking downstream Intl.NumberFormat formatting.
   if (!ALLOWED_CURRENCIES.includes(params.currencyCode as AllowedCurrency)) {
-    throw new Error(`Invalid currency code: ${params.currencyCode}`);
+    // IN-01: do NOT echo the raw caller-supplied currency string back in the
+    // error — a crafted value (newlines, log-format control chars, JSON
+    // metacharacters) could pollute a structured log aggregator or a client
+    // error boundary. Emit a generic message listing the allowed codes instead.
+    throw new Error(`Invalid currency code. Allowed: ${ALLOWED_CURRENCIES.join(', ')}`);
   }
 
   // T-07-10: reject NaN or negative prices before any DB write

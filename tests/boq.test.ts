@@ -138,6 +138,45 @@ describeIfDb('BOQ Server Actions (DB)', () => {
     expect(parseFloat(rows[0].plannedQty)).toBe(1500);
   });
 
+  // ── IN-02 (re-review): server accepts the raw STRING quantity and parses it ─
+  // The dialog now sends the trimmed string the user typed (no client parseFloat
+  // round-trip). The server validates via decimal.js and persists the exact
+  // value into numeric(12,3) — trailing decimals preserved, no float drift.
+  it('addBoqItem accepts a string plannedQty and persists it exactly (IN-02)', async () => {
+    const { addBoqItem } = await import('@/actions/boq');
+    const { boqItems } = await import('@/db/schema/boq-items');
+    const { eq } = await import('drizzle-orm');
+    const Decimal = (await import('decimal.js')).default;
+
+    // A value with three decimal places — the numeric(12,3) column should keep
+    // it exactly. Passing it as a STRING is the new dialog contract.
+    const result = await addBoqItem({
+      projectId: testProjectId,
+      material: 'DN300 Steel',
+      unit: 'm',
+      plannedQty: '1500.125',
+    });
+    expect(result.ok).toBe(true);
+
+    const [row] = await db.select().from(boqItems).where(eq(boqItems.projectId, testProjectId));
+    // Exact decimal equality (no parseFloat in the assertion's load-bearing path).
+    expect(new Decimal(row.plannedQty).equals(new Decimal('1500.125'))).toBe(true);
+  });
+
+  it('addBoqItem rejects a non-numeric string plannedQty (IN-02)', async () => {
+    const { addBoqItem } = await import('@/actions/boq');
+
+    const result = await addBoqItem({
+      projectId: testProjectId,
+      material: 'Garbage',
+      unit: 'm',
+      plannedQty: 'not-a-number',
+    });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toMatch(/positive number/i);
+  });
+
   it('updateBoqItem modifies material and plannedQty', async () => {
     const { addBoqItem, updateBoqItem } = await import('@/actions/boq');
     const { boqItems } = await import('@/db/schema/boq-items');

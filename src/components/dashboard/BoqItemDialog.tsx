@@ -55,9 +55,10 @@ export function BoqItemDialog({
 
   const [material, setMaterial] = useState(item?.material ?? '');
   const [unit, setUnit] = useState(item?.unit ?? '');
-  const [plannedQty, setPlannedQty] = useState(
-    item ? parseFloat(item.plannedQty).toString() : ''
-  );
+  // IN-02: seed from the raw DB numeric string — do NOT round-trip through
+  // parseFloat, which strips trailing zeros ("1500.000" → "1500") and risks
+  // silent truncation if the column precision is ever raised.
+  const [plannedQty, setPlannedQty] = useState(item?.plannedQty ?? '');
   // unitPrice: null/undefined → empty string (placeholder), NOT '0'
   const [unitPrice, setUnitPrice] = useState(
     item?.unitPrice ? item.unitPrice : ''
@@ -93,7 +94,11 @@ export function BoqItemDialog({
 
     setIsPending(true);
     try {
-      const qty = parseFloat(plannedQty.replace(',', '.'));
+      // IN-02: send the trimmed, comma-normalized STRING the user typed — never
+      // a parseFloat'd number. The server is the single parse/validate authority
+      // (decimal.js), preserving precision and trailing zeros. This keeps the
+      // "no parseFloat on numeric strings" rule on the persisted value.
+      const qty = plannedQty.replace(',', '.').trim();
       // Normalize comma to period; empty string becomes null (no price)
       const normalizedPrice = unitPrice.trim() === ''
         ? null
@@ -138,7 +143,8 @@ export function BoqItemDialog({
       // Reset state when closing
       setMaterial(item?.material ?? '');
       setUnit(item?.unit ?? '');
-      setPlannedQty(item ? parseFloat(item.plannedQty).toString() : '');
+      // IN-02: reset to the raw DB string, no parseFloat round-trip.
+      setPlannedQty(item?.plannedQty ?? '');
       setUnitPrice(item?.unitPrice ? item.unitPrice : '');
       setCurrencyCode(item?.currencyCode ?? 'TRY');
       setErrors({});
