@@ -19,6 +19,7 @@ import { projects } from '@/db/schema/projects';
 import { validateLineStringGeoJSON } from '@/lib/geojson';
 import { auth } from '@/lib/auth';
 import { getDefaultTenantId } from '@/lib/tenant';
+import { logOfficeActivity } from '@/lib/log-office-activity';
 
 /**
  * uploadRoute — validate and insert/replace a GeoJSON LineString route.
@@ -63,6 +64,15 @@ export async function uploadRoute(projectId: string, fileContent: string) {
       uploadedAt: sql`now()`,
     },
   }).returning({ id: routes.id });
+
+  logOfficeActivity({
+    actorUserId: session.user?.id ?? '',
+    actionType: 'route_uploaded',
+    entityType: 'project',
+    entityId: projectId,
+    projectId,
+    metadata: { coordinateCount: result.count },
+  });
 
   revalidatePath(`/dashboard/projects/${projectId}`);
   return { ok: true as const, count: result.count, id: row.id };

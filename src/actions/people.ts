@@ -9,6 +9,7 @@ import { getDefaultTenantId } from '@/lib/tenant';
 import { people } from '@/db/schema/people';
 import { pendingPeople } from '@/db/schema/pending-people';
 import { assignments } from '@/db/schema/assignments';
+import { logOfficeActivity } from '@/lib/log-office-activity';
 
 // ─── Transaction-capable DB helper ───────────────────────────────────────────
 //
@@ -89,6 +90,7 @@ export async function approvePending(
 
   // Run the promotion as a transaction using the WebSocket-capable driver
   const txDb = await getTxDb();
+  let approvedPersonId: string | undefined;
   await txDb.transaction(async (tx) => {
     // 1. Insert into people
     const [person] = await tx
@@ -101,6 +103,8 @@ export async function approvePending(
       })
       .returning();
 
+    approvedPersonId = person.id;
+
     // 2. Insert assignment
     await tx.insert(assignments).values({
       tenantId,
@@ -111,6 +115,15 @@ export async function approvePending(
 
     // 3. Delete pending row
     await tx.delete(pendingPeople).where(eq(pendingPeople.id, pendingId));
+  });
+
+  logOfficeActivity({
+    actorUserId: session.user?.id ?? '',
+    actionType: 'person_approved',
+    entityType: 'person',
+    entityId: approvedPersonId,
+    projectId: parsed.projectId,
+    metadata: { role: parsed.role, displayName: parsed.displayName },
   });
 
   revalidatePath('/dashboard/projects');
@@ -151,6 +164,7 @@ export async function addManualPerson(input: {
   const tenantId = getDefaultTenantId();
 
   const txDb2 = await getTxDb();
+  let manualPersonId: string | undefined;
   await txDb2.transaction(async (tx) => {
     // Insert person
     const [person] = await tx
@@ -163,6 +177,8 @@ export async function addManualPerson(input: {
       })
       .returning();
 
+    manualPersonId = person.id;
+
     // Insert assignment
     await tx.insert(assignments).values({
       tenantId,
@@ -170,6 +186,15 @@ export async function addManualPerson(input: {
       projectId: parsed.projectId,
       roleOnProject: parsed.role,
     });
+  });
+
+  logOfficeActivity({
+    actorUserId: session.user?.id ?? '',
+    actionType: 'person_assigned',
+    entityType: 'person',
+    entityId: manualPersonId,
+    projectId: parsed.projectId,
+    metadata: { personId: manualPersonId, role: parsed.role, projectId: parsed.projectId },
   });
 
   revalidatePath('/dashboard/projects');
@@ -183,6 +208,13 @@ export async function removeAssignment(assignmentId: string) {
 
   const tenantId = getDefaultTenantId();
 
+  // Fetch assignment before delete so we can include entityId + projectId in the log
+  const [assignmentRow] = await db
+    .select({ personId: assignments.personId, projectId: assignments.projectId })
+    .from(assignments)
+    .where(and(eq(assignments.id, assignmentId), eq(assignments.tenantId, tenantId)))
+    .limit(1);
+
   await db
     .delete(assignments)
     .where(
@@ -191,6 +223,15 @@ export async function removeAssignment(assignmentId: string) {
         eq(assignments.tenantId, tenantId)
       )
     );
+
+  logOfficeActivity({
+    actorUserId: session.user?.id ?? '',
+    actionType: 'person_unassigned',
+    entityType: 'person',
+    entityId: assignmentRow?.personId,
+    projectId: assignmentRow?.projectId,
+    metadata: { assignmentId },
+  });
 
   revalidatePath('/dashboard/projects');
 }
