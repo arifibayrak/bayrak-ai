@@ -137,4 +137,72 @@ describeIfDb('Project CRUD lifecycle (DB integration)', () => {
     expect(names).toContain('Alpha');
     expect(names).toContain('Beta');
   });
+
+  // ── WR-01 (re-review): no false audit entry on a no-op mutation ────────────
+  // A valid-UUID-but-foreign-tenant project is a tenant-scoped UPDATE/DELETE
+  // no-op. The audit log must NOT record 'project_updated' / 'project_deleted'
+  // for an action that changed nothing. Seed a second tenant's project and aim
+  // the (default-tenant) action at it.
+
+  it('updateProject does not log when no row was matched (WR-01)', async () => {
+    const { updateProject } = await getActions();
+    const { sql } = await import('drizzle-orm');
+
+    const otherTenantId  = '00000000-0000-0000-0000-0000000e0001';
+    const otherProjectId = '00000000-0000-0000-0000-0000000e0101';
+    await db.execute(sql.raw(`INSERT INTO tenants (id, name) VALUES ('${otherTenantId}', 'Other Tenant') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO projects (id, tenant_id, name) VALUES ('${otherProjectId}', '${otherTenantId}', 'Foreign') ON CONFLICT DO NOTHING`));
+
+    const result = await updateProject(otherProjectId, { name: 'Hijacked' });
+    // Tenant-scoped no-op → null return, no row changed.
+    expect(result).toBeNull();
+
+    // No audit entry may exist for this foreign project.
+    const log = await db.execute(
+      sql.raw(`SELECT COUNT(*)::int AS c FROM office_activity_log WHERE entity_id = '${otherProjectId}' AND action_type = 'project_updated'`)
+    );
+    expect(Number(log.rows[0].c)).toBe(0);
+
+    // And the foreign project name is unchanged (the write was a no-op).
+    const proj = await db.execute(sql.raw(`SELECT name FROM projects WHERE id = '${otherProjectId}'`));
+    expect(proj.rows[0].name).toBe('Foreign');
+  });
+
+  it('deleteProject does not log when no row was matched (WR-01)', async () => {
+    const { deleteProject } = await getActions();
+    const { sql } = await import('drizzle-orm');
+
+    const otherTenantId  = '00000000-0000-0000-0000-0000000e0002';
+    const otherProjectId = '00000000-0000-0000-0000-0000000e0102';
+    await db.execute(sql.raw(`INSERT INTO tenants (id, name) VALUES ('${otherTenantId}', 'Other Tenant 2') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO projects (id, tenant_id, name) VALUES ('${otherProjectId}', '${otherTenantId}', 'Foreign 2') ON CONFLICT DO NOTHING`));
+
+    await deleteProject(otherProjectId);
+
+    // No audit entry, and the foreign project still exists (no-op delete).
+    const log = await db.execute(
+      sql.raw(`SELECT COUNT(*)::int AS c FROM office_activity_log WHERE entity_id = '${otherProjectId}' AND action_type = 'project_deleted'`)
+    );
+    expect(Number(log.rows[0].c)).toBe(0);
+
+    const proj = await db.execute(sql.raw(`SELECT COUNT(*)::int AS c FROM projects WHERE id = '${otherProjectId}'`));
+    expect(Number(proj.rows[0].c)).toBe(1);
+  });
+
+  it('updateProject still logs when a row IS matched (WR-01 positive control)', async () => {
+    const { createProject, updateProject } = await getActions();
+    const { sql } = await import('drizzle-orm');
+
+    // Need a real users row so logOfficeActivity's FK insert succeeds.
+    await db.execute(sql.raw(`INSERT INTO users (id, email) VALUES ('test-user-id', 'test@example.com') ON CONFLICT DO NOTHING`));
+
+    const created = await createProject({ name: 'Owned', description: '' });
+    const updated = await updateProject(created.id, { name: 'Owned Renamed' });
+    expect(updated?.name).toBe('Owned Renamed');
+
+    const log = await db.execute(
+      sql.raw(`SELECT COUNT(*)::int AS c FROM office_activity_log WHERE entity_id = '${created.id}' AND action_type = 'project_updated'`)
+    );
+    expect(Number(log.rows[0].c)).toBeGreaterThanOrEqual(1);
+  });
 });

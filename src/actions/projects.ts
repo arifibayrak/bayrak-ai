@@ -83,7 +83,11 @@ export async function updateProject(
     )
     .returning();
 
-  if (session.user?.id) {
+  // WR-01: only log when the update actually matched a row. A cross-tenant
+  // probe (valid UUID, wrong tenant) is a tenant-scoped no-op — emitting a
+  // 'project_updated' entry would write a false audit record asserting the
+  // action succeeded. Mirrors updateBoqItem's `if (row)` gate.
+  if (project && session.user?.id) {
     logOfficeActivity({
       actorUserId: session.user.id,
       actionType: 'project_updated',
@@ -95,7 +99,7 @@ export async function updateProject(
 
   revalidatePath('/dashboard/projects');
   revalidatePath(`/dashboard/projects/${id}`);
-  return project;
+  return project ?? null;
 }
 
 // ─── deleteProject ─────────────────────────────────────────────────────────────
@@ -104,16 +108,22 @@ export async function deleteProject(id: string) {
   const session = await auth();
   if (!session) throw new Error('Unauthorized');
 
-  await db
+  // WR-01: capture the deleted row so the audit log only fires when a row was
+  // actually matched. .returning() yields the deleted rows; an empty result
+  // means the tenant-scoped DELETE matched nothing (e.g. a cross-tenant probe)
+  // and must NOT produce a false 'project_deleted' audit entry. Mirrors
+  // deleteBoqItem's `if (row)` gate.
+  const [deleted] = await db
     .delete(projects)
     .where(
       and(
         eq(projects.id, id),
         eq(projects.tenantId, getDefaultTenantId())
       )
-    );
+    )
+    .returning({ id: projects.id });
 
-  if (session.user?.id) {
+  if (deleted && session.user?.id) {
     logOfficeActivity({
       actorUserId: session.user.id,
       actionType: 'project_deleted',
