@@ -31,6 +31,19 @@ export const hakedisPeriodLines = pgTable('hakedis_period_lines', {
   // periodQty = cumulativeQtyApproved - previousCumulativeQty (enforced in computePeriodLines())
   // DB CHECK (WR-05): period_qty >= 0 — guards against negative period quantities /
   // negative period_value (added in 0006_v2_period_qty_check.sql).
+  //
+  // WR-03 (DEFERRED to Phase 10): the DB CHECK only enforces period_qty >= 0, NOT
+  // the arithmetic identity period_qty = cumulative_qty_approved - previous_cumulative_qty.
+  // A future computePeriodLines() bug could write any non-negative value here while
+  // keeping the cumulative columns consistent, producing a hakkediş payment line
+  // whose quantity does not match the approved work for the period — a financial
+  // integrity defect in a legally-significant certificate. Phase 10 (which
+  // introduces computePeriodLines() and the first rows in this table) MUST enforce
+  // this identity. Preferred mechanism: convert period_qty to a
+  //   GENERATED ALWAYS AS (cumulative_qty_approved - previous_cumulative_qty) STORED
+  // column so the database guarantees it; the alternative is an equality CHECK
+  // constraint. No migration is added now — the table is empty until Phase 10, so
+  // either change is safe to make at that time without data migration.
   periodQty:             numeric('period_qty', { precision: 12, scale: 3 }).notNull(),
 
   // ── Computed value columns — stored for post-finalization immutability ──────
