@@ -1746,3 +1746,297 @@ describeIfDb('D-69/PERF-04: getPortfolioPeople() bulk aggregation', () => {
     expect(row!.submissionsApproved).toBe(1);
   });
 });
+
+// ── PERF-01/02: getPersonMetrics enrichments (Wave-0 scaffold) ───────────────
+// These tests are RED until Plan 09-04 implements outputQuantitySum and
+// slaBreachRateDecided in getPersonMetrics.
+
+describeIfDb('PERF-01/02: getPersonMetrics enrichments', () => {
+  let db: Awaited<ReturnType<typeof getTestDb>>;
+
+  const tenantId  = '00000000-0000-0000-0000-000000000001';
+  const projectId = '00000000-0000-0000-0000-p901000000001'.replace('p901', 'a901');
+  const boqId     = '00000000-0000-0000-0000-a901000000002';
+  const personId  = '00000000-0000-0000-0000-a901000000003';
+  const auditorId = '00000000-0000-0000-0000-a901000000004';
+
+  beforeEach(async () => {
+    db = await getTestDb();
+    await truncateAllTables(db);
+    // Seed base fixtures
+    await db.execute(sql.raw(`INSERT INTO tenants (id, name) VALUES ('${tenantId}', 'Test') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO projects (id, tenant_id, name) VALUES ('${projectId}', '${tenantId}', 'PerfTest') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO boq_items (id, tenant_id, project_id, material, unit, planned_qty, approved_qty, sort_order) VALUES ('${boqId}', '${tenantId}', '${projectId}', 'Pipe', 'm', 1000, 0, 1) ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO people (id, tenant_id, telegram_user_id, display_name) VALUES ('${personId}', '${tenantId}', 9901001, 'Perf Worker') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO people (id, tenant_id, telegram_user_id, display_name) VALUES ('${auditorId}', '${tenantId}', 9901002, 'Perf Auditor') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO assignments (id, tenant_id, person_id, project_id, role_on_project) VALUES ('00000000-0000-0000-0000-a901000000011', '${tenantId}', '${personId}', '${projectId}', 'worker') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO assignments (id, tenant_id, person_id, project_id, role_on_project) VALUES ('00000000-0000-0000-0000-a901000000012', '${tenantId}', '${auditorId}', '${projectId}', 'auditor') ON CONFLICT DO NOTHING`));
+  });
+
+  afterEach(async () => {
+    await truncateAllTables(db);
+  });
+
+  it('returns outputQuantitySum equal to SUM of approved submission quantities (PERF-01)', async () => {
+    // Seed one approved submission with quantity=10
+    await db.execute(sql.raw(`
+      INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at)
+      VALUES ('00000000-0000-0000-0000-a901100000001', '00000000-f000-0000-0000-a901100000001', '${tenantId}', '${projectId}', '${personId}', '${boqId}', 'approved', '10.000', 'https://example.com/p.jpg', NOW())
+      ON CONFLICT DO NOTHING
+    `));
+    const { getPersonMetrics } = await import('@/actions/analytics');
+    const metrics = await getPersonMetrics(personId, { asAuditor: false });
+    // outputQuantitySum is a new field added in Plan 09-04 — this test is RED until then
+    expect((metrics as Record<string, unknown>).outputQuantitySum).toBe('10');
+  });
+
+  it('returns slaBreachRateDecided as fraction when auditSlaHours is provided (PERF-02)', async () => {
+    // Seed two decided submissions: one fast (1h), one slow (100h)
+    const now = Date.now();
+    const fast1hAgo = new Date(now - 1 * 60 * 60 * 1000).toISOString();
+    const slow100hAgo = new Date(now - 100 * 60 * 60 * 1000).toISOString();
+    await db.execute(sql.raw(`
+      INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at, decided_at, decided_by)
+      VALUES ('00000000-0000-0000-0000-a901200000001', '00000000-f000-0000-0000-a901200000001', '${tenantId}', '${projectId}', '${personId}', '${boqId}', 'approved', '1.000', 'https://example.com/p.jpg', '${fast1hAgo}', NOW(), '${auditorId}')
+      ON CONFLICT DO NOTHING
+    `));
+    await db.execute(sql.raw(`
+      INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at, decided_at, decided_by)
+      VALUES ('00000000-0000-0000-0000-a901200000002', '00000000-f000-0000-0000-a901200000002', '${tenantId}', '${projectId}', '${personId}', '${boqId}', 'rejected', '1.000', 'https://example.com/p.jpg', '${slow100hAgo}', NOW(), '${auditorId}')
+      ON CONFLICT DO NOTHING
+    `));
+    const { getPersonMetrics } = await import('@/actions/analytics');
+    // auditSlaHours=48 → one breach (100h > 48h), one ok (1h < 48h) → breach rate = 0.5
+    const metrics = await getPersonMetrics(auditorId, { asAuditor: true, auditSlaHours: 48 });
+    // slaBreachRateDecided is added in Plan 09-04 — RED until then
+    const rate = (metrics as Record<string, unknown>).slaBreachRateDecided as number | null;
+    expect(rate).not.toBeNull();
+    expect(rate).toBeCloseTo(0.5, 2);
+  });
+
+  it('returns slaBreachRateDecided as null when no decided submissions exist (PERF-02 null-safe)', async () => {
+    // Seed only a pending submission — no decided_at
+    await db.execute(sql.raw(`
+      INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at)
+      VALUES ('00000000-0000-0000-0000-a901300000001', '00000000-f000-0000-0000-a901300000001', '${tenantId}', '${projectId}', '${personId}', '${boqId}', 'pending_audit', '1.000', 'https://example.com/p.jpg', NOW())
+      ON CONFLICT DO NOTHING
+    `));
+    const { getPersonMetrics } = await import('@/actions/analytics');
+    const metrics = await getPersonMetrics(auditorId, { asAuditor: true, auditSlaHours: 48 });
+    // Denominator is 0 → NULLIF returns NULL → slaBreachRateDecided must be null
+    const rate = (metrics as Record<string, unknown>).slaBreachRateDecided;
+    expect(rate === null || rate === undefined).toBe(true);
+  });
+});
+
+// ── PERF-06: getStalledProjects (Wave-0 scaffold) ────────────────────────────
+// RED until Plan 09-04 implements getStalledProjects in analytics.ts.
+
+describeIfDb('PERF-06: getStalledProjects', () => {
+  let db: Awaited<ReturnType<typeof getTestDb>>;
+
+  const tenantId    = '00000000-0000-0000-0000-000000000001';
+  const stalledPid  = '00000000-0000-0000-0000-a902000000001';  // stalled project
+  const activePid   = '00000000-0000-0000-0000-a902000000002';  // recently approved
+  const emptyPid    = '00000000-0000-0000-0000-a902000000003';  // no submissions at all
+  const boqId       = '00000000-0000-0000-0000-a902000000010';
+  const personId    = '00000000-0000-0000-0000-a902000000011';
+
+  beforeEach(async () => {
+    db = await getTestDb();
+    await truncateAllTables(db);
+    await db.execute(sql.raw(`INSERT INTO tenants (id, name) VALUES ('${tenantId}', 'Test') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO projects (id, tenant_id, name) VALUES ('${stalledPid}', '${tenantId}', 'StalledProject') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO projects (id, tenant_id, name) VALUES ('${activePid}', '${tenantId}', 'ActiveProject') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO projects (id, tenant_id, name) VALUES ('${emptyPid}', '${tenantId}', 'EmptyProject') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO boq_items (id, tenant_id, project_id, material, unit, planned_qty, approved_qty, sort_order) VALUES ('${boqId}', '${tenantId}', '${stalledPid}', 'Pipe', 'm', 100, 0, 1) ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO people (id, tenant_id, telegram_user_id, display_name) VALUES ('${personId}', '${tenantId}', 9902001, 'StallWorker') ON CONFLICT DO NOTHING`));
+  });
+
+  afterEach(async () => {
+    await truncateAllTables(db);
+  });
+
+  it('returns a project whose last approved submission is older than stalledDays (PERF-06)', async () => {
+    // Insert approved submission 30 days ago (older than 7-day threshold)
+    const oldDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    await db.execute(sql.raw(`
+      INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at, decided_at)
+      VALUES ('00000000-0000-0000-0000-a902100000001', '00000000-f000-0000-0000-a902100000001', '${tenantId}', '${stalledPid}', '${personId}', '${boqId}', 'approved', '5.000', 'https://example.com/p.jpg', '${oldDate}', '${oldDate}')
+      ON CONFLICT DO NOTHING
+    `));
+    // getStalledProjects is added in Plan 09-04 — RED until then
+    const { getStalledProjects } = await import('@/actions/analytics') as Record<string, unknown> as { getStalledProjects: (days: number) => Promise<{ projectId: string; projectName: string }[]> };
+    const stalled = await getStalledProjects(7);
+    const ids = stalled.map(p => p.projectId);
+    expect(ids).toContain(stalledPid);
+  });
+
+  it('does NOT return a project with a recent approved submission (PERF-06)', async () => {
+    // Insert approved submission just now (within 7-day threshold)
+    await db.execute(sql.raw(`
+      INSERT INTO boq_items (id, tenant_id, project_id, material, unit, planned_qty, approved_qty, sort_order) VALUES ('00000000-0000-0000-0000-a902000000020', '${tenantId}', '${activePid}', 'Pipe', 'm', 100, 0, 1) ON CONFLICT DO NOTHING
+    `));
+    await db.execute(sql.raw(`
+      INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at, decided_at)
+      VALUES ('00000000-0000-0000-0000-a902200000001', '00000000-f000-0000-0000-a902200000001', '${tenantId}', '${activePid}', '${personId}', '00000000-0000-0000-0000-a902000000020', 'approved', '5.000', 'https://example.com/p.jpg', NOW(), NOW())
+      ON CONFLICT DO NOTHING
+    `));
+    const { getStalledProjects } = await import('@/actions/analytics') as Record<string, unknown> as { getStalledProjects: (days: number) => Promise<{ projectId: string; projectName: string }[]> };
+    const stalled = await getStalledProjects(7);
+    const ids = stalled.map(p => p.projectId);
+    expect(ids).not.toContain(activePid);
+  });
+
+  it('does NOT return a project with no submissions at all (PERF-06)', async () => {
+    // emptyPid has no submissions inserted
+    const { getStalledProjects } = await import('@/actions/analytics') as Record<string, unknown> as { getStalledProjects: (days: number) => Promise<{ projectId: string; projectName: string }[]> };
+    const stalled = await getStalledProjects(7);
+    const ids = stalled.map(p => p.projectId);
+    expect(ids).not.toContain(emptyPid);
+  });
+});
+
+// ── PERF-06: getTenantSettings / updateTenantSettings (Wave-0 scaffold) ──────
+// RED until Plan 09-04 implements settings.ts server actions.
+
+describeIfDb('PERF-06: getTenantSettings / updateTenantSettings', () => {
+  let db: Awaited<ReturnType<typeof getTestDb>>;
+
+  const tenantId = '00000000-0000-0000-0000-000000000001';
+
+  beforeEach(async () => {
+    db = await getTestDb();
+    await truncateAllTables(db);
+    await db.execute(sql.raw(`INSERT INTO tenants (id, name) VALUES ('${tenantId}', 'Test') ON CONFLICT DO NOTHING`));
+    // Seed the default tenant_settings row (D-84 Moderate defaults)
+    // This mirrors what migration 0007 will do in Plan 09-03
+    await db.execute(sql.raw(`
+      INSERT INTO tenant_settings (tenant_id, audit_sla_hours, rejection_rate_threshold, stalled_days)
+      VALUES ('${tenantId}', 48, '0.3000', 7)
+      ON CONFLICT (tenant_id) DO NOTHING
+    `));
+  });
+
+  afterEach(async () => {
+    await truncateAllTables(db);
+  });
+
+  it('getTenantSettings returns D-84 Moderate defaults from seeded row (PERF-06)', async () => {
+    // getTenantSettings is implemented in Plan 09-04 — RED until then
+    const { getTenantSettings } = await import('@/actions/settings') as { getTenantSettings: () => Promise<{ auditSlaHours: number; rejectionRateThreshold: string | number; stalledDays: number }> };
+    const settings = await getTenantSettings();
+    expect(settings.auditSlaHours).toBe(48);
+    expect(Number(settings.rejectionRateThreshold)).toBeCloseTo(0.3, 4);
+    expect(settings.stalledDays).toBe(7);
+  });
+
+  it('updateTenantSettings upserts new threshold values (PERF-06)', async () => {
+    const { updateTenantSettings } = await import('@/actions/settings') as { updateTenantSettings: (input: { auditSlaHours: number; rejectionRateThreshold: number; stalledDays: number }) => Promise<{ ok: boolean }> };
+    const result = await updateTenantSettings({ auditSlaHours: 72, rejectionRateThreshold: 0.25, stalledDays: 14 });
+    expect(result.ok).toBe(true);
+
+    const { getTenantSettings } = await import('@/actions/settings') as { getTenantSettings: () => Promise<{ auditSlaHours: number; rejectionRateThreshold: string | number; stalledDays: number }> };
+    const updated = await getTenantSettings();
+    expect(updated.auditSlaHours).toBe(72);
+    expect(Number(updated.rejectionRateThreshold)).toBeCloseTo(0.25, 4);
+    expect(updated.stalledDays).toBe(14);
+  });
+
+  it('updateTenantSettings is tenant-scoped (does not cross-tenant leak) (PERF-06)', async () => {
+    // Only one tenant exists; verify returned settings match this tenant's row
+    const { getTenantSettings } = await import('@/actions/settings') as { getTenantSettings: () => Promise<{ auditSlaHours: number; rejectionRateThreshold: string | number; stalledDays: number }> };
+    const settings = await getTenantSettings();
+    // Should return a single row (not crash or mix tenants)
+    expect(settings).toBeDefined();
+    expect(typeof settings.auditSlaHours).toBe('number');
+  });
+
+  it('throws Unauthorized when auth() returns null (PERF-06 auth guard)', async () => {
+    const { auth } = await import('@/lib/auth');
+    (auth as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null);
+    const { updateTenantSettings } = await import('@/actions/settings') as { updateTenantSettings: (input: { auditSlaHours: number; rejectionRateThreshold: number; stalledDays: number }) => Promise<{ ok: boolean }> };
+    await expect(
+      updateTenantSettings({ auditSlaHours: 48, rejectionRateThreshold: 0.3, stalledDays: 7 })
+    ).rejects.toThrow('Unauthorized');
+  });
+
+  it('rejects auditSlaHours=0 with zod validation error (PERF-06 zod guard)', async () => {
+    const { updateTenantSettings } = await import('@/actions/settings') as { updateTenantSettings: (input: { auditSlaHours: number; rejectionRateThreshold: number; stalledDays: number }) => Promise<{ ok: boolean }> };
+    // auditSlaHours=0 is below z.number().int().min(1)
+    await expect(
+      updateTenantSettings({ auditSlaHours: 0, rejectionRateThreshold: 0.3, stalledDays: 7 })
+    ).rejects.toThrow();
+  });
+
+  it('rejects auditSlaHours=9999 with zod validation error (PERF-06 zod upper bound)', async () => {
+    const { updateTenantSettings } = await import('@/actions/settings') as { updateTenantSettings: (input: { auditSlaHours: number; rejectionRateThreshold: number; stalledDays: number }) => Promise<{ ok: boolean }> };
+    // auditSlaHours=9999 is above z.number().int().max(720)
+    await expect(
+      updateTenantSettings({ auditSlaHours: 9999, rejectionRateThreshold: 0.3, stalledDays: 7 })
+    ).rejects.toThrow();
+  });
+});
+
+// ── PERF-05: leaderboard sort (Wave-0 scaffold — pure TS sort) ───────────────
+// Tests sort helper functions that Plan 09-05 will define in the people page or
+// a dedicated sort utility. Functions are expected to fail with import/type errors
+// until Plan 09-05 ships (RED state by design).
+//
+// Plain describe (no DB needed — pure TypeScript sort logic).
+
+describe('PERF-05: leaderboard sort', () => {
+  // Minimal PortfolioWorker stubs for sort testing
+  const workers = [
+    { personId: 'w1', displayName: 'Alice', submissionsApproved: 10, submissionsRejected: 2, submissionsPending: 0, valueContributedByCurrency: {} },
+    { personId: 'w2', displayName: 'Bob', submissionsApproved: 20, submissionsRejected: 1, submissionsPending: 0, valueContributedByCurrency: {} },
+    { personId: 'w3', displayName: 'Carol', submissionsApproved: 10, submissionsRejected: 5, submissionsPending: 0, valueContributedByCurrency: {} },  // tie with Alice on approved
+  ];
+
+  // Minimal PortfolioAuditor stubs for sort testing
+  const auditors = [
+    { personId: 'a1', displayName: 'Dave', decisionsCount: 5, avgDecisionLatencyHours: 72, pendingBacklogCount: 1 },
+    { personId: 'a2', displayName: 'Eve', decisionsCount: 8, avgDecisionLatencyHours: 24, pendingBacklogCount: 2 },   // fastest
+    { personId: 'a3', displayName: 'Frank', decisionsCount: 3, avgDecisionLatencyHours: 24, pendingBacklogCount: 0 }, // tie with Eve on latency
+  ];
+
+  it('workers default-sort by submissionsApproved DESC (PERF-05)', async () => {
+    // getWorkerSortFn is defined in Plan 09-05 — RED until then (import will fail or return undefined)
+    // If Plan 09-05 has not shipped yet, this will throw a TypeError/import error — expected RED state
+    const { getWorkerSortFn } = await import('@/actions/analytics') as Record<string, unknown> as { getWorkerSortFn?: (sortBy?: string) => (a: typeof workers[0], b: typeof workers[0]) => number };
+    if (typeof getWorkerSortFn !== 'function') {
+      // Not yet implemented — fail with clear message (RED scaffold)
+      throw new Error('getWorkerSortFn is not yet exported from @/actions/analytics (RED — implement in Plan 09-05)');
+    }
+    const sorted = [...workers].sort(getWorkerSortFn());
+    // Bob (20) > Alice (10) = Carol (10); Alice < Carol alphabetically
+    expect(sorted[0].personId).toBe('w2');  // Bob: 20 approved
+    expect(sorted[1].displayName).toBe('Alice');  // tie-break: Alice < Carol alphabetically
+    expect(sorted[2].displayName).toBe('Carol');
+  });
+
+  it('auditors default-sort by avgDecisionLatencyHours ASC (faster = better) (PERF-05)', async () => {
+    // getAuditorSortFn is defined in Plan 09-05 — RED until then
+    const { getAuditorSortFn } = await import('@/actions/analytics') as Record<string, unknown> as { getAuditorSortFn?: (sortBy?: string) => (a: typeof auditors[0], b: typeof auditors[0]) => number };
+    if (typeof getAuditorSortFn !== 'function') {
+      throw new Error('getAuditorSortFn is not yet exported from @/actions/analytics (RED — implement in Plan 09-05)');
+    }
+    const sorted = [...auditors].sort(getAuditorSortFn());
+    // Eve (24h) = Frank (24h) < Dave (72h); Eve < Frank alphabetically
+    expect(sorted[0].displayName).toBe('Eve');   // tie-break: Eve < Frank alphabetically
+    expect(sorted[1].displayName).toBe('Frank');
+    expect(sorted[2].personId).toBe('a1');       // Dave: slowest
+  });
+
+  it('worker tie broken by displayName alphabetically (PERF-05)', async () => {
+    const { getWorkerSortFn } = await import('@/actions/analytics') as Record<string, unknown> as { getWorkerSortFn?: (sortBy?: string) => (a: typeof workers[0], b: typeof workers[0]) => number };
+    if (typeof getWorkerSortFn !== 'function') {
+      throw new Error('getWorkerSortFn is not yet exported from @/actions/analytics (RED — implement in Plan 09-05)');
+    }
+    // Alice and Carol both have 10 approved — Alice comes first alphabetically
+    const tiedWorkers = workers.filter(w => w.personId !== 'w2'); // remove Bob
+    const sorted = [...tiedWorkers].sort(getWorkerSortFn());
+    expect(sorted[0].displayName).toBe('Alice');
+    expect(sorted[1].displayName).toBe('Carol');
+  });
+});
