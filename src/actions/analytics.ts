@@ -826,23 +826,32 @@ export async function getPersonMetrics(
     // NEVER mix this aggregate with pending-backlog count — NULL decidedAt poisons avg
     // PERF-02: sla_breach_rate = decided submissions exceeding auditSlaHours threshold / all decided
     // Denominator is decided-only (Pitfall 2); ${auditSlaHours} is a bound param (CR-03)
-    const auditSlaHours = options?.auditSlaHours ?? null;
+    //
+    // CR-03 (09-REVIEW): build a conditional sql fragment for the breach rate so that
+    // when auditSlaHours is not provided we emit SQL NULL rather than "EXTRACT(...) > NULL".
+    // Any comparison with NULL in SQL is UNKNOWN (false in FILTER), causing COUNT to return 0
+    // and the rate to be 0.0 instead of null — a silent correctness bug.
+    const slaBreachFragment = options?.auditSlaHours != null
+      ? sql`
+          COUNT(*) FILTER (
+            WHERE (EXTRACT(EPOCH FROM (s.decided_at - s.submitted_at)) / 3600.0) > ${options.auditSlaHours}
+          )::float
+            / NULLIF(COUNT(*), 0)
+        `
+      : sql`NULL`;
+
     const auditorResult = await db.execute(sql`
       SELECT
         COUNT(*)                                                             AS decisions_count,
         ROUND(
-          AVG(EXTRACT(EPOCH FROM (s.decided_at - s.submitted_at)) / 3600.0)
-          FILTER (WHERE s.decided_at IS NOT NULL), 2
+          AVG(EXTRACT(EPOCH FROM (s.decided_at - s.submitted_at)) / 3600.0), 2
         )                                                                   AS avg_decision_latency_hours,
-        COUNT(*) FILTER (
-          WHERE s.decided_at IS NOT NULL
-            AND (EXTRACT(EPOCH FROM (s.decided_at - s.submitted_at)) / 3600.0) > ${auditSlaHours}
-        )::float
-          / NULLIF(COUNT(*) FILTER (WHERE s.decided_at IS NOT NULL), 0)   AS sla_breach_rate
+        ${slaBreachFragment}                                                AS sla_breach_rate
       FROM submissions s
       WHERE s.decided_by = ${personId}
         AND s.tenant_id  = ${tenantId}
         AND s.status IN ('approved', 'rejected')
+        AND s.decided_at IS NOT NULL
         ${dateConditions}
     `);
 
