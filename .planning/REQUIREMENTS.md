@@ -75,8 +75,8 @@ Current milestone. Admin-grade performance + cost analytics, Turkish hakkediş b
 
 ### Performance & Scorecards
 
-- [ ] **PERF-01**: Admin can view a worker performance scorecard (submission volume, approval rate, rejection rate, location-compliance rate, output quantity, throughput) per project and across all projects
-- [ ] **PERF-02**: Admin can view an auditor performance scorecard (decision count, approval/rejection split, mean decision turnaround `decidedAt − submittedAt`, pending backlog, SLA-breach rate)
+- [x] **PERF-01**: Admin can view a worker performance scorecard (submission volume, approval rate, rejection rate, location-compliance rate, output quantity, throughput) per project and across all projects
+- [x] **PERF-02**: Admin can view an auditor performance scorecard (decision count, approval/rejection split, mean decision turnaround `decidedAt − submittedAt`, pending backlog, SLA-breach rate)
 - [x] **PERF-03**: Office-engineer actions (project create/edit, BOQ import, unit-price edits, person approval/assignment, hakkediş create/finalize) are recorded in an activity log and shown as an office-engineer activity scorecard
 - [x] **PERF-04**: Admin can open a per-employee profile page showing that person's metrics, an activity timeline, and (for workers) value contribution
 - [ ] **PERF-05**: Admin can compare employees side-by-side in a leaderboard ranked by a chosen metric
@@ -206,8 +206,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | UX-03 | Phase 8 | Complete |
 | UX-04 | Phase 8 | Complete |
 | UX-05 | Phase 8 | Complete |
-| PERF-01 | Phase 9 | Pending |
-| PERF-02 | Phase 9 | Pending |
+| PERF-01 | Phase 9 | Complete |
+| PERF-02 | Phase 9 | Complete |
 | PERF-05 | Phase 9 | Pending |
 | PERF-06 | Phase 9 | Complete |
 | HAK-01 | Phase 10 | Pending |
