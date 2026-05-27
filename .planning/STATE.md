@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Operations Intelligence & Hakkediş
 status: executing
-stopped_at: Completed 09-01-PLAN.md
-last_updated: "2026-05-27T14:28:26.554Z"
+stopped_at: Completed 09-03-PLAN.md
+last_updated: "2026-05-27T19:38:15.859Z"
 last_activity: 2026-05-27
 progress:
   total_phases: 11
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-05-25)
 ## Current Position
 
 Phase: 09 (performance-scorecards-leaderboard-alerts) — EXECUTING
-Plan: 3 of 6
+Plan: 4 of 6
 Status: Ready to execute
 Last activity: 2026-05-27
 
@@ -165,6 +165,7 @@ Recent decisions affecting current work:
 - [Phase ?]: D-AuditorSource: getAuditorDecisions reads submissions only — never office_activity_log (Pitfall 7)
 - [Phase ?]: tenant_settings default '0.3000' is string literal not float (Pitfall 5 prevention)
 - [Phase ?]: [Phase 09-01]: phase9Tables fallback set in truncateAllTables mirrors phase7Tables pattern for graceful pre-migration test runs
+- [Phase 09-03]: Applied migrations must not be edited post-apply — drizzle migration-hash integrity is broken by post-apply edits; test-DB FK-safe seed reconcile required manual temp-tenant insert workaround; follow-up todo filed to use WHERE EXISTS guard in future FK-bound seeds
 
 ### Open Questions / Conflicts (surface before relevant phases)
 
@@ -208,6 +209,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-27T14:28:26.547Z
+Last session: 2026-05-27T19:38:15.850Z
 Stopped at: Completed 09-01-PLAN.md
 Resume file: None

@@ -9,7 +9,7 @@ dependency_graph:
   affects: ["09-04", "09-05", "09-06"]
 tech_stack:
   added: []
-  patterns: ["hand-written migration", "ON CONFLICT DO NOTHING seed", "drizzle journal entry"]
+  patterns: ["hand-written migration", "ON CONFLICT DO NOTHING seed", "drizzle journal entry", "test-DB reconcile via temp-tenant insert"]
 key_files:
   created:
     - src/db/migrations/0007_v2_tenant_settings.sql
@@ -19,10 +19,11 @@ decisions:
   - "Hand-wrote migration directly per established precedent (0005, 0006) — drizzle-kit generate produces random filename requiring rename; all patterns already fully specified in PATTERNS.md"
   - "DEFAULT '0.3000' stored as string literal (not 0.3 float) per Pitfall 5 — preserves numeric(5,4) precision"
   - "Seed embedded in migration SQL (ON CONFLICT DO NOTHING) not a separate script — idempotent per-apply (anti-pattern from RESEARCH.md)"
+  - "0007 must NOT be edited post-apply — drizzle migration-hash integrity requires applied migrations to be immutable; FK-safe follow-up deferred to a future migration (todo filed: tenant-settings-seed-fk-safe.md)"
 metrics:
-  duration: "93s"
+  duration: "93s + checkpoint"
   completed: "2026-05-27"
-  tasks_completed: 1
+  tasks_completed: 2
   tasks_total: 2
   files_created: 1
   files_modified: 1
@@ -31,7 +32,7 @@ requirements: [PERF-06]
 
 # Phase 9 Plan 03: tenant_settings Migration Summary
 
-**One-liner:** Hand-written 0007 migration creates `tenant_settings` table with numeric(5,4) precision, UNIQUE tenant constraint, and idempotent Moderate-defaults seed row (48h SLA / 30% rejection / 7-day stall).
+**One-liner:** Hand-written 0007 migration creates `tenant_settings` table with numeric(5,4) precision, UNIQUE tenant constraint, and idempotent Moderate-defaults seed row (48h SLA / 30% rejection / 7-day stall) — applied and verified on both production and test Neon branches.
 
 ## What Was Built
 
@@ -59,17 +60,25 @@ The `tenant_settings` migration (0007) that materializes the configurable-thresh
 | Task | Status | Commit |
 |------|--------|--------|
 | Task 1: Generate + hand-verify 0007 migration (table, UNIQUE, precision, seed) | COMPLETE | 716f519 |
-| Task 2: Apply 0007 migration to production + test DBs via tsx migrate.ts | AWAITING CHECKPOINT | — |
+| Task 2: Apply 0007 migration to production + test DBs via tsx migrate.ts | COMPLETE | checkpoint-verified |
 
-## Checkpoint State
+### Task 2 Verified Results
 
-Task 2 is a `checkpoint:human-verify gate="blocking"` — the executor stopped and returned structured checkpoint state. The migration file is authored and committed. The live-DB apply step requires human confirmation per plan constraints (live DB credentials + verification query).
+**Production DB:** `tenant_settings` table created; seed row present (`audit_sla_hours=48, rejection_rate_threshold=0.3000, stalled_days=7`); 0007 journaled. Idempotent re-apply confirmed (no duplicate row, no error).
+
+**Test branch DB:** `tenant_settings` table + unique constraint present; 0 rows at rest (clean — tests create/truncate their own rows); 0007 journaled. Confirmed migration applied via `tsx src/db/migrate.ts` (NOT drizzle-kit push, per D-49).
 
 ## Deviations from Plan
 
 ### Auto-fixed Issues
 
-None — plan executed exactly as written.
+**1. [Rule 3 - Blocking] Test-DB reconcile required due to FK violation on seed INSERT**
+
+- **Found during:** Task 2 (apply to test branch DB)
+- **Issue:** The test branch DB had no default tenant (`'00000000-0000-0000-0000-000000000001'`) at the time of migration apply. The `INSERT INTO tenant_settings ... VALUES ('00000000-0000-0000-0000-000000000001', ...)` seed statement has a FK to `tenants.id`, which fails with a FK violation when that tenant is absent. The test DB runs with clean state — no seed tenants — so the seed could not be applied directly.
+- **Fix:** Performed a one-time test-DB reconcile: (1) dropped the partially-created `tenant_settings` table from the failed apply, (2) temporarily inserted the default tenant row into `tenants`, (3) re-ran `tsx src/db/migrate.ts` to apply 0007 successfully, (4) deleted the temporary tenant row. The migration is now journaled on the test branch DB and 0007 will not re-run.
+- **Why 0007 was NOT edited:** Drizzle migration-hash integrity requires applied migrations to be immutable. Editing 0007 after it was applied to production would break the hash check on next migrate.ts run. The correct fix is a future follow-up migration.
+- **Follow-up filed:** `.planning/todos/pending/tenant-settings-seed-fk-safe.md` — documents the portable seed pattern (`INSERT ... SELECT ... WHERE EXISTS`) to use for future default-row seeds. Standing convention recommendation: never seed FK-bound rows unconditionally; always guard with `WHERE EXISTS`.
 
 ### Approach Note (not a deviation)
 
@@ -83,6 +92,8 @@ Task 1 specified running `drizzle-kit generate` as the first step to produce a t
 
 **Commits exist:**
 - 716f519 — feat(09-03): add 0007_v2_tenant_settings migration — FOUND
+- 6a95bf7 — docs(09-03): complete tenant_settings migration plan — stopped at blocking checkpoint — FOUND
+- c6b04ad — docs(09): log FK-safe tenant_settings seed follow-up — FOUND
 
 ## Self-Check: PASSED
 
@@ -92,4 +103,4 @@ None. This plan creates only a migration file and journal entry — no UI or run
 
 ## Threat Flags
 
-None. The migration introduces no new network endpoints, auth paths, or trust boundaries beyond what is modeled in the plan's threat register (T-09-03-T UNIQUE constraint mitigated, T-09-03-D idempotent journal-tracked apply mitigated, T-09-03-FP false-positive trap closed at checkpoint).
+None. The migration introduces no new network endpoints, auth paths, or trust boundaries beyond what is modeled in the plan's threat register (T-09-03-T UNIQUE constraint mitigated, T-09-03-D idempotent journal-tracked apply mitigated, T-09-03-FP false-positive trap closed by Task 2 live-apply + verification).
