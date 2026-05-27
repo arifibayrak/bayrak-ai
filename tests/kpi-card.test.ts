@@ -11,6 +11,7 @@
  * rather than full render.
  */
 
+import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'fs';
 import path from 'path';
 
@@ -31,7 +32,7 @@ describe('KpiCard 09-02 extension contract', () => {
     const src = readKpiCard();
     expect(src).toContain('text-amber-600');
     // The mapping must be guarded by a 'warning' condition
-    expect(src).toMatch(/warning.*text-amber-600|text-amber-600.*warning/s);
+    expect(src).toMatch(/warning[\s\S]*text-amber-600|text-amber-600[\s\S]*warning/);
   });
 
   it('KpiCardProps contains alertBadge optional prop', () => {
@@ -62,6 +63,6 @@ describe('KpiCard 09-02 extension contract', () => {
     const src = readKpiCard();
     // The pattern: className={alertBadge ? 'relative' : undefined}
     expect(src).toContain("relative");
-    expect(src).toMatch(/alertBadge.*relative|relative.*alertBadge/s);
+    expect(src).toMatch(/alertBadge[\s\S]*relative|relative[\s\S]*alertBadge/);
   });
 });

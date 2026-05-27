@@ -41,7 +41,8 @@ export function LeaderboardSortSelect({
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  function handleChange(value: string) {
+  function handleChange(value: string | null) {
+    if (!value) return;
     const params = new URLSearchParams(searchParams.toString());
     params.set('sortBy', value);
     router.push(`?${params.toString()}`);
