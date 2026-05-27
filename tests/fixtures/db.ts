@@ -52,6 +52,8 @@ export async function truncateAllTables(db: Awaited<ReturnType<typeof getTestDb>
 
   // Truncate in reverse FK dependency order (most dependent first)
   const tables = [
+    // Phase 9 tables (references tenants → truncate before tenants)
+    "tenant_settings",       // references tenants → before tenants
     // Phase 7 tables (most dependent — must truncate before their parents)
     "hakedis_period_lines",  // references hakedis_periods + boq_items → truncate first
     "hakedis_periods",       // references projects + users → before projects/users
@@ -85,11 +87,13 @@ export async function truncateAllTables(db: Awaited<ReturnType<typeof getTestDb>
   // first; if it fails with "relation does not exist" (Postgres error code 42P01), we
   // progressively fall back to narrower table sets in migration-order (most recent phase first).
   //
+  // Phase 9 tables (migration 0007) — added Plan 09-01, migrated in Plan 09-03
+  const phase9Tables = ["tenant_settings"];
   // Phase 7 tables (migration 0004) — added Plan 07-01, migrated in Plan 07-02
   const phase7Tables = ["hakedis_period_lines", "hakedis_periods", "office_activity_log"];
   // Phase 3 table (migration 0003) — added Plan 03-01, migrated in Plan 03-02
   const phase3Tables = ["audit_notifications"];
-  const laterTables = new Set([...phase7Tables, ...phase3Tables]);
+  const laterTables = new Set([...phase9Tables, ...phase7Tables, ...phase3Tables]);
 
   const tableList = tables.map(t => `"${t}"`).join(', ');
   try {

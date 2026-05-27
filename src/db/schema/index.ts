@@ -16,3 +16,4 @@ export * from './audit-notifications'; // references tenants, submissions, peopl
 export * from './office-activity-log'; // references tenants, users, projects
 export * from './hakedis-periods';     // references tenants, projects, users
 export * from './hakedis-period-lines'; // references tenants, hakedis-periods, boq-items
+export * from './tenant-settings';     // references tenants only (D-83 admin-configurable thresholds)
