@@ -12,7 +12,7 @@
 import Link from 'next/link';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 
-type ValueColor = 'default' | 'success' | 'destructive';
+type ValueColor = 'default' | 'success' | 'destructive' | 'warning';
 
 interface KpiCardProps {
   label: string;
@@ -21,11 +21,13 @@ interface KpiCardProps {
   icon: React.ReactNode;
   drillHref?: string;
   valueColor?: ValueColor;
+  alertBadge?: React.ReactNode; // optional — absolute top-right corner badge (D-87)
 }
 
 function colorClass(color: ValueColor): string {
   if (color === 'success') return 'text-emerald-700';
   if (color === 'destructive') return 'text-destructive';
+  if (color === 'warning') return 'text-amber-600';
   return 'text-foreground';
 }
 
@@ -36,6 +38,7 @@ export function KpiCard({
   icon,
   drillHref,
   valueColor = 'default',
+  alertBadge,
 }: KpiCardProps) {
   const cls = colorClass(valueColor);
 
@@ -46,7 +49,12 @@ export function KpiCard({
   );
 
   return (
-    <Card>
+    <Card className={alertBadge ? 'relative' : undefined}>
+      {alertBadge && (
+        <span className="absolute top-2 right-2" aria-label="Alert: threshold exceeded">
+          {alertBadge}
+        </span>
+      )}
       <CardHeader className="flex flex-row items-center gap-2 pb-2 pt-4 px-4">
         <span className="text-muted-foreground" aria-hidden="true">
           {icon}
