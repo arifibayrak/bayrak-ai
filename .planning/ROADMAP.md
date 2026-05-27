@@ -319,7 +319,7 @@ Plans:
 **Wave 1**
 
 - [x] 09-01-PLAN.md — tenant_settings schema (D-83/84 thresholds) + barrel + truncate helper + Wave-0 test scaffolds
-- [ ] 09-02-PLAN.md — KpiCard extension: 'warning' (amber) valueColor + alertBadge corner slot (D-87)
+- [x] 09-02-PLAN.md — KpiCard extension: 'warning' (amber) valueColor + alertBadge corner slot (D-87)
 
 **Wave 2** *(blocked on Wave 1)*
 
@@ -386,6 +386,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 6. AI Vision Assist | 0/TBD | Not started | - |
 | 7. Data Foundation & Canonical Record | 5/5 | Complete   | 2026-05-26 |
 | 8. Admin Shell & Information Architecture | 6/6 | Complete   | 2026-05-26 |
-| 9. Performance Analytics & Scorecards | 1/6 | In Progress|  |
+| 9. Performance Analytics & Scorecards | 2/6 | In Progress|  |
 | 10. Hakkediş Billing | 0/TBD | Not started | - |
 | 11. Exports | 0/TBD | Not started | - |
