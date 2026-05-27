@@ -128,6 +128,13 @@ export async function updateTenantSettings(input: {
 
   revalidatePath('/dashboard/overview');
   revalidatePath('/dashboard/settings');
+  // WR-04 (09-REVIEW): revalidate people routes whose SLA breach display depends on
+  // auditSlaHours, and stalled-project badge depends on stalledDays.
+  // These pages are force-dynamic (re-fetch on every request) so cache revalidation
+  // is not strictly required today, but adding it now makes the invalidation boundary
+  // explicit and future-proof if caching is later added to these pages.
+  revalidatePath('/dashboard/people');
+  revalidatePath('/dashboard/people/[personId]', 'page');
 
   return { ok: true };
 }
