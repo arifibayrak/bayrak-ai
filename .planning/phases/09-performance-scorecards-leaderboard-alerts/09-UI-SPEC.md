@@ -54,7 +54,7 @@ Inherited from Phase 8 — 8-point scale, multiples of 4 only. No new exceptions
 | 3xl | 64px | Reserved — not used in Phase 9 |
 
 Phase 9 additions:
-- Alert badge on KpiCard: 4px horizontal padding, 2px vertical padding (`px-1 py-0.5`), inset at card top-right corner
+- Alert badge on KpiCard: 4px horizontal padding, 4px vertical padding (`px-1 py-1`), inset at card top-right corner
 - Threshold form: 16px gap between each label+input pair; 24px gap between the three form rows
 - Settings gear icon in TopNav: 20px icon, 8px left margin from LanguageToggle
 - Rank number column width: 40px fixed, right-aligned number + optional badge
@@ -92,7 +92,7 @@ for the existing semantic tokens.
 | Dominant (60%) | `--background` `oklch(0.985 0.004 264)` | Page backgrounds |
 | Secondary (30%) | `--card` `oklch(1 0 0)` / `--sidebar` | Cards, sidebar |
 | Accent (10%) | `--primary` `oklch(0.55 0.2 255)` | See inherited reserved list — NOT used for alert badges |
-| Destructive | `--destructive` `oklch(0.577 0.245 27.325)` | KpiCard alert badges (warning threshold breached), rank-1 badge background — see rules below |
+| Destructive | `--destructive` `oklch(0.577 0.245 27.325)` | KpiCard alert badges when threshold breached, delete actions |
 | Success | `oklch(0.53 0.17 145)` (emerald) | SLA-breach rate = 0% indicator, healthy KPI state |
 | Warning | `oklch(0.7 0.18 70)` (amber) | Pending-backlog caution (≤48h threshold, not yet breached) |
 | Muted | `--muted-foreground` | Section labels, scorecard sub-labels, leaderboard rank text below #1 |
@@ -355,7 +355,7 @@ Subtitle: "Performance alert thresholds" / "Performans uyarı eşikleri" — Bod
   </CardHeader>
   <CardContent>
     [3 form rows — see below]
-    <Button type="submit"> "Save" / "Kaydet"
+    <Button type="submit"> "Save Thresholds" / "Eşikleri Kaydet"
   </CardContent>
 
 <Card> for current threshold summary (read-only, shown below the form)
@@ -475,7 +475,7 @@ All copy delivered via next-intl. New keys live under `dashboard.admin.settings.
 
 | Element | EN copy | TR copy |
 |---------|---------|---------|
-| Settings form save button | "Save" | "Kaydet" |
+| Settings form save button | "Save Thresholds" | "Eşikleri Kaydet" |
 | Settings gear icon (aria-label) | "Open settings" | "Ayarları aç" |
 | Office-engineer scorecard back link | "← Analytics" | "← Analizler" |
 | Leaderboard "Rank by" selector label | "Rank by" | "Sıralama" |
