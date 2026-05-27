@@ -661,6 +661,69 @@ export async function getOfficeActivityLog(options?: {
   }));
 }
 
+// ── getStalledProjects ───────────────────────────────────────────────────────
+
+/**
+ * getStalledProjects — returns projects with no approved submission within the last N days.
+ *
+ * "Stalled" = project has had at least one submission but no approved submission
+ * in the past stalledDays days (point-in-time from NOW — same as D-66 pending-backlog rule).
+ *
+ * A project with ZERO submissions is NOT stalled (it was never started).
+ * A project with a recent approved submission is NOT stalled.
+ *
+ * CRITICAL: do NOT apply the dateRange filter — stalled is always NOW-anchored (D-66/D-88).
+ * Neon-http single-element array fix: when projectIds has exactly 1 element, use = ${id}
+ * instead of = ANY(${ids}) to avoid the neon-http driver bug (Pitfall 6).
+ *
+ * Security: auth-guarded; tenant-scoped.
+ * CR-03: all caller-supplied values are bound parameters via Drizzle sql`` template literals.
+ */
+export async function getStalledProjects(
+  stalledDays: number,
+  filters?: { projectIds?: string[] }
+): Promise<{ projectId: string; projectName: string }[]> {
+  const session = await auth();
+  if (!session) throw new Error('Unauthorized');
+  const tenantId = getDefaultTenantId();
+
+  // Compute the threshold date from NOW (point-in-time, not from any date filter)
+  const thresholdDate = new Date(Date.now() - stalledDays * 24 * 60 * 60 * 1000);
+
+  // Optional projectIds scoping — single-element array uses = to avoid neon-http bug (Pitfall 6)
+  const projectIds = filters?.projectIds;
+  const projectFilter = projectIds && projectIds.length > 0
+    ? (projectIds.length === 1
+      ? sql` AND p.id = ${projectIds[0]}`
+      : sql` AND p.id = ANY(${projectIds})`)
+    : sql``;
+
+  const result = await db.execute(sql`
+    SELECT p.id AS project_id, p.name AS project_name
+    FROM projects p
+    WHERE p.tenant_id = ${tenantId}
+      ${projectFilter}
+      AND EXISTS (
+        SELECT 1 FROM submissions s
+        WHERE s.project_id = p.id
+          AND s.tenant_id  = ${tenantId}
+      )
+      AND NOT EXISTS (
+        SELECT 1 FROM submissions s
+        WHERE s.project_id = p.id
+          AND s.tenant_id  = ${tenantId}
+          AND s.status     = 'approved'
+          AND s.decided_at >= ${thresholdDate.toISOString()}
+      )
+    ORDER BY p.name
+  `);
+
+  return result.rows.map((r) => ({
+    projectId: String(r.project_id),
+    projectName: String(r.project_name),
+  }));
+}
+
 // ── getPersonMetrics ─────────────────────────────────────────────────────────
 
 /**
