@@ -313,7 +313,30 @@ Plans:
   4. Admin can compare employees side-by-side in a leaderboard ranked by a chosen metric
   5. Overview page displays SLA / performance alerts — submissions pending beyond a threshold, rejection-rate spikes above threshold, and projects with no approved submissions beyond a threshold
 
-**Plans**: TBD
+**Plans**: 6 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 09-01-PLAN.md — tenant_settings schema (D-83/84 thresholds) + barrel + truncate helper + Wave-0 test scaffolds
+- [ ] 09-02-PLAN.md — KpiCard extension: 'warning' (amber) valueColor + alertBadge corner slot (D-87)
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 09-03-PLAN.md — [BLOCKING] generate + hand-verify 0007 migration + seed Moderate defaults + apply via tsx migrate.ts (D-49/D-84)
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [ ] 09-04-PLAN.md — analytics extensions (outputQuantitySum, slaBreachRateDecided, getStalledProjects) + settings.ts actions (PERF-01/02/06)
+
+**Wave 4** *(blocked on Wave 3)*
+
+- [ ] 09-05-PLAN.md — profile scorecards (PERF-01/02) + leaderboard rank/sort (PERF-05) + read-only office-engineer scorecard (PERF-03)
+
+**Wave 5** *(blocked on Wave 4)*
+
+- [ ] 09-06-PLAN.md — Overview alert badges + Stalled Projects KPI card + /dashboard/settings form + TopNav gear (PERF-06)
+
 **UI hint**: yes
 
 ### Phase 10: Hakkediş Billing
