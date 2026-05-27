@@ -289,6 +289,27 @@
         "photo_alt": "Kayıt fotoğrafı",
         "no_photo": "Fotoğraf yok"
       },
+      "settings": {
+        "heading": "Ayarlar",
+        "subtitle": "Performans uyarı eşikleri",
+        "form_section_title": "Uyarı Eşikleri",
+        "audit_sla_label": "Denetim SLA Eşiği",
+        "audit_sla_desc": "Bekleyen denetimler bu saati geçerse uyar",
+        "audit_sla_unit": "saat",
+        "rejection_rate_label": "Red Oranı Uyarısı",
+        "rejection_rate_desc": "Red oranı bu yüzdeyi geçerse uyar",
+        "rejection_rate_unit": "%",
+        "stalled_days_label": "Durma Eşiği",
+        "stalled_days_desc": "Bir proje bu kadar gün onaysız kalırsa uyar",
+        "stalled_days_unit": "gün",
+        "save_cta": "Eşikleri Kaydet",
+        "saving": "Kaydediliyor...",
+        "saved_success": "Ayarlar kaydedildi.",
+        "error_save_failed": "Ayarlar kaydedilemedi. Lütfen tekrar deneyin.",
+        "error_audit_sla": "Denetim SLA'sı 1 ile 720 saat arasında olmalıdır.",
+        "error_rejection_rate": "Red oranı %0 ile %100 arasında olmalıdır.",
+        "error_stalled_days": "Durma eşiği 1 ile 365 gün arasında olmalıdır."
+      },
       "stubs": {
         "coming_soon": "Yakında",
         "analytics_heading": "Analizler",

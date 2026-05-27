@@ -289,6 +289,27 @@
         "photo_alt": "Submission photo",
         "no_photo": "No photo"
       },
+      "settings": {
+        "heading": "Settings",
+        "subtitle": "Performance alert thresholds",
+        "form_section_title": "Alert Thresholds",
+        "audit_sla_label": "Audit SLA Threshold",
+        "audit_sla_desc": "Alert when pending audits exceed this many hours",
+        "audit_sla_unit": "hours",
+        "rejection_rate_label": "Rejection Rate Alert",
+        "rejection_rate_desc": "Alert when rejection rate exceeds this percentage",
+        "rejection_rate_unit": "%",
+        "stalled_days_label": "Stalled Project Threshold",
+        "stalled_days_desc": "Alert when a project has no approvals for this many days",
+        "stalled_days_unit": "days",
+        "save_cta": "Save Thresholds",
+        "saving": "Saving...",
+        "saved_success": "Settings saved.",
+        "error_save_failed": "Failed to save settings. Please try again.",
+        "error_audit_sla": "Audit SLA must be between 1 and 720 hours.",
+        "error_rejection_rate": "Rejection rate must be between 0% and 100%.",
+        "error_stalled_days": "Stalled threshold must be between 1 and 365 days."
+      },
       "stubs": {
         "coming_soon": "Coming soon",
         "analytics_heading": "Analytics",
