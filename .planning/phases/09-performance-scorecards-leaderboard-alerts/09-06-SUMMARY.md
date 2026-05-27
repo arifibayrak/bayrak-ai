@@ -36,7 +36,7 @@ decisions:
 metrics:
   duration_minutes: 25
   completed_date: "2026-05-27"
-  tasks_completed: 3
+  tasks_completed: 4
   tasks_total: 4
   files_created: 2
   files_modified: 4
@@ -53,7 +53,7 @@ metrics:
 | 1 | Overview alert badges + Stalled Projects KPI card (PERF-06, D-87/D-88) | ef7576a | Done |
 | 2 | /dashboard/settings page + ThresholdSettingsForm (PERF-06, D-83/D-89) | 5157624 | Done |
 | 3 | Settings gear icon in TopNav (PERF-06, D-86) | 1e6d061 | Done |
-| 4 | Human-verify checkpoint | — | Awaiting human verification |
+| 4 | Human-verify checkpoint — browser render confirmed | — | Done (gate approved) |
 
 ## What Was Built
 
@@ -152,3 +152,8 @@ Commits:
 - [x] ef7576a — Task 1
 - [x] 5157624 — Task 2
 - [x] 1e6d061 — Task 3
+- [x] c87e615 — docs/metadata commit (SUMMARY, STATE, ROADMAP)
+
+## Self-Check: PASSED
+
+All files confirmed on disk, all commits present in git log. Task 4 browser render checkpoint approved by user — plan complete.
