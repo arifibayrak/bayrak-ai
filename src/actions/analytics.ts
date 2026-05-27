@@ -336,6 +336,11 @@ export async function getPortfolioKPIs(
   // Query 1: pending backlog (no date condition) + approvals/rejections in range (with date condition)
   //          + avgDecisionLatencyHours (point-in-time, NO dateCondition — mirrors pendingBacklog per D-66/D-87)
   // Query 2: active workers — distinct submitters within range (with date condition)
+  // WR-01 (09-REVIEW): dateCondition is appended inside FILTER (WHERE ...) as a raw sql fragment.
+  // This relies on Drizzle treating the fragment as plain string concatenation inside the FILTER
+  // predicate. It works today and tests pass; the canonical alternative would be a CASE expression:
+  //   COUNT(CASE WHEN s.status = 'approved' AND (${from} IS NULL OR ...) THEN 1 END)
+  // Restructuring is deferred to avoid destabilising existing tests — tracked as WR-01.
   const [countsResult, workersResult] = await Promise.all([
     db.execute(sql`
       SELECT
