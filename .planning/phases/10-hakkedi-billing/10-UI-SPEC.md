@@ -1,10 +1,11 @@
 ---
 phase: 10
 slug: hakkedi-billing
-status: draft
+status: approved
 shadcn_initialized: true
 preset: base-nova
 created: 2026-05-28
+reviewed_at: 2026-05-28
 ---
 
 # Phase 10 — UI Design Contract: Hakkediş Billing
