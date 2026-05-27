@@ -44,16 +44,16 @@ to Phases 8–9 — replicate `space-y-6` / `gap-4` / `px-4 pb-4` patterns from
 |-------|-------|-------|
 | xs | 4px | Icon gaps (`gap-1`), inline label–input spacing |
 | sm | 8px | Compact row padding, badge gap (`gap-2`) |
+| compact | 12px | Deduction summary table rows (`py-3`) + finalized immutability banner (`p-3`) — declared exception for 7-row chain scannability |
 | md | 16px | Default element spacing (`gap-4`, `px-4`) |
 | lg | 24px | Section padding (`space-y-6`), card internal padding (`pb-4`) |
 | xl | 32px | Between page sections (`space-y-8`) |
 | 2xl | 48px | Major section breaks (used sparingly) |
 | 3xl | 64px | Not used in this phase |
 
-Exceptions:
-- Deduction summary table rows: `py-3` (12px) top/bottom for the chain lines —
-  slightly tighter than standard `py-4` to keep the 7-row chain scannable.
-- Finalized immutability banner: `p-3` all sides to keep it compact.
+`compact` (12px) is a declared token — it is NOT an undeclared exception.
+Usage is restricted to: deduction summary chain rows (`py-3`) and the
+finalized immutability banner (`p-3`). No other surfaces may use 12px.
 
 ---
 
@@ -61,6 +61,13 @@ Exceptions:
 
 Matches existing admin pages exactly. All heading sizing is from globals.css
 `h1..h4` + `letter-spacing: -0.02em`.
+
+**Weight-not-size rule:** The section heading (16px, semibold) vs. body/cell
+text (14px, regular) differentiation is intentionally by SIZE (16 vs 14px) AND
+WEIGHT (semibold vs regular). Do NOT add an intermediate size between 14px and
+16px — there are exactly 4 declared sizes, and the visual hierarchy is achieved
+using those 4 sizes combined with 2 declared weights. The executor must not
+introduce a 15px or other unlisted size.
 
 | Role | Size | Weight | Line Height | Tailwind class |
 |------|------|--------|-------------|----------------|
@@ -93,8 +100,10 @@ Phases 8–9.
 | Border | `--border` oklch(0.915 0.01 264) | ~#E5E7EB | Table dividers, card borders |
 
 **Accent (primary) reserved for:**
-- "Yeniden Hesapla / Recompute" button (draft only, primary variant)
+- "Yeniden Hesapla / Recompute Lines" button (draft only, primary variant)
 - "Dönem Oluştur / Create Period" CTA button (primary variant)
+- "Kesinleştir / Finalize Period" button (draft state only, primary variant)
+- "Oluştur ve Hesapla / Create & Compute" dialog confirm button (primary variant)
 - Active/focused form field ring
 - Focus rings on interactive table rows
 
@@ -122,6 +131,12 @@ states (see overview.tsx comment).
 **Route:** `/dashboard/(admin)/hakedis` (replaces stub)
 **RSC:** `force-dynamic`, async, `auth()` guard first
 
+**Focal Point:** The "Dönem Oluştur / Create Period" primary CTA button (top-right
+of heading row) AND the period table below it. The executor must ensure the CTA
+is visually dominant — primary color, full `size="default"` height — and the
+table has clear column headers so the office engineer can scan active periods
+instantly.
+
 **Layout pattern:** matches `settings/page.tsx` — `<div className="space-y-6">`,
 h1 heading + subtitle, then content area.
 
@@ -147,9 +162,9 @@ project alphabetically. Only priced projects shown (those with any BOQ item with
 | Para Birimi / Currency | 80px | TRY / USD / EUR |
 | Durum / Status | 120px | `<Badge>` with status color |
 | Net Ödeme / Net Payable | 140px | `tabular-nums text-right`; "—" if draft not computed |
-| — (actions) | 120px | "Aç / Open" link-button; "Sil" only for draft |
+| — (actions) | 120px | "Aç / Open Period" link-button; "Sil" only for draft |
 
-Rows are clickable (full row link to detail), plus explicit "Aç" link-button.
+Rows are clickable (full row link to detail), plus explicit "Aç / Open Period" link-button.
 Default sort: `period_end_date DESC` (newest first).
 
 **Create Period CTA:** `<Button>` (primary, `size="default"`) floated to
@@ -213,7 +228,7 @@ numeric.
 "Kesinti Oranları / Deduction Rates".
 
 **Dialog footer:** Two buttons:
-- "İptal / Cancel" — `variant="ghost"` — closes dialog, no mutation
+- "Vazgeç / Discard" — `variant="ghost"` — closes dialog, discards all form input, no mutation
 - "Oluştur ve Hesapla / Create & Compute" — `variant="default"` (primary) — submits
   form, triggers `createPeriod` server action (which computes lines on create,
   D-98), then navigates to the new period's detail page
@@ -230,6 +245,12 @@ numeric.
 ### Surface 3: Period Detail Page (HAK-02 / HAK-03 / HAK-04 / HAK-05)
 **Route:** `/dashboard/(admin)/hakedis/[periodId]`
 **RSC:** `force-dynamic`, async, `auth()` guard first
+
+**Focal Point:** The **Net Ödeme / Net Payable** value (`text-2xl font-semibold
+tabular-nums`) at the bottom of the deduction summary card. This is the number the
+office engineer is here to confirm. The executor must ensure it is visually
+prominent — separated by `border-t-2 border-foreground` from the chain rows above,
+with the 24px size making it distinct from all other text on the page.
 
 **Layout:** `<div className="space-y-6">` with the following vertical sections:
 
@@ -273,6 +294,9 @@ Shown when `status !== 'draft'` (D-95 / D-96). Uses existing `<Alert>` component
 </Alert>
 ```
 
+Banner uses `p-3` (compact token, 12px all sides) to keep it visually slim
+above the line-item table without dominating the page.
+
 #### 3c. Unpriced-Item Warning Banner (draft only, when applicable)
 Shown when `status === 'draft'` AND there are BOQ items excluded because
 `unit_price IS NULL` (D-103). Uses `<Alert>` with warning styling:
@@ -297,11 +321,11 @@ Draft state controls:
 ```
 <Button variant="outline" size="sm" onClick={handleRecompute}>
   <RefreshCw className="h-4 w-4 mr-1" />
-  {t('hakedis.detail.recompute')}  {/* "Yeniden Hesapla" / "Recompute" */}
+  {t('hakedis.detail.recompute')}  {/* "Yeniden Hesapla" / "Recompute Lines" */}
 </Button>
 <Button variant="default" size="sm" onClick={handleFinalizeOpen}>
   <Lock className="h-4 w-4 mr-1" />
-  {t('hakedis.detail.finalize')}  {/* "Kesinleştir" / "Finalize" */}
+  {t('hakedis.detail.finalize')}  {/* "Kesinleştir" / "Finalize Period" */}
 </Button>
 <Button variant="destructive" size="sm" onClick={handleDeleteOpen}>
   {t('hakedis.detail.delete')}  {/* "Sil" / "Delete" */}
@@ -395,6 +419,9 @@ not disabled-only — removing them entirely avoids confusion per D-96).
 
 **Summary chain rows** (SC3 order — each is a `<div className="flex justify-between py-3 border-b last:border-b-0">`):
 
+`py-3` uses the declared `compact` (12px) token — intentional for 7-row chain
+scannability. Do not change to `py-2` or `py-4`.
+
 | Row | Label (TR) | Label (EN) | Styling |
 |-----|-----------|-----------|---------|
 | 1 | Dönem Tutarı (KDV Hariç / Matrah) | Gross Period Amount (excl. VAT) | Regular |
@@ -417,7 +444,7 @@ make the bottom line prominent.
 ---
 
 ### Surface 4: Finalize Confirmation Dialog (HAK-05)
-**Trigger:** "Kesinleştir" button (draft state only)
+**Trigger:** "Kesinleştir / Finalize Period" button (draft state only)
 **Component:** shadcn `<Dialog>`
 **Width:** `max-w-sm` (384px) — compact, one action
 
@@ -433,9 +460,10 @@ make the bottom line prominent.
 </DialogDescription>
 <DialogFooter>
   <Button variant="ghost">{t('hakedis.finalize_dialog.cancel')}</Button>
+  {/* TR: "Hayır, Geri Dön" / EN: "No, Go Back" */}
   <Button variant="default">
     {t('hakedis.finalize_dialog.confirm')}
-    {/* TR: "Kesinleştir" / EN: "Finalize" */}
+    {/* TR: "Kesinleştir" / EN: "Finalize Period" */}
   </Button>
 </DialogFooter>
 ```
@@ -447,7 +475,7 @@ destructive action.
 ---
 
 ### Surface 5: Delete Confirmation Dialog (HAK-01 / D-97)
-**Trigger:** "Sil" button (draft state only)
+**Trigger:** "Sil / Delete" button (draft state only)
 **Component:** shadcn `<Dialog>`
 **Width:** `max-w-sm`
 
@@ -461,6 +489,7 @@ destructive action.
 </DialogDescription>
 <DialogFooter>
   <Button variant="ghost">{t('hakedis.delete_dialog.cancel')}</Button>
+  {/* TR: "Hayır, Koru" / EN: "No, Keep It" */}
   <Button variant="destructive">
     {t('hakedis.delete_dialog.confirm')}
     {/* TR: "Evet, Sil" / EN: "Yes, Delete" */}
@@ -514,12 +543,17 @@ locale — they are proper domain nouns with no clean English equivalent.
 | Page subtitle | İlerleme ödeme dönemlerini oluşturun ve yönetin. | Create and manage progress payment periods. |
 | Create CTA | Dönem Oluştur | Create Period |
 | Create dialog: create + compute CTA | Oluştur ve Hesapla | Create & Compute |
-| Recompute CTA | Yeniden Hesapla | Recompute |
-| Finalize CTA | Kesinleştir | Finalize |
+| Create dialog: dismiss button | Vazgeç | Discard |
+| Recompute CTA | Yeniden Hesapla | Recompute Lines |
+| Finalize CTA | Kesinleştir | Finalize Period |
+| Finalize dialog: dismiss button | Hayır, Geri Dön | No, Go Back |
+| Finalize dialog: confirm button | Kesinleştir | Finalize Period |
 | Mark submitted CTA | Tahakkuk Et | Mark Submitted |
 | Mark paid CTA | Ödendi | Mark Paid |
 | Delete CTA | Sil | Delete |
-| Open period link | Aç | Open |
+| Delete dialog: dismiss button | Hayır, Koru | No, Keep It |
+| Delete dialog: confirm button | Evet, Sil | Yes, Delete |
+| Open period link | Aç | Open Period |
 | Empty state heading (no periods) | Henüz dönem oluşturulmadı. | No periods yet. |
 | Empty state body (no periods) | Proje seçip yeni bir hakkediş dönemi oluşturun. | Select a project and create a new hakkediş period. |
 | Finalize irreversible notice | Bu dönem {date} tarihinde kesinleştirilmiştir. Değişiklik yapılamaz. | This period was finalized on {date}. No changes can be made. |
@@ -533,7 +567,7 @@ locale — they are proper domain nouns with no clean English equivalent.
 | Gross label | Dönem Tutarı (KDV Hariç / Matrah) | Gross Period Amount (excl. VAT) |
 | Net ödeme label | Net Ödeme | Net Payable |
 | Error: finalize blocked | Bu dönem kesinleştirilmiş; yeniden hesaplama yapılamaz. | This period is finalized; recomputation is not allowed. |
-| Error: general save failure | Bir hata oluştu. Lütfen tekrar deneyin. | An error occurred. Please try again. |
+| Error: general save failure | Bir hata oluştu. Sayfayı yenileyip tekrar deneyin; sorun sürerse yöneticinize bildirin. | Something went wrong. Refresh the page and try again; if it persists, contact your administrator. |
 | Error: missing end date | Bitiş tarihi zorunludur. | End date is required. |
 | Error: missing period label | Dönem etiketi zorunludur. | Period label is required. |
 | Status: draft | Taslak | Draft |
