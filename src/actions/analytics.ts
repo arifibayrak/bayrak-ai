@@ -1042,6 +1042,10 @@ export type PortfolioWorker = {
  * Aggregated in a SINGLE SQL query. pendingBacklogCount is point-in-time (D-66).
  * avgDecisionLatencyHours: computed via FILTER (WHERE decided_at IS NOT NULL) —
  * NULL decidedAt never poisons the average (split-query pattern from D-AuditorSource).
+ *
+ * CR-01 (09-REVIEW): slaBreachRateDecided is the fraction of decided submissions that
+ * exceeded the auditSlaHours threshold. Populated only when auditSlaHours is passed to
+ * getPortfolioPeople; null when threshold is not provided or auditor has no decided subs.
  */
 export type PortfolioAuditor = {
   personId: string;
@@ -1049,6 +1053,8 @@ export type PortfolioAuditor = {
   decisionsCount: number;
   avgDecisionLatencyHours: number | null;
   pendingBacklogCount: number;
+  /** SLA breach rate: fraction of decided submissions exceeding auditSlaHours. Null when no threshold. */
+  slaBreachRateDecided: number | null;
 };
 
 /**
@@ -1078,10 +1084,13 @@ export async function getPortfolioPeople(options: {
   role: 'auditor';
   dateRange?: { from: Date; to: Date };
   projectIds?: string[];
+  /** CR-01: SLA threshold in hours — enables slaBreachRateDecided on each returned auditor */
+  auditSlaHours?: number;
 }): Promise<PortfolioAuditor[]>;
 export async function getPortfolioPeople(options: {
   role: 'worker' | 'auditor';
   dateRange?: { from: Date; to: Date };
+  auditSlaHours?: number;
   projectIds?: string[];
 }): Promise<PortfolioWorker[] | PortfolioAuditor[]> {
   const session = await auth();
@@ -1170,6 +1179,22 @@ export async function getPortfolioPeople(options: {
     //   FILTER (WHERE decided_at IS NOT NULL) ensures NULL decidedAt never poisons avg.
     // pendingBacklogCount: pending on the auditor's assigned projects (D-66: point-in-time,
     //   NO dateCondition applied to pending count).
+    //
+    // CR-01 (09-REVIEW): build a conditional sql fragment for sla_breach_rate.
+    // When auditSlaHours is not provided the fragment emits SQL NULL so no spurious 0%
+    // breach rate is shown. When provided, computes breach rate as a fraction of decided rows.
+    const slaBreachFragment = options.auditSlaHours != null
+      ? sql`
+          COUNT(s.id) FILTER (
+            WHERE s.decided_at IS NOT NULL
+              AND s.status IN ('approved', 'rejected')
+              AND (EXTRACT(EPOCH FROM (s.decided_at - s.submitted_at)) / 3600.0) > ${options.auditSlaHours}
+              ${dateCondition}
+          )::float
+            / NULLIF(COUNT(s.id) FILTER (WHERE s.decided_at IS NOT NULL AND s.status IN ('approved', 'rejected') ${dateCondition}), 0)
+        `
+      : sql`NULL`;
+
     const [decisionsResult, backlogResult] = await Promise.all([
       db.execute(sql`
         SELECT
@@ -1181,7 +1206,8 @@ export async function getPortfolioPeople(options: {
               EXTRACT(EPOCH FROM (s.decided_at - s.submitted_at)) / 3600.0
             ) FILTER (WHERE s.decided_at IS NOT NULL AND s.status IN ('approved', 'rejected') ${dateCondition}),
             2
-          )                                                               AS avg_decision_latency_hours
+          )                                                               AS avg_decision_latency_hours,
+          ${slaBreachFragment}                                            AS sla_breach_rate
         FROM people p
         JOIN assignments a
           ON a.person_id       = p.id
@@ -1223,6 +1249,8 @@ export async function getPortfolioPeople(options: {
         ? Number(r.avg_decision_latency_hours)
         : null,
       pendingBacklogCount: backlogMap.get(String(r.person_id)) ?? 0,
+      // CR-01: null when auditSlaHours not provided OR no decided submissions (NULLIF guard)
+      slaBreachRateDecided: r.sla_breach_rate != null ? Number(r.sla_breach_rate) : null,
     }));
   }
 }
@@ -1280,11 +1308,12 @@ export function getAuditorSortFn(sortBy?: string): (a: PortfolioAuditor, b: Port
       a.displayName.localeCompare(b.displayName);
   }
   if (sortBy === 'sla_breach') {
-    // null-last: auditors with null avgDecisionLatencyHours sort to the bottom
+    // CR-01 (09-REVIEW): sort by slaBreachRateDecided DESC (highest breach rate = worst = rank 1).
+    // null-last: auditors with null slaBreachRateDecided (no threshold or no decisions) sort to bottom.
     return (a, b) => {
-      const latA = a.avgDecisionLatencyHours ?? -1;
-      const latB = b.avgDecisionLatencyHours ?? -1;
-      return latB - latA || a.displayName.localeCompare(b.displayName);
+      const rateA = a.slaBreachRateDecided ?? -1;
+      const rateB = b.slaBreachRateDecided ?? -1;
+      return rateB - rateA || a.displayName.localeCompare(b.displayName);
     };
   }
   // Default: 'turnaround' — sort by avgDecisionLatencyHours ASC (lower = faster = better)

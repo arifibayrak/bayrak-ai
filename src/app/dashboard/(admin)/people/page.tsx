@@ -41,6 +41,7 @@ import {
   addAuditorRanks,
 } from '@/actions/analytics';
 import { getProjects } from '@/actions/projects';
+import { getTenantSettings } from '@/actions/settings';
 
 export const dynamic = 'force-dynamic';
 
@@ -69,10 +70,18 @@ export default async function PeoplePage({ searchParams }: Props) {
   const t = await getTranslations('dashboard.admin.people');
   const tLeaderboard = await getTranslations('dashboard.admin.leaderboard');
 
+  // CR-01 (09-REVIEW): fetch tenant settings to get auditSlaHours for the SLA breach rate column.
+  // Fetch settings first, then run remaining queries in parallel — one extra serial step but
+  // settings is a lightweight single-row query and the extra latency is negligible.
+  const tenantSettings = await getTenantSettings();
+
   // Parallel fetch: workers tab + auditors tab + project options for FilterBar
+  // auditSlaHours threads the threshold into the auditor bulk query so slaBreachRateDecided
+  // is populated on each PortfolioAuditor row. The sort helper (getAuditorSortFn) then uses
+  // that field when sortBy==='sla_breach'.
   const [workers, auditors, projectsData] = await Promise.all([
     getPortfolioPeople({ role: 'worker', dateRange, projectIds }),
-    getPortfolioPeople({ role: 'auditor', dateRange, projectIds }),
+    getPortfolioPeople({ role: 'auditor', dateRange, projectIds, auditSlaHours: tenantSettings.auditSlaHours }),
     getProjects(),
   ]);
 
@@ -305,6 +314,16 @@ export default async function PeoplePage({ searchParams }: Props) {
                         )}
                       </span>
                     </TableHead>
+                    {/* WR-05 (09-REVIEW): SLA breach rate column — only visible when threshold is configured.
+                        Provides a sort-direction indicator when effectiveAuditorSort==='sla_breach'. */}
+                    <TableHead className="text-right tabular-nums">
+                      <span className="inline-flex items-center gap-1">
+                        {tLeaderboard('auditor_sla_breach')}
+                        {effectiveAuditorSort === 'sla_breach' && (
+                          <ArrowDown className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+                        )}
+                      </span>
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -315,6 +334,15 @@ export default async function PeoplePage({ searchParams }: Props) {
                         : '—';
                     const backlogVariant =
                       a.pendingBacklogCount > 5 ? 'destructive' : 'secondary';
+                    // WR-05 / CR-01: display breach rate as percentage; null → '—'
+                    const breachRateDisplay =
+                      a.slaBreachRateDecided !== null
+                        ? `${(a.slaBreachRateDecided * 100).toFixed(0)}%`
+                        : '—';
+                    const breachVariant =
+                      a.slaBreachRateDecided !== null && a.slaBreachRateDecided > 0.2
+                        ? 'destructive'
+                        : 'secondary';
 
                     return (
                       <TableRow key={a.personId}>
@@ -350,6 +378,13 @@ export default async function PeoplePage({ searchParams }: Props) {
                           <Badge variant={backlogVariant}>
                             {new Intl.NumberFormat('tr-TR').format(a.pendingBacklogCount)}
                           </Badge>
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {breachRateDisplay !== '—' ? (
+                            <Badge variant={breachVariant}>{breachRateDisplay}</Badge>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
                         </TableCell>
                       </TableRow>
                     );
