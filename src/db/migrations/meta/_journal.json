@@ -50,6 +50,13 @@
       "when": 1779789000000,
       "tag": "0006_v2_period_qty_check",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1779891756000,
+      "tag": "0007_v2_tenant_settings",
+      "breakpoints": true
     }
   ]
 }
