@@ -57,10 +57,15 @@ export type PersonMetrics = {
   locationComplianceRate: number | null;  // approved near / total approved; null if no approved
   // Value contribution — currency-grouped (COST-04)
   valueContributedByCurrency: Record<string, string>;
+  // PERF-01: output quantity sum for approved submissions (as string — money-math safe)
+  outputQuantitySum?: string | null;
   // Auditor metrics (only populated when asAuditor: true)
   decisionsCount?: number;
   avgDecisionLatencyHours?: number | null;
   pendingBacklogCount?: number;
+  // PERF-02: SLA-breach rate — fraction of decided submissions exceeding auditSlaHours threshold
+  // null when auditSlaHours not provided OR when no decided submissions (NULLIF denominator)
+  slaBreachRateDecided?: number | null;
 };
 
 export type ProjectSummary = {
@@ -156,12 +161,15 @@ export type TrendPoint = {
  * - pendingBacklog: point-in-time count of status='pending_audit' with NO date condition (D-66)
  * - approvalsInRange / rejectionsInRange: counts scoped to the active date range
  * - activeWorkers: distinct submitters within the date range (D-65); all-time when no range
+ * - avgDecisionLatencyHours: portfolio-wide mean decided turnaround in hours; point-in-time (D-87)
+ *   null when no decided submissions exist
  */
 export type PortfolioKPIs = {
   pendingBacklog: number;
   approvalsInRange: number;
   rejectionsInRange: number;
   activeWorkers: number;
+  avgDecisionLatencyHours: number | null;
 };
 
 // ── getCanonicalSubmissions ──────────────────────────────────────────────────
@@ -326,13 +334,16 @@ export async function getPortfolioKPIs(
 
   // Run two queries in parallel:
   // Query 1: pending backlog (no date condition) + approvals/rejections in range (with date condition)
+  //          + avgDecisionLatencyHours (point-in-time, NO dateCondition — mirrors pendingBacklog per D-66/D-87)
   // Query 2: active workers — distinct submitters within range (with date condition)
   const [countsResult, workersResult] = await Promise.all([
     db.execute(sql`
       SELECT
         COUNT(*) FILTER (WHERE s.status = 'pending_audit')                              AS pending_backlog,
         COUNT(*) FILTER (WHERE s.status = 'approved' ${dateCondition})                 AS approvals_in_range,
-        COUNT(*) FILTER (WHERE s.status = 'rejected' ${dateCondition})                 AS rejections_in_range
+        COUNT(*) FILTER (WHERE s.status = 'rejected' ${dateCondition})                 AS rejections_in_range,
+        AVG(EXTRACT(EPOCH FROM (s.decided_at - s.submitted_at)) / 3600.0)
+          FILTER (WHERE s.decided_at IS NOT NULL)                                       AS avg_decision_latency_hours
       FROM submissions s
       WHERE ${baseWhere}
     `),
@@ -352,6 +363,10 @@ export async function getPortfolioKPIs(
     approvalsInRange:  Number(counts.approvals_in_range ?? 0),
     rejectionsInRange: Number(counts.rejections_in_range ?? 0),
     activeWorkers:     Number(workers.active_workers    ?? 0),
+    // PERF-06/D-87: point-in-time avg latency — null when no decided submissions
+    avgDecisionLatencyHours: counts.avg_decision_latency_hours != null
+      ? Number(counts.avg_decision_latency_hours)
+      : null,
   };
 }
 
@@ -660,7 +675,7 @@ export async function getOfficeActivityLog(options?: {
  */
 export async function getPersonMetrics(
   personId: string,
-  options?: { projectIds?: string[]; asAuditor?: boolean; dateRange?: { from: Date; to: Date } }
+  options?: { projectIds?: string[]; asAuditor?: boolean; dateRange?: { from: Date; to: Date }; auditSlaHours?: number }
 ): Promise<PersonMetrics> {
   const session = await auth();
   if (!session) throw new Error('Unauthorized');
@@ -678,6 +693,7 @@ export async function getPersonMetrics(
     : sql``;
 
   // Query 1: worker submission counts (scoped to person as submitter only)
+  // PERF-01: output_quantity_sum adds SUM(quantity) for approved submissions
   const workerResult = await db.execute(sql`
     SELECT
       s.person_id,
@@ -686,7 +702,8 @@ export async function getPersonMetrics(
       COUNT(*) FILTER (WHERE s.status = 'rejected')                        AS submissions_rejected,
       COUNT(*) FILTER (WHERE s.status = 'pending_audit')                   AS submissions_pending,
       COUNT(*) FILTER (WHERE s.status = 'approved' AND s.location_match = 'near')::float
-        / NULLIF(COUNT(*) FILTER (WHERE s.status = 'approved'), 0)         AS location_compliance_rate
+        / NULLIF(COUNT(*) FILTER (WHERE s.status = 'approved'), 0)         AS location_compliance_rate,
+      trim_scale(SUM(s.quantity::numeric) FILTER (WHERE s.status = 'approved'))  AS output_quantity_sum
     FROM submissions s
     JOIN people w ON w.id = s.person_id
     WHERE s.person_id = ${personId}
@@ -735,18 +752,30 @@ export async function getPersonMetrics(
       ? Number(workerRow.location_compliance_rate)
       : null,
     valueContributedByCurrency,
+    // PERF-01: output quantity sum — string to preserve Postgres numeric precision
+    outputQuantitySum: workerRow?.output_quantity_sum != null
+      ? String(workerRow.output_quantity_sum)
+      : null,
   };
 
   if (options?.asAuditor) {
-    // Query 3: auditor decisions count + avg latency (FILTER decided_at IS NOT NULL)
+    // Query 3: auditor decisions count + avg latency + SLA breach rate (FILTER decided_at IS NOT NULL)
     // NEVER mix this aggregate with pending-backlog count — NULL decidedAt poisons avg
+    // PERF-02: sla_breach_rate = decided submissions exceeding auditSlaHours threshold / all decided
+    // Denominator is decided-only (Pitfall 2); ${auditSlaHours} is a bound param (CR-03)
+    const auditSlaHours = options?.auditSlaHours ?? null;
     const auditorResult = await db.execute(sql`
       SELECT
         COUNT(*)                                                             AS decisions_count,
         ROUND(
           AVG(EXTRACT(EPOCH FROM (s.decided_at - s.submitted_at)) / 3600.0)
           FILTER (WHERE s.decided_at IS NOT NULL), 2
-        )                                                                   AS avg_decision_latency_hours
+        )                                                                   AS avg_decision_latency_hours,
+        COUNT(*) FILTER (
+          WHERE s.decided_at IS NOT NULL
+            AND (EXTRACT(EPOCH FROM (s.decided_at - s.submitted_at)) / 3600.0) > ${auditSlaHours}
+        )::float
+          / NULLIF(COUNT(*) FILTER (WHERE s.decided_at IS NOT NULL), 0)   AS sla_breach_rate
       FROM submissions s
       WHERE s.decided_by = ${personId}
         AND s.tenant_id  = ${tenantId}
@@ -773,6 +802,10 @@ export async function getPersonMetrics(
       ? Number(auditorRow.avg_decision_latency_hours)
       : null;
     metrics.pendingBacklogCount = Number(pendingBacklogResult.rows[0]?.pending_backlog_count ?? 0);
+    // PERF-02: slaBreachRateDecided — null when auditSlaHours not provided OR no decided submissions
+    metrics.slaBreachRateDecided = (auditorRow?.sla_breach_rate != null && options?.auditSlaHours != null)
+      ? Number(auditorRow.sla_breach_rate)
+      : null;
   }
 
   return metrics;

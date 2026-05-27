@@ -1755,10 +1755,10 @@ describeIfDb('PERF-01/02: getPersonMetrics enrichments', () => {
   let db: Awaited<ReturnType<typeof getTestDb>>;
 
   const tenantId  = '00000000-0000-0000-0000-000000000001';
-  const projectId = '00000000-0000-0000-0000-p901000000001'.replace('p901', 'a901');
-  const boqId     = '00000000-0000-0000-0000-a901000000002';
-  const personId  = '00000000-0000-0000-0000-a901000000003';
-  const auditorId = '00000000-0000-0000-0000-a901000000004';
+  const projectId = '00000000-0000-0000-0000-a90100000001';
+  const boqId     = '00000000-0000-0000-0000-a90100000002';
+  const personId  = '00000000-0000-0000-0000-a90100000003';
+  const auditorId = '00000000-0000-0000-0000-a90100000004';
 
   beforeEach(async () => {
     db = await getTestDb();
@@ -1769,8 +1769,8 @@ describeIfDb('PERF-01/02: getPersonMetrics enrichments', () => {
     await db.execute(sql.raw(`INSERT INTO boq_items (id, tenant_id, project_id, material, unit, planned_qty, approved_qty, sort_order) VALUES ('${boqId}', '${tenantId}', '${projectId}', 'Pipe', 'm', 1000, 0, 1) ON CONFLICT DO NOTHING`));
     await db.execute(sql.raw(`INSERT INTO people (id, tenant_id, telegram_user_id, display_name) VALUES ('${personId}', '${tenantId}', 9901001, 'Perf Worker') ON CONFLICT DO NOTHING`));
     await db.execute(sql.raw(`INSERT INTO people (id, tenant_id, telegram_user_id, display_name) VALUES ('${auditorId}', '${tenantId}', 9901002, 'Perf Auditor') ON CONFLICT DO NOTHING`));
-    await db.execute(sql.raw(`INSERT INTO assignments (id, tenant_id, person_id, project_id, role_on_project) VALUES ('00000000-0000-0000-0000-a901000000011', '${tenantId}', '${personId}', '${projectId}', 'worker') ON CONFLICT DO NOTHING`));
-    await db.execute(sql.raw(`INSERT INTO assignments (id, tenant_id, person_id, project_id, role_on_project) VALUES ('00000000-0000-0000-0000-a901000000012', '${tenantId}', '${auditorId}', '${projectId}', 'auditor') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO assignments (id, tenant_id, person_id, project_id, role_on_project) VALUES ('00000000-0000-0000-0000-a90100000011', '${tenantId}', '${personId}', '${projectId}', 'worker') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO assignments (id, tenant_id, person_id, project_id, role_on_project) VALUES ('00000000-0000-0000-0000-a90100000012', '${tenantId}', '${auditorId}', '${projectId}', 'auditor') ON CONFLICT DO NOTHING`));
   });
 
   afterEach(async () => {
@@ -1781,7 +1781,7 @@ describeIfDb('PERF-01/02: getPersonMetrics enrichments', () => {
     // Seed one approved submission with quantity=10
     await db.execute(sql.raw(`
       INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at)
-      VALUES ('00000000-0000-0000-0000-a901100000001', '00000000-f000-0000-0000-a901100000001', '${tenantId}', '${projectId}', '${personId}', '${boqId}', 'approved', '10.000', 'https://example.com/p.jpg', NOW())
+      VALUES ('00000000-0000-0000-0000-a90110000001', '00000000-f000-0000-0000-a90110000001', '${tenantId}', '${projectId}', '${personId}', '${boqId}', 'approved', '10.000', 'https://example.com/p.jpg', NOW())
       ON CONFLICT DO NOTHING
     `));
     const { getPersonMetrics } = await import('@/actions/analytics');
@@ -1797,12 +1797,12 @@ describeIfDb('PERF-01/02: getPersonMetrics enrichments', () => {
     const slow100hAgo = new Date(now - 100 * 60 * 60 * 1000).toISOString();
     await db.execute(sql.raw(`
       INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at, decided_at, decided_by)
-      VALUES ('00000000-0000-0000-0000-a901200000001', '00000000-f000-0000-0000-a901200000001', '${tenantId}', '${projectId}', '${personId}', '${boqId}', 'approved', '1.000', 'https://example.com/p.jpg', '${fast1hAgo}', NOW(), '${auditorId}')
+      VALUES ('00000000-0000-0000-0000-a90120000001', '00000000-f000-0000-0000-a90120000001', '${tenantId}', '${projectId}', '${personId}', '${boqId}', 'approved', '1.000', 'https://example.com/p.jpg', '${fast1hAgo}', NOW(), '${auditorId}')
       ON CONFLICT DO NOTHING
     `));
     await db.execute(sql.raw(`
       INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at, decided_at, decided_by)
-      VALUES ('00000000-0000-0000-0000-a901200000002', '00000000-f000-0000-0000-a901200000002', '${tenantId}', '${projectId}', '${personId}', '${boqId}', 'rejected', '1.000', 'https://example.com/p.jpg', '${slow100hAgo}', NOW(), '${auditorId}')
+      VALUES ('00000000-0000-0000-0000-a90120000002', '00000000-f000-0000-0000-a90120000002', '${tenantId}', '${projectId}', '${personId}', '${boqId}', 'rejected', '1.000', 'https://example.com/p.jpg', '${slow100hAgo}', NOW(), '${auditorId}')
       ON CONFLICT DO NOTHING
     `));
     const { getPersonMetrics } = await import('@/actions/analytics');
@@ -1818,7 +1818,7 @@ describeIfDb('PERF-01/02: getPersonMetrics enrichments', () => {
     // Seed only a pending submission — no decided_at
     await db.execute(sql.raw(`
       INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at)
-      VALUES ('00000000-0000-0000-0000-a901300000001', '00000000-f000-0000-0000-a901300000001', '${tenantId}', '${projectId}', '${personId}', '${boqId}', 'pending_audit', '1.000', 'https://example.com/p.jpg', NOW())
+      VALUES ('00000000-0000-0000-0000-a90130000001', '00000000-f000-0000-0000-a90130000001', '${tenantId}', '${projectId}', '${personId}', '${boqId}', 'pending_audit', '1.000', 'https://example.com/p.jpg', NOW())
       ON CONFLICT DO NOTHING
     `));
     const { getPersonMetrics } = await import('@/actions/analytics');
@@ -1836,11 +1836,11 @@ describeIfDb('PERF-06: getStalledProjects', () => {
   let db: Awaited<ReturnType<typeof getTestDb>>;
 
   const tenantId    = '00000000-0000-0000-0000-000000000001';
-  const stalledPid  = '00000000-0000-0000-0000-a902000000001';  // stalled project
-  const activePid   = '00000000-0000-0000-0000-a902000000002';  // recently approved
-  const emptyPid    = '00000000-0000-0000-0000-a902000000003';  // no submissions at all
-  const boqId       = '00000000-0000-0000-0000-a902000000010';
-  const personId    = '00000000-0000-0000-0000-a902000000011';
+  const stalledPid  = '00000000-0000-0000-0000-a90200000001';  // stalled project
+  const activePid   = '00000000-0000-0000-0000-a90200000002';  // recently approved
+  const emptyPid    = '00000000-0000-0000-0000-a90200000003';  // no submissions at all
+  const boqId       = '00000000-0000-0000-0000-a90200000010';
+  const personId    = '00000000-0000-0000-0000-a90200000011';
 
   beforeEach(async () => {
     db = await getTestDb();
@@ -1862,7 +1862,7 @@ describeIfDb('PERF-06: getStalledProjects', () => {
     const oldDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
     await db.execute(sql.raw(`
       INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at, decided_at)
-      VALUES ('00000000-0000-0000-0000-a902100000001', '00000000-f000-0000-0000-a902100000001', '${tenantId}', '${stalledPid}', '${personId}', '${boqId}', 'approved', '5.000', 'https://example.com/p.jpg', '${oldDate}', '${oldDate}')
+      VALUES ('00000000-0000-0000-0000-a90210000001', '00000000-f000-0000-0000-a90210000001', '${tenantId}', '${stalledPid}', '${personId}', '${boqId}', 'approved', '5.000', 'https://example.com/p.jpg', '${oldDate}', '${oldDate}')
       ON CONFLICT DO NOTHING
     `));
     // getStalledProjects is added in Plan 09-04 — RED until then
@@ -1875,11 +1875,11 @@ describeIfDb('PERF-06: getStalledProjects', () => {
   it('does NOT return a project with a recent approved submission (PERF-06)', async () => {
     // Insert approved submission just now (within 7-day threshold)
     await db.execute(sql.raw(`
-      INSERT INTO boq_items (id, tenant_id, project_id, material, unit, planned_qty, approved_qty, sort_order) VALUES ('00000000-0000-0000-0000-a902000000020', '${tenantId}', '${activePid}', 'Pipe', 'm', 100, 0, 1) ON CONFLICT DO NOTHING
+      INSERT INTO boq_items (id, tenant_id, project_id, material, unit, planned_qty, approved_qty, sort_order) VALUES ('00000000-0000-0000-0000-a90200000020', '${tenantId}', '${activePid}', 'Pipe', 'm', 100, 0, 1) ON CONFLICT DO NOTHING
     `));
     await db.execute(sql.raw(`
       INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at, decided_at)
-      VALUES ('00000000-0000-0000-0000-a902200000001', '00000000-f000-0000-0000-a902200000001', '${tenantId}', '${activePid}', '${personId}', '00000000-0000-0000-0000-a902000000020', 'approved', '5.000', 'https://example.com/p.jpg', NOW(), NOW())
+      VALUES ('00000000-0000-0000-0000-a90220000001', '00000000-f000-0000-0000-a90220000001', '${tenantId}', '${activePid}', '${personId}', '00000000-0000-0000-0000-a90200000020', 'approved', '5.000', 'https://example.com/p.jpg', NOW(), NOW())
       ON CONFLICT DO NOTHING
     `));
     const { getStalledProjects } = await import('@/actions/analytics') as Record<string, unknown> as { getStalledProjects: (days: number) => Promise<{ projectId: string; projectName: string }[]> };
