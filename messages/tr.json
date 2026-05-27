@@ -241,7 +241,7 @@
         "engineers_table_name": "Ad",
         "engineers_table_email": "E-posta",
         "engineers_table_view": "Aktiviteyi Görüntüle"
-      }
+      },
       "timeline": {
         "heading": "Aktivite",
         "load_more": "Daha fazla yükle",

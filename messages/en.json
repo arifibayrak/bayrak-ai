@@ -241,7 +241,7 @@
         "engineers_table_name": "Name",
         "engineers_table_email": "Email",
         "engineers_table_view": "View Activity"
-      }
+      },
       "timeline": {
         "heading": "Activity",
         "load_more": "Load more",
