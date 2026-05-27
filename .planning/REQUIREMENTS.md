@@ -80,7 +80,7 @@ Current milestone. Admin-grade performance + cost analytics, Turkish hakkediş b
 - [x] **PERF-03**: Office-engineer actions (project create/edit, BOQ import, unit-price edits, person approval/assignment, hakkediş create/finalize) are recorded in an activity log and shown as an office-engineer activity scorecard
 - [x] **PERF-04**: Admin can open a per-employee profile page showing that person's metrics, an activity timeline, and (for workers) value contribution
 - [ ] **PERF-05**: Admin can compare employees side-by-side in a leaderboard ranked by a chosen metric
-- [ ] **PERF-06**: Admin sees performance & SLA alerts on the overview (audits slower than a threshold, rejection-rate spikes, location-warning spikes, stalled progress)
+- [x] **PERF-06**: Admin sees performance & SLA alerts on the overview (audits slower than a threshold, rejection-rate spikes, location-warning spikes, stalled progress)
 
 ### Earned-Value Cost Analytics
 
@@ -209,7 +209,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PERF-01 | Phase 9 | Pending |
 | PERF-02 | Phase 9 | Pending |
 | PERF-05 | Phase 9 | Pending |
-| PERF-06 | Phase 9 | Pending |
+| PERF-06 | Phase 9 | Complete |
 | HAK-01 | Phase 10 | Pending |
 | HAK-02 | Phase 10 | Pending |
 | HAK-03 | Phase 10 | Pending |
