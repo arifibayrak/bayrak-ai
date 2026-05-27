@@ -1,8 +1,8 @@
 ---
 phase: 9
 slug: performance-scorecards-leaderboard-alerts
-status: draft
-nyquist_compliant: false
+status: ready
+nyquist_compliant: true
 wave_0_complete: false
 created: 2026-05-27
 ---
@@ -41,13 +41,13 @@ created: 2026-05-27
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| TBD | TBD | TBD | PERF-01 | — | `getPersonMetrics` returns `outputQuantitySum` for approved submissions | integration | `npx vitest run tests/analytics.test.ts` | ⚠️ extend | ⬜ pending |
-| TBD | TBD | TBD | PERF-02 | — | `getPersonMetrics` returns SLA-breach rate (breach/decided); null when no decisions | integration | `npx vitest run tests/analytics.test.ts` | ⚠️ extend | ⬜ pending |
-| TBD | TBD | TBD | PERF-03 | T-09 access | OE scorecard reads `office_activity_log`, tenant-scoped + auth-guarded | integration | `npx vitest run tests/analytics.test.ts` | ❌ W0 | ⬜ pending |
-| TBD | TBD | TBD | PERF-05 | — | Leaderboard sort: workers by approved volume, auditors by turnaround, tie-break by name | unit | `npx vitest run tests/analytics.test.ts` | ❌ W0 | ⬜ pending |
-| TBD | TBD | TBD | PERF-06 | — | `getStalledProjects` returns projects w/ no approved submission in N days | integration | `npx vitest run tests/analytics.test.ts` | ❌ W0 | ⬜ pending |
-| TBD | TBD | TBD | PERF-06 | T-09 tamper | `getTenantSettings` returns seeded defaults; `updateTenantSettings` upserts, tenant-scoped, zod-validated | integration | `npx vitest run tests/analytics.test.ts` | ❌ W0 | ⬜ pending |
-| TBD | TBD | TBD | PERF-06 | — | Overview alert badges fire per configured thresholds (rejection absolute; suppress when no date filter) | smoke / manual | manual browser check | ❌ W0 (no E2E) | ⬜ pending |
+| 09-04-T1 | 09-04 | 3 | PERF-01 | — | `getPersonMetrics` returns `outputQuantitySum` for approved submissions | integration | `npx vitest run tests/analytics.test.ts` | ⚠️ extend | ⬜ pending |
+| 09-04-T1 | 09-04 | 3 | PERF-02 | — | `getPersonMetrics` returns SLA-breach rate (breach/decided); null when no decisions | integration | `npx vitest run tests/analytics.test.ts` | ⚠️ extend | ⬜ pending |
+| 09-05-T3 | 09-05 | 4 | PERF-03 | T-09 access | OE scorecard reads `office_activity_log`, tenant-scoped + auth-guarded | integration | `npx vitest run tests/analytics.test.ts` | ❌ W0 | ⬜ pending |
+| 09-05-T2 | 09-05 | 4 | PERF-05 | — | Leaderboard sort: workers by approved volume, auditors by turnaround, tie-break by name | unit | `npx vitest run tests/analytics.test.ts` | ❌ W0 | ⬜ pending |
+| 09-04-T2 | 09-04 | 3 | PERF-06 | — | `getStalledProjects` returns projects w/ no approved submission in N days | integration | `npx vitest run tests/analytics.test.ts` | ❌ W0 | ⬜ pending |
+| 09-04-T3 | 09-04 | 3 | PERF-06 | T-09 tamper | `getTenantSettings` returns seeded defaults; `updateTenantSettings` upserts, tenant-scoped, zod-validated | integration | `npx vitest run tests/analytics.test.ts` | ❌ W0 | ⬜ pending |
+| 09-06-T4 | 09-06 | 5 | PERF-06 | — | Overview alert badges fire per configured thresholds (rejection absolute; suppress when no date filter) | smoke / manual | manual browser check | ❌ W0 (no E2E) | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 

@@ -109,7 +109,7 @@ The roadmap Phase 9 section still lists PERF-03 and its SC3; PERF-03 is **Comple
 - **Relative / trailing-baseline rejection-spike detection** — v1 uses an absolute rejection-rate threshold (D-85); baseline-relative spike detection is a future enhancement.
 - **Per-role / per-project threshold overrides** — v1 thresholds are tenant-wide; granular overrides deferred.
 - **Alert dismissal / acknowledgement / history** — inline badges are stateless in v1; an alerts inbox/ack workflow is a future phase.
-- **Office-engineer scorecard rebuild** — out of scope; PERF-03 already shipped in Phase 7 (only linked for parity).
+- **Office-engineer activity-LOG rebuild** — out of scope; the `office_activity_log` data layer already shipped in Phase 7 (PERF-03 data). Phase 9 reuses it. NOTE: the office-engineer scorecard *view* is now IN scope per the revised D-80 (user-approved during plan-phase 9) — Phase 9 builds a new read-only view over the existing log; it does NOT rebuild the log/data layer.
 - Unrelated tracked todo `submission-detail-map-link.md` (Phase-8 follow-up) — not part of Phase 9.
 
 </deferred>
