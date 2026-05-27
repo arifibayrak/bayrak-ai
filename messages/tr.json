@@ -147,7 +147,10 @@
         "chart_rejection_rate": "Red Oranı",
         "empty_no_projects": "Henüz proje verisi yok.",
         "chart_no_data": "Veri yok",
-        "error_load": "Portföy verileri yüklenemedi. Sayfayı yenileyiniz."
+        "error_load": "Portföy verileri yüklenemedi. Sayfayı yenileyiniz.",
+        "kpi_stalled_label": "Durmuş Projeler",
+        "kpi_stalled_sub_alert": "{days} gündür onay yok",
+        "kpi_stalled_sub_healthy": "Tüm projeler aktif"
       },
       "filters": {
         "from": "Başlangıç",

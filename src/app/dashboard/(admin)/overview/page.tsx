@@ -12,16 +12,24 @@
  * Decision D-67: currency selector is page-local (not a URL param).
  * Decision D-68: charts receive server-prefetched data as props — never re-fetched client-side.
  * Decision D-73: filters persist in URL params; default all-time when unset.
+ * Decision D-87/D-88 (Phase 9): alert badges driven by tenant thresholds; Stalled Projects card.
+ *   - pendingColor: destructive when pendingBacklog > 0 AND avgDecisionLatencyHours > auditSlaHours;
+ *     warning when pendingBacklog > 0 but latency within threshold (or null); else default.
+ *   - rejectionAlertFires: only when date filter active (Pitfall 4) AND rate > threshold.
+ *   - stalledColor: destructive when stalledProjects.length >= 1.
+ *   Alert colors: --destructive / amber ONLY — NEVER --primary (UI-SPEC hard rule).
  */
 
 import { Suspense } from 'react';
 import { getTranslations } from 'next-intl/server';
-import { Clock, CheckCircle2, XCircle, HardHat } from 'lucide-react';
-import { getPortfolioKPIs, getPortfolioTrends, getPortfolioOverview } from '@/actions/analytics';
+import { Clock, CheckCircle2, XCircle, HardHat, TriangleAlert, PauseCircle } from 'lucide-react';
+import { getPortfolioKPIs, getPortfolioTrends, getPortfolioOverview, getStalledProjects } from '@/actions/analytics';
 import { getProjects } from '@/actions/projects';
 import { getActivePeople } from '@/actions/people';
+import { getTenantSettings } from '@/actions/settings';
 import { FilterBar } from '@/components/admin/FilterBar';
 import { KpiCard } from '@/components/admin/KpiCard';
+import { Badge } from '@/components/ui/badge';
 import { EVTableClient } from './EVTableClient';
 
 export const dynamic = 'force-dynamic';
@@ -54,14 +62,18 @@ export default async function OverviewPage({ searchParams }: Props) {
 
   const t = await getTranslations('dashboard.admin.overview');
 
-  // Parallel data fetch (D-68) — all three analytics + support lists
-  const [kpis, trends, overview, projectsData, activePeople] = await Promise.all([
+  // Two-phase fetch: Phase 1 — parallel fetch (settings needed for stalledDays before getStalledProjects)
+  const [kpis, trends, overview, projectsData, activePeople, settings] = await Promise.all([
     getPortfolioKPIs(filters),
     getPortfolioTrends(filters),
     getPortfolioOverview(),
     getProjects(),
     getActivePeople(),
+    getTenantSettings(),
   ]);
+
+  // Phase 2 — stalledProjects depends on settings.stalledDays (point-in-time, NOT date-filtered — D-66/D-88)
+  const stalledProjects = await getStalledProjects(settings.stalledDays);
 
   // Build deduplicated person options for FilterBar
   const personOptions = Array.from(
@@ -106,9 +118,40 @@ export default async function OverviewPage({ searchParams }: Props) {
     return qs ? `/dashboard/people?${qs}` : '/dashboard/people';
   };
 
-  // Pending backlog color: destructive if > 20
-  const pendingColor: 'destructive' | 'default' =
-    kpis.pendingBacklog > 20 ? 'destructive' : 'default';
+  // ── D-87 Alert state (pure TS — no extra DB round-trip, UI-SPEC Surface 5) ──────────────────
+
+  // Pending-backlog: two-condition severity rule (D-87, UI-SPEC Surface 5)
+  //   destructive: pendingBacklog > 0 AND avgDecisionLatencyHours != null AND > auditSlaHours
+  //   warning:     pendingBacklog > 0 (latency null or within threshold — caution state)
+  //   default:     no pending backlog
+  const pendingColor: 'destructive' | 'warning' | 'default' =
+    kpis.pendingBacklog > 0
+      ? (kpis.avgDecisionLatencyHours != null && kpis.avgDecisionLatencyHours > settings.auditSlaHours
+        ? 'destructive'
+        : 'warning')
+      : 'default';
+
+  // pendingAlertFires: alertBadge shown only on destructive SLA breach, not on amber caution
+  const pendingAlertFires = pendingColor === 'destructive';
+
+  // Rejection alert: suppressed entirely when no date filter active (Pitfall 4 / research recommendation)
+  // Rate = rejectionsInRange / (approvalsInRange + rejectionsInRange) compared to threshold
+  const rejectionAlertFires = isDateFiltered &&
+    (kpis.rejectionsInRange / Math.max(kpis.approvalsInRange + kpis.rejectionsInRange, 1)) >
+    Number(settings.rejectionRateThreshold);
+
+  const rejectionColor: 'destructive' | 'default' = rejectionAlertFires ? 'destructive' : 'default';
+
+  // Stalled projects: destructive when >= 1 stalled project (D-88)
+  const stalledColor: 'destructive' | 'default' = stalledProjects.length >= 1 ? 'destructive' : 'default';
+
+  // ── Shared alert badge element (icon-only, destructive, per UI-SPEC Surface 5) ─────────────
+  // aria-label on the wrapping span (in KpiCard) — icon itself is aria-hidden
+  const alertBadgeEl = (
+    <Badge variant="destructive" className="p-1">
+      <TriangleAlert className="h-3 w-3" aria-hidden="true" />
+    </Badge>
+  );
 
   // Collect all available currencies from the overview data for the currency selector
   const availableCurrencies = Array.from(
@@ -139,9 +182,10 @@ export default async function OverviewPage({ searchParams }: Props) {
         />
       </Suspense>
 
-      {/* KPI card row: 2-col mobile / 4-col desktop */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8">
-        {/* Pending backlog — point-in-time (D-66): no date filter in drill link */}
+      {/* KPI card row: 2-col mobile / 3-col md / 5-col desktop (D-88: Stalled Projects 5th card) */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-8">
+        {/* Pending backlog — point-in-time (D-66): no date filter in drill link
+            Alert: destructive when avgDecisionLatencyHours > auditSlaHours; warning (amber) otherwise */}
         <KpiCard
           label={t('kpi_pending_label')}
           subLabel={t('kpi_pending_sub')}
@@ -149,6 +193,7 @@ export default async function OverviewPage({ searchParams }: Props) {
           icon={<Clock className="h-5 w-5" />}
           drillHref={pendingDrillHref}
           valueColor={pendingColor}
+          alertBadge={pendingAlertFires ? alertBadgeEl : undefined}
         />
 
         {/* Approvals in range */}
@@ -161,14 +206,15 @@ export default async function OverviewPage({ searchParams }: Props) {
           valueColor="success"
         />
 
-        {/* Rejections in range */}
+        {/* Rejections in range — alert badge only when date filter active AND rate > threshold (Pitfall 4) */}
         <KpiCard
           label={t('kpi_rejections_label')}
           subLabel={dateSubLabel}
           value={kpis.rejectionsInRange}
           icon={<XCircle className="h-5 w-5" />}
           drillHref={buildRecordsHref('rejected')}
-          valueColor="destructive"
+          valueColor={rejectionColor}
+          alertBadge={rejectionAlertFires ? alertBadgeEl : undefined}
         />
 
         {/* Active workers in range */}
@@ -178,6 +224,21 @@ export default async function OverviewPage({ searchParams }: Props) {
           value={kpis.activeWorkers}
           icon={<HardHat className="h-5 w-5" />}
           drillHref={buildPeopleHref()}
+        />
+
+        {/* Stalled Projects (D-88) — 5th card, point-in-time, never date-filtered */}
+        <KpiCard
+          label={t('kpi_stalled_label')}
+          subLabel={
+            stalledProjects.length >= 1
+              ? t('kpi_stalled_sub_alert', { days: settings.stalledDays })
+              : t('kpi_stalled_sub_healthy')
+          }
+          value={stalledProjects.length}
+          icon={<PauseCircle className="h-5 w-5" />}
+          drillHref={stalledProjects.length >= 1 ? '/dashboard/projects?stalled=true' : undefined}
+          valueColor={stalledColor}
+          alertBadge={stalledColor !== 'default' ? alertBadgeEl : undefined}
         />
       </div>
 
