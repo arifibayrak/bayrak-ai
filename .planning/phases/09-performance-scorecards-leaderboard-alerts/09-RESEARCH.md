@@ -671,12 +671,12 @@ export async function updateTenantSettings(input: {
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **D-80 office-engineer scorecard link — where does it point?**
    - What we know: PERF-03 (Phase 7) added `office_activity_log` table + `getOfficeActivityLog()`. The Analytics page (`/dashboard/analytics`) is a coming-soon stub.
    - What's unclear: The "link for parity" has nowhere useful to point currently. The Analytics stub page has no office-engineer scorecard data.
-   - Recommendation: D-80 is best handled as a note/badge on the People directory ("Office Engineer activity is in the Analytics tab") and wired up for real in the Analytics phase. The planner can descope D-80 to a non-functional informational link for this phase.
+   - **RESOLVED (user decision, plan-phase 9):** Supersedes the link recommendation — D-80 was revised to **build a new minimal read-only office-engineer scorecard view** (over the existing Phase-7 `office_activity_log`), delivered by plan 09-05. Not a descoped/non-functional link.
 
 2. **Rejection-rate alert: use `approvalsInRange + rejectionsInRange` from `getPortfolioKPIs` or fetch a separate per-period rate?**
    - What we know: `getPortfolioKPIs` returns `approvalsInRange` + `rejectionsInRange` in the active window. Rejection rate = `rejectionsInRange / (approvalsInRange + rejectionsInRange)`.
