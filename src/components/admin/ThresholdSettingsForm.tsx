@@ -36,10 +36,13 @@ export function ThresholdSettingsForm({
 }: ThresholdSettingsFormProps) {
   const t = useTranslations('dashboard.admin.settings');
 
-  // Field values — pre-populated from DB defaults
-  const [auditSlaHours, setAuditSlaHours] = useState(defaultAuditSlaHours);
-  const [rejectionRatePercent, setRejectionRatePercent] = useState(defaultRejectionRatePercent);
-  const [stalledDays, setStalledDays] = useState(defaultStalledDays);
+  // WR-02 (09-REVIEW): hold field values as strings so the user can clear an input
+  // without it snapping to 0. Number(e.target.value) converts "" → 0, which bypasses
+  // the min=1 guard silently and shows "0" in the field while the user is still typing.
+  // Instead we store raw string state and parse+validate only on submit.
+  const [auditSlaHoursStr, setAuditSlaHoursStr] = useState(String(defaultAuditSlaHours));
+  const [rejectionRatePercentStr, setRejectionRatePercentStr] = useState(String(defaultRejectionRatePercent));
+  const [stalledDaysStr, setStalledDaysStr] = useState(String(defaultStalledDays));
 
   // Per-field validation errors
   const [auditSlaError, setAuditSlaError] = useState('');
@@ -53,6 +56,12 @@ export function ThresholdSettingsForm({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+
+    // Parse string values to numbers on submit — NaN for empty / non-numeric input.
+    // parseInt truncates decimals (e.g. "1.5" → 1) which is correct for integer fields.
+    const auditSlaHours = parseInt(auditSlaHoursStr, 10);
+    const rejectionRatePercent = parseInt(rejectionRatePercentStr, 10);
+    const stalledDays = parseInt(stalledDaysStr, 10);
 
     // Client-side validate on submit (not on blur — per ProjectForm pattern)
     let valid = true;
@@ -114,8 +123,8 @@ export function ThresholdSettingsForm({
             min={1}
             max={720}
             step={1}
-            value={auditSlaHours}
-            onChange={(e) => setAuditSlaHours(Number(e.target.value))}
+            value={auditSlaHoursStr}
+            onChange={(e) => setAuditSlaHoursStr(e.target.value)}
             className="w-[120px] tabular-nums"
             aria-describedby={auditSlaError ? 'audit-sla-error' : undefined}
             disabled={submitting}
@@ -142,8 +151,8 @@ export function ThresholdSettingsForm({
             min={0}
             max={100}
             step={1}
-            value={rejectionRatePercent}
-            onChange={(e) => setRejectionRatePercent(Number(e.target.value))}
+            value={rejectionRatePercentStr}
+            onChange={(e) => setRejectionRatePercentStr(e.target.value)}
             className="w-[120px] tabular-nums"
             aria-describedby={rejectionRateError ? 'rejection-rate-error' : undefined}
             disabled={submitting}
@@ -170,8 +179,8 @@ export function ThresholdSettingsForm({
             min={1}
             max={365}
             step={1}
-            value={stalledDays}
-            onChange={(e) => setStalledDays(Number(e.target.value))}
+            value={stalledDaysStr}
+            onChange={(e) => setStalledDaysStr(e.target.value)}
             className="w-[120px] tabular-nums"
             aria-describedby={stalledDaysError ? 'stalled-days-error' : undefined}
             disabled={submitting}
