@@ -323,7 +323,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 09-03-PLAN.md — [BLOCKING] generate + hand-verify 0007 migration + seed Moderate defaults + apply via tsx migrate.ts (D-49/D-84)
+- [x] 09-03-PLAN.md — [BLOCKING] generate + hand-verify 0007 migration + seed Moderate defaults + apply via tsx migrate.ts (D-49/D-84)
 
 **Wave 3** *(blocked on Wave 2)*
 
@@ -386,6 +386,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 6. AI Vision Assist | 0/TBD | Not started | - |
 | 7. Data Foundation & Canonical Record | 5/5 | Complete   | 2026-05-26 |
 | 8. Admin Shell & Information Architecture | 6/6 | Complete   | 2026-05-26 |
-| 9. Performance Analytics & Scorecards | 2/6 | In Progress|  |
+| 9. Performance Analytics & Scorecards | 3/6 | In Progress|  |
 | 10. Hakkediş Billing | 0/TBD | Not started | - |
 | 11. Exports | 0/TBD | Not started | - |
