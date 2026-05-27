@@ -1993,11 +1993,12 @@ describe('PERF-05: leaderboard sort', () => {
     { personId: 'w3', displayName: 'Carol', submissionsApproved: 10, submissionsRejected: 5, submissionsPending: 0, valueContributedByCurrency: {} },  // tie with Alice on approved
   ];
 
-  // Minimal PortfolioAuditor stubs for sort testing
+  // Minimal PortfolioAuditor stubs for sort testing.
+  // CR-01 (09-REVIEW): slaBreachRateDecided is now a required field on PortfolioAuditor.
   const auditors = [
-    { personId: 'a1', displayName: 'Dave', decisionsCount: 5, avgDecisionLatencyHours: 72, pendingBacklogCount: 1 },
-    { personId: 'a2', displayName: 'Eve', decisionsCount: 8, avgDecisionLatencyHours: 24, pendingBacklogCount: 2 },   // fastest
-    { personId: 'a3', displayName: 'Frank', decisionsCount: 3, avgDecisionLatencyHours: 24, pendingBacklogCount: 0 }, // tie with Eve on latency
+    { personId: 'a1', displayName: 'Dave', decisionsCount: 5, avgDecisionLatencyHours: 72, pendingBacklogCount: 1, slaBreachRateDecided: 0.4 },
+    { personId: 'a2', displayName: 'Eve', decisionsCount: 8, avgDecisionLatencyHours: 24, pendingBacklogCount: 2, slaBreachRateDecided: 0.1 },   // fastest, lowest breach
+    { personId: 'a3', displayName: 'Frank', decisionsCount: 3, avgDecisionLatencyHours: 24, pendingBacklogCount: 0, slaBreachRateDecided: null }, // no threshold
   ];
 
   it('workers default-sort by submissionsApproved DESC (PERF-05)', async () => {
@@ -2038,5 +2039,20 @@ describe('PERF-05: leaderboard sort', () => {
     const sorted = [...tiedWorkers].sort(getWorkerSortFn());
     expect(sorted[0].displayName).toBe('Alice');
     expect(sorted[1].displayName).toBe('Carol');
+  });
+
+  // CR-01 (09-REVIEW): sla_breach sort must use slaBreachRateDecided, not avgDecisionLatencyHours
+  it('auditors sla_breach-sort by slaBreachRateDecided DESC, null-last (CR-01)', async () => {
+    const { getAuditorSortFn } = await import('@/actions/analytics') as Record<string, unknown> as { getAuditorSortFn?: (sortBy?: string) => (a: typeof auditors[0], b: typeof auditors[0]) => number };
+    if (typeof getAuditorSortFn !== 'function') {
+      throw new Error('getAuditorSortFn is not yet exported from @/actions/analytics');
+    }
+    const sorted = [...auditors].sort(getAuditorSortFn('sla_breach'));
+    // Dave (0.4) > Eve (0.1) > Frank (null, sorts last with sentinel -1)
+    expect(sorted[0].personId).toBe('a1');   // Dave: 40% breach
+    expect(sorted[1].personId).toBe('a2');   // Eve: 10% breach
+    expect(sorted[2].personId).toBe('a3');   // Frank: null → -1 sentinel, sorts last
+    // Verify it does NOT sort by avgDecisionLatencyHours (which would put Eve/Frank first)
+    expect(sorted[0].personId).not.toBe('a2');
   });
 });
