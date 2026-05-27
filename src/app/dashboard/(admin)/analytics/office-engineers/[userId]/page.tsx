@@ -39,6 +39,7 @@ export const dynamic = 'force-dynamic';
 
 interface Props {
   params: Promise<{ userId: string }>;
+  searchParams: Promise<{ limit?: string }>;
 }
 
 const INITIAL_LIMIT = 50;
@@ -68,8 +69,9 @@ function actionTypeToKey(actionType: string): string {
   return map[actionType] ?? 'action_unknown';
 }
 
-export default async function OEProfilePage({ params }: Props) {
+export default async function OEProfilePage({ params, searchParams }: Props) {
   const { userId } = await params;
+  const { limit: limitParam } = await searchParams;
 
   // T-09-05-AC: auth guard
   const session = await auth();
@@ -81,42 +83,39 @@ export default async function OEProfilePage({ params }: Props) {
 
   const t = await getTranslations('dashboard.admin.oe_scorecard');
 
-  // Tenant-scoped user lookup — users table is not tenant-scoped by FK but we
-  // scope via the activity log's actor_user_id; here we verify the user exists
-  // in the system at all (office engineers are Auth.js users).
-  // We do NOT have a tenant_id on the users table itself; use the users table
-  // with an office_activity_log membership check to verify they belong to this tenant.
+  // CR-02 (09-REVIEW): tenant-scoped user lookup via INNER JOIN to office_activity_log.
+  // The users/Auth.js table has no tenant_id FK, so we enforce tenant membership by
+  // requiring at least one activity row for this user in this tenant. A user whose
+  // userId belongs to a different tenant returns 0 rows → notFound() → IDOR boundary.
+  // This replaces the previous two-query pattern (global user lookup + separate count check)
+  // that revealed name/email before the tenant check was evaluated.
+  //
+  // NOTE: newly-invited OEs with zero activity will NOT appear (empty state) until they
+  // perform their first logged action. This is the correct security posture — presence
+  // in office_activity_log is the tenant-membership signal for Auth.js users.
+  // T-09-05-IDOR + T-09-05-AC enforced.
   const userResult = await db.execute(sql`
-    SELECT u.id, u.name, u.email
+    SELECT DISTINCT u.id, u.name, u.email
     FROM users u
+    INNER JOIN office_activity_log al
+      ON al.actor_user_id = u.id
+     AND al.tenant_id = ${tenantId}
     WHERE u.id = ${userId}
     LIMIT 1
   `);
 
-  // T-09-05-IDOR: if user not found, return 404
   if (userResult.rows.length === 0) {
-    notFound();
+    notFound();  // user not found OR not a member of this tenant
   }
 
   const userRow = userResult.rows[0];
   const engineerName = (userRow.name != null ? String(userRow.name) : null) ?? String(userRow.email ?? userId);
 
-  // Additional tenant-scope check: verify this user has activity in this tenant
-  // (prevents cross-tenant information disclosure — a user in another tenant would
-  // have no rows in office_activity_log for this tenantId)
-  const tenantCheckResult = await db.execute(sql`
-    SELECT COUNT(*) AS c FROM office_activity_log
-    WHERE actor_user_id = ${userId} AND tenant_id = ${tenantId}
-    LIMIT 1
-  `);
-  const hasTenantActivity = Number(tenantCheckResult.rows[0]?.c ?? 0) > 0;
-
-  // If no tenant activity yet, we still show the page (empty state) — the user
-  // might be a newly added OE. We already verified the user exists.
-  // The getOfficeActivityLog call below also tenant-scopes by design.
+  // CR-04 (09-REVIEW): read limit from searchParams (default INITIAL_LIMIT, max 500).
+  // Clamp to avoid runaway queries. The Load more link emits ?limit=N to increment.
+  const limit = Math.min(Math.max(Number(limitParam ?? INITIAL_LIMIT) || INITIAL_LIMIT, INITIAL_LIMIT), 500);
 
   // Fetch activity log (reuse Phase-7 function — do NOT rebuild the data layer)
-  const limit = INITIAL_LIMIT;
   const entries = await getOfficeActivityLog({ actorUserId: userId, limit });
 
   const hasMore = entries.length >= limit;
@@ -198,11 +197,12 @@ export default async function OEProfilePage({ params }: Props) {
           </div>
         )}
 
-        {/* Load more — basic ghost button; increases limit param (future enhancement) */}
-        {hasMore && (
+        {/* CR-04 (09-REVIEW): Load more — only shown when entries.length >= limit (i.e. more may exist).
+            Navigates to ?limit=<current+50> so the page fetches more on next render. */}
+        {entries.length >= limit && (
           <div className="flex justify-center pt-2">
             <Link
-              href={`/dashboard/analytics/office-engineers/${userId}?limit=${LOAD_MORE_LIMIT}`}
+              href={`/dashboard/analytics/office-engineers/${userId}?limit=${limit + LOAD_MORE_LIMIT}`}
               className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2"
             >
               {t('load_more')}
@@ -210,9 +210,6 @@ export default async function OEProfilePage({ params }: Props) {
           </div>
         )}
       </div>
-
-      {/* Suppress unused variable warning for tenantId / hasTenantActivity used only for IDOR check */}
-      {tenantId && hasTenantActivity !== undefined && null}
     </div>
   );
 }
