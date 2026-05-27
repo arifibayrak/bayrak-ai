@@ -1,3 +1,5 @@
+import Link from 'next/link';
+import { Settings } from 'lucide-react';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { signOut } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
@@ -26,9 +28,18 @@ export async function TopNav({ userEmail }: { userEmail: string }) {
           <span className="text-xl font-bold tracking-tight">{t('wordmark')}</span>
         </div>
 
-        {/* Right: language toggle + user email + sign out */}
+        {/* Right: language toggle + settings gear + user email + sign out */}
         <div className="flex items-center gap-3">
           <LanguageToggle currentLocale={locale} />
+
+          {/* Settings gear icon (D-86) — navigates to /dashboard/settings; no sidebar item */}
+          <Link
+            href="/dashboard/settings"
+            className="text-muted-foreground hover:text-foreground ml-2"
+            aria-label={tAdmin('settings_aria_label')}
+          >
+            <Settings className="h-5 w-5" aria-hidden="true" />
+          </Link>
 
           {userEmail && (
             <span className="text-sm text-muted-foreground hidden sm:block">

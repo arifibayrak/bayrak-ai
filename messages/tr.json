@@ -124,7 +124,8 @@
         "open_nav": "Gezinmeyi aç",
         "close_nav": "Gezinmeyi kapat",
         "expand_sidebar": "Kenar çubuğunu genişlet",
-        "collapse_sidebar": "Kenar çubuğunu daralt"
+        "collapse_sidebar": "Kenar çubuğunu daralt",
+        "settings_aria_label": "Ayarları aç"
       },
       "overview": {
         "heading": "Genel Bakış",

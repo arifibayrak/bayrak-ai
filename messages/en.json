@@ -124,7 +124,8 @@
         "open_nav": "Open navigation",
         "close_nav": "Close navigation",
         "expand_sidebar": "Expand sidebar",
-        "collapse_sidebar": "Collapse sidebar"
+        "collapse_sidebar": "Collapse sidebar",
+        "settings_aria_label": "Open settings"
       },
       "overview": {
         "heading": "Overview",
