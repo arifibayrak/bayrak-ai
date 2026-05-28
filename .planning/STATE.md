@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Submission-Driven Hakkediş & UX Brand Pass
-status: Defining requirements
-stopped_at: Completed discuss-phase 12 (12-CONTEXT.md written, ready for /gsd:plan-phase 12)
-last_updated: "2026-05-28T20:00:00.000Z"
-last_activity: 2026-05-28 — Phase 12 CONTEXT.md committed (D-117..D-120 locked)
+status: executing
+stopped_at: Completed 11-01b-PLAN.md
+last_updated: "2026-05-28T20:59:58.366Z"
+last_activity: 2026-05-28
 progress:
   total_phases: 6
   completed_phases: 5
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-25)
 
 **Core value:** Every unit of field work flows through one trustworthy loop — worker submits → auditor approves on-site → central project data (BOQ + map) updates automatically
-**Current focus:** Milestone complete
+**Current focus:** Phase 12 — submission-driven-hakkedi
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-05-28 — Milestone v3.0 started
+Phase: 12 (submission-driven-hakkedi) — EXECUTING
+Plan: 2 of 4
+Status: Ready to execute
+Last activity: 2026-05-28
 
 ## Performance Metrics
 
@@ -100,6 +100,7 @@ Last activity: 2026-05-28 — Milestone v3.0 started
 | Phase 11 P11-04 | 18 minutes | 4 tasks | 11 files |
 | Phase 11 P11-05 | 25 minutes | 2 tasks | 1 files |
 | Phase 11 P11-06 | 0 | 2 tasks | 1 files |
+| Phase 12 P01 | 5 | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -197,6 +198,9 @@ Recent decisions affecting current work:
 - [Phase ?]: Plan 11-06: Period-detail PeriodDetailControls.tsx gains Excel + PDF outline buttons (D-96 state-gated removal on draft); same handlers as Plan 11-05 hub; D-108 fully complete
 - [Phase ?]: Plan 11-06: end-of-phase UAT APPROVED — draft guard verified (buttons absent for draft, present for finalized), PDF Turkish glyphs render correctly in Preview, Excel money values formatted, OE scorecard shows all 4 D-109 action labels in both TR and EN; VALIDATION.md Manual rows 2-4 SATISFIED
 - [Phase ?]: Phase 11 closure: D-108 distributed UX fully delivered (hub Plan 11-05 + period-detail Plan 11-06 both wired to same 4 route handlers); D-109 traceability end-to-end verified; EXP-01..04 all reachable via UI; Phase 11 ready for /gsd:verify-work
+- [Phase ?]: [Phase 12-01]: D-119 join-table schema shipped — composite PK (period_line_id, submission_id) + cascade/restrict FK split + reverse-lookup index; UNIQUE (period_id, boq_item_id) on hakedis_period_lines added as D-117 UPSERT target (Open Question 4 RESOLVED)
+- [Phase ?]: [Phase 12-01]: tests/hakedis-live.test.ts contract scaffold ships with 9 it.todo entries whose names are byte-identical to 12-VALIDATION.md verify-command -t filters — downstream Plans 12-03 + 12-04 bind deterministically by name
+- [Phase ?]: [Phase 12-01]: seedDraftPeriod fixture uses HAKEDIS_LIVE_FIXTURE_IDS in 0c00 UUID range to avoid collision with HAKEDIS_FIXTURE_IDS (0e00) in tests/fixtures/exports.ts — both fixtures coexist in the same test session
 
 ### Open Questions / Conflicts (surface before relevant phases)
 
@@ -240,6 +244,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-28T16:35:36.070Z
+Last session: 2026-05-28T20:59:58.359Z
 Stopped at: Completed 11-01b-PLAN.md
 Resume file: None

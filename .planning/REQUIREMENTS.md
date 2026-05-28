@@ -120,9 +120,9 @@ Defined: 2026-05-28. Each maps to roadmap Phases 12–13.
 
 ### Submission-Driven Hakkediş
 
-- [ ] **SDH-01**: Each approved Telegram work-application submission contributes to the in-progress hakkediş period in real time (no rollup wait); the office sees billing artefacts grow with each approval
-- [ ] **SDH-02**: Office engineer can trace each hakkediş line-item quantity back to the source approved submission(s) that contributed to it (submission ↔ hakkediş line traceability)
-- [ ] **SDH-03**: Existing period-finalization flow continues to work — submission-driven contribution is additive and never breaks the cumulative yeşil-defter model, the deduction chain, or the immutable-snapshot guarantee from v2.0
+- [x] **SDH-01**: Each approved Telegram work-application submission contributes to the in-progress hakkediş period in real time (no rollup wait); the office sees billing artefacts grow with each approval
+- [x] **SDH-02**: Office engineer can trace each hakkediş line-item quantity back to the source approved submission(s) that contributed to it (submission ↔ hakkediş line traceability)
+- [x] **SDH-03**: Existing period-finalization flow continues to work — submission-driven contribution is additive and never breaks the cumulative yeşil-defter model, the deduction chain, or the immutable-snapshot guarantee from v2.0
 
 ### UX & Brand Pass
 
