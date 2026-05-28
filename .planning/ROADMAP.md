@@ -436,7 +436,24 @@ Plans:
   3. Existing period-finalization flow continues to work unchanged on a fresh period — finalize still produces the same immutable snapshot, the cumulative `period qty = cumulative − previous` math holds, and the deduction chain (KDV / tevkifat / stopaj / teminat) is unaffected
   4. A finalized period rejects further submission-driven contribution — approvals that land after finalization flow into the next draft period (or surface as "no draft period exists" if none is open), never mutating the finalized snapshot
 
-**Plans**: TBD (sized during /gsd:plan-phase 12)
+**Plans**: 4 plans
+Plans:
+**Wave 1**
+
+- [ ] 12-01-PLAN.md — D-119 join-table schema + UNIQUE on hakedis_period_lines + barrel export + tests/hakedis-live.test.ts scaffold (9 it.todo) + seedDraftPeriod fixture + bilingual SDH-02 i18n keys
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 12-02-PLAN.md — [BLOCKING] generate + hand-verify Pitfall-7-clean 0009_v3_line_submissions migration + live apply to dev DB and test DB
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 12-03-PLAN.md — Extract recomputeHakedisLine helper from recomputePeriodLines + add getLineSubmissions Server Action + wire D-117 post-commit hook into bot-audit handleAuditDecision approve branch + replace 8/9 it.todo with concrete tests
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 12-04-PLAN.md — LivePeriodPoller (D-120 30s) + LineSubmissionsPanel (SDH-02 expand-row) + page wire + end-of-phase blocking-human UAT
+
 **UI hint**: yes
 
 ### Phase 13: UX & Brand Pass
