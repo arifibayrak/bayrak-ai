@@ -418,6 +418,20 @@
           "export_excel": "Excel'e Aktar / Export Excel",
           "download_pdf": "PDF İndir / Download PDF"
         },
+        "line_submissions": {
+          "heading": "Katkı Sağlayan Kayıtlar",
+          "trigger_label": "Katkı sağlayan kayıtları göster ({count})",
+          "empty": "Bu kaleme henüz katkı sağlayan kayıt yok.",
+          "col_worker": "İşçi",
+          "col_decided_at": "Onaylanma Zamanı",
+          "col_qty": "Miktar",
+          "col_notes": "Notlar",
+          "col_photo": "Fotoğraf",
+          "photo_alt": "Kayıt fotoğrafı",
+          "photo_view": "Görüntüle",
+          "polling_indicator": "Her 30 saniyede bir otomatik yenileniyor",
+          "polling_aria": "Canlı güncellemeler etkin — bu dönem taslak halindeyken sayfa otomatik yenileniyor"
+        },
         "finalize_dialog": {
           "title": "Dönemi Kesinleştir",
           "body": "Bu işlem geri alınamaz. Dönem kesinleştirildikten sonra miktar, fiyat ve kesinti oranları değiştirilemez. Devam etmek istediğinize emin misiniz?",

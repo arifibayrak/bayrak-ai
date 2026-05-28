@@ -418,6 +418,20 @@
           "export_excel": "Excel'e Aktar / Export Excel",
           "download_pdf": "PDF İndir / Download PDF"
         },
+        "line_submissions": {
+          "heading": "Contributing Submissions",
+          "trigger_label": "Show contributing submissions ({count})",
+          "empty": "No submissions contributed to this line yet.",
+          "col_worker": "Worker",
+          "col_decided_at": "Approved At",
+          "col_qty": "Quantity",
+          "col_notes": "Notes",
+          "col_photo": "Photo",
+          "photo_alt": "Submission photo",
+          "photo_view": "View",
+          "polling_indicator": "Auto-refreshing every 30 seconds",
+          "polling_aria": "Live updates enabled — page refreshes automatically while this period is draft"
+        },
         "finalize_dialog": {
           "title": "Finalize Period",
           "body": "This action cannot be undone. Once finalized, all quantities, prices, and deduction rates are permanently locked. Are you sure?",
