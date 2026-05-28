@@ -66,6 +66,10 @@ function actionTypeToKey(actionType: string): string {
     hakedis_period_deleted: 'action_hakedis_period_deleted',
     route_uploaded: 'action_route_uploaded',
     boq_item_created: 'action_boq_item_created',
+    hakedis_pdf_exported: 'action_hakedis_pdf_exported',
+    hakedis_excel_exported: 'action_hakedis_excel_exported',
+    submission_ledger_exported: 'action_submission_ledger_exported',
+    performance_summary_exported: 'action_performance_summary_exported',
   };
   return map[actionType] ?? 'action_unknown';
 }

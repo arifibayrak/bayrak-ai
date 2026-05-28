@@ -22,6 +22,10 @@ export const OFFICE_ACTION_TYPES = [
   'hakedis_period_finalized',
   'hakedis_period_deleted',
   'hakedis_exported',
+  'hakedis_pdf_exported',
+  'hakedis_excel_exported',
+  'submission_ledger_exported',
+  'performance_summary_exported',
 ] as const;
 
 export type OfficeActionType = (typeof OFFICE_ACTION_TYPES)[number];
