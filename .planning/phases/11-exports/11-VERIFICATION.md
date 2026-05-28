@@ -1,9 +1,10 @@
 ---
 phase: 11-exports
 verified: 2026-05-28T18:10:00Z
-status: human_needed
+status: passed
 score: 5/5 must-haves verified
 overrides_applied: 0
+human_verification_resolved: 2026-05-28T18:30:00Z (all 4 items approved live during Wave 6 UATs — see 11-HUMAN-UAT.md)
 human_verification:
   - test: "Open the downloaded hakkediş PDF in a real PDF viewer (Preview / Acrobat)"
     expected: "Turkish glyphs ğ ş ı ö ü ç İ Ş Ğ Ü Ö Ç render correctly (no missing-glyph rectangles / tofu)"
