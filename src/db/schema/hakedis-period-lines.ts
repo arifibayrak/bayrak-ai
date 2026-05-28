@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, numeric, timestamp, index } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, numeric, timestamp, index, unique } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { tenants } from './tenants';
 import { hakedisPeriods } from './hakedis-periods';
@@ -48,4 +48,10 @@ export const hakedisPeriodLines = pgTable('hakedis_period_lines', {
 }, (t) => [
   index('hakedis_period_lines_period_idx').on(t.periodId),
   index('hakedis_period_lines_boq_idx').on(t.boqItemId),
+  // Phase 12 / Open Question 4 RESOLVED: the D-117 scoped recompute uses
+  // INSERT ... ON CONFLICT (period_id, boq_item_id) DO UPDATE ... — DELETE-then-INSERT
+  // would briefly orphan hakedis_line_submissions rows via the period_line_id CASCADE.
+  // The UNIQUE constraint enforces the business invariant (one period cannot have two
+  // lines for the same BOQ item) AND serves as the ON CONFLICT target for D-117.
+  unique('hakedis_period_lines_period_boq_unique').on(t.periodId, t.boqItemId),
 ]);
