@@ -18,6 +18,7 @@
 import ExcelJS from 'exceljs';
 import type { CanonicalSubmission } from '@/lib/types';
 import type { PortfolioWorker, PortfolioAuditor } from '@/actions/analytics';
+import type { PeriodHeader, PeriodLine, PeriodDeductions } from '@/actions/hakedis';
 
 export type BoqRow = {
   rowNumber: number;
@@ -364,6 +365,140 @@ export async function buildPerformanceSummary(input: {
 
   auditorsSheet.getColumn('avgLatencyHours').numFmt = '#,##0.00';
   auditorsSheet.getColumn('slaBreachRate').numFmt = '0.00%';
+
+  const buf = await workbook.xlsx.writeBuffer();
+  return Buffer.from(buf);
+}
+
+// ── buildHakedisExcel (EXP-02 Plan 11-04) ───────────────────────────────────
+
+/**
+ * buildHakedisExcel — three-sheet ExcelJS workbook for the EXP-02 hakkediş Excel
+ * export (D-115).
+ *
+ * Sheets in order (D-115 — Turkish names per UI-SPEC):
+ *   1. 'Yeşil Defter'  — cumulative register; 9 bilingual TR/EN columns per UI-SPEC
+ *   2. 'Fiyat İcmali'  — this period's qty × unit price; 6 bilingual columns
+ *   3. 'Hesap Özeti'   — 7 deduction rows (label | amount); 2 columns
+ *
+ * D-107 + D-116 + Pitfall 2 critical contract:
+ *   Every money/qty cell value is the STRING from PeriodLine / PeriodDeductions
+ *   exactly as Postgres returned it (numeric → decimal string). No parseFloat,
+ *   no Number() coercion in this helper. ExcelJS recognises numeric strings
+ *   and applies the column-level numFmt without precision loss.
+ *
+ * WARNING 5 / T-11-04-FORMULA mitigation:
+ *   materialSnapshot + unitSnapshot were captured from worker-typed BOQ content
+ *   at period freeze (D-95 snapshot). Both are wrapped in sanitizeExcelCell()
+ *   on every addRow call in Yeşil Defter + Fiyat İcmali. Hesap Özeti labels
+ *   are static literals and amount values are decimal strings (cannot match
+ *   formula prefix) — no wrapping needed there.
+ *
+ * Styling: bold + frozen row 1 on every sheet; Net Ödeme label + amount bold.
+ *
+ * Returns: Node Buffer — caller wraps in new Uint8Array(buf) for NextResponse.
+ */
+export async function buildHakedisExcel(input: {
+  period: PeriodHeader;
+  lines: PeriodLine[];
+  deductions: PeriodDeductions;
+  projectName: string;
+}): Promise<Buffer> {
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = 'bayrak.ai';
+  workbook.created = new Date();
+
+  // ── Sheet 1: Yeşil Defter ───────────────────────────────────────────────
+  // 9 bilingual TR/EN columns per UI-SPEC (D-111: each header contains ' / ').
+  const yesilDefter = workbook.addWorksheet('Yeşil Defter');
+  yesilDefter.columns = [
+    { header: 'Malzeme / Material', key: 'material', width: 30 },
+    { header: 'Birim / Unit', key: 'unit', width: 10 },
+    { header: 'Birim Fiyat / Unit Price', key: 'unitPrice', width: 14 },
+    { header: 'Para Birimi / Currency', key: 'currency', width: 10 },
+    { header: 'Önceki Birikimli / Previous Cumulative', key: 'previousCumulative', width: 18 },
+    { header: 'Birikimli Miktar / Cumulative Qty', key: 'cumulativeQty', width: 18 },
+    { header: 'Dönem Miktarı / Period Qty', key: 'periodQty', width: 16 },
+    { header: 'Dönem Tutarı / Period Value', key: 'periodValue', width: 16 },
+    { header: 'Birikimli Tutar / Cumulative Value', key: 'cumulativeValue', width: 18 },
+  ];
+  yesilDefter.getRow(1).font = { bold: true };
+  yesilDefter.views = [{ state: 'frozen', ySplit: 1 }];
+
+  for (const line of input.lines) {
+    yesilDefter.addRow({
+      // WARNING 5 / T-11-04-FORMULA: worker-typed BOQ content captured in snapshot
+      material: sanitizeExcelCell(line.materialSnapshot),
+      unit: sanitizeExcelCell(line.unitSnapshot),
+      // D-107 + D-116: Postgres decimal strings flow direct — NEVER parseFloat
+      unitPrice: line.unitPriceSnapshot,
+      currency: line.currencyCodeSnapshot,
+      previousCumulative: line.previousCumulativeQty,
+      cumulativeQty: line.cumulativeQtyApproved,
+      periodQty: line.periodQty,
+      periodValue: line.periodValue,
+      cumulativeValue: line.cumulativeValue,
+    });
+  }
+
+  // D-116: apply numFmt at column level — values stay strings, Excel renders.
+  yesilDefter.getColumn('unitPrice').numFmt = '#,##0.00';
+  yesilDefter.getColumn('previousCumulative').numFmt = '#,##0.00';
+  yesilDefter.getColumn('cumulativeQty').numFmt = '#,##0.00';
+  yesilDefter.getColumn('periodQty').numFmt = '#,##0.00';
+  yesilDefter.getColumn('periodValue').numFmt = '#,##0.00';
+  yesilDefter.getColumn('cumulativeValue').numFmt = '#,##0.00';
+
+  // ── Sheet 2: Fiyat İcmali ───────────────────────────────────────────────
+  // 6 bilingual TR/EN columns per UI-SPEC.
+  const fiyatIcmali = workbook.addWorksheet('Fiyat İcmali');
+  fiyatIcmali.columns = [
+    { header: 'Malzeme / Material', key: 'material', width: 30 },
+    { header: 'Birim / Unit', key: 'unit', width: 10 },
+    { header: 'Dönem Miktarı / Period Qty', key: 'periodQty', width: 16 },
+    { header: 'Birim Fiyat / Unit Price', key: 'unitPrice', width: 14 },
+    { header: 'Para Birimi / Currency', key: 'currency', width: 10 },
+    { header: 'Dönem Tutarı / Period Value', key: 'periodValue', width: 16 },
+  ];
+  fiyatIcmali.getRow(1).font = { bold: true };
+  fiyatIcmali.views = [{ state: 'frozen', ySplit: 1 }];
+
+  for (const line of input.lines) {
+    fiyatIcmali.addRow({
+      material: sanitizeExcelCell(line.materialSnapshot),
+      unit: sanitizeExcelCell(line.unitSnapshot),
+      periodQty: line.periodQty,
+      unitPrice: line.unitPriceSnapshot,
+      currency: line.currencyCodeSnapshot,
+      periodValue: line.periodValue,
+    });
+  }
+
+  fiyatIcmali.getColumn('periodQty').numFmt = '#,##0.00';
+  fiyatIcmali.getColumn('unitPrice').numFmt = '#,##0.00';
+  fiyatIcmali.getColumn('periodValue').numFmt = '#,##0.00';
+
+  // ── Sheet 3: Hesap Özeti ────────────────────────────────────────────────
+  // 7 deduction rows (label | amount), 2 columns. D-111 ' / ' on every label.
+  const hesapOzeti = workbook.addWorksheet('Hesap Özeti');
+  hesapOzeti.columns = [
+    { header: 'Kalem / Item', key: 'label', width: 32 },
+    { header: 'Tutar / Amount', key: 'amount', width: 16 },
+  ];
+  // D-107 + D-116 + Pitfall 2: Postgres decimal strings flow DIRECTLY to cells;
+  // ExcelJS recognises numeric strings and applies the numFmt without precision loss.
+  hesapOzeti.addRow({ label: 'Brüt Hakediş / Gross', amount: input.deductions.gross });
+  hesapOzeti.addRow({ label: 'KDV / VAT', amount: input.deductions.kdv });
+  hesapOzeti.addRow({ label: 'KDV Tevkifat / VAT Withholding', amount: input.deductions.tevkifat });
+  hesapOzeti.addRow({ label: 'Stopaj / Withholding Tax', amount: input.deductions.stopaj });
+  hesapOzeti.addRow({ label: 'Teminat / Retention', amount: input.deductions.teminat });
+  hesapOzeti.addRow({ label: 'Avans Kesintisi / Advance Deduction', amount: input.deductions.avans });
+  const netRow = hesapOzeti.addRow({ label: 'Net Ödeme / Net Payable', amount: input.deductions.net });
+  netRow.font = { bold: true };
+
+  hesapOzeti.getColumn('amount').numFmt = '#,##0.00';
+  hesapOzeti.getRow(1).font = { bold: true };
+  hesapOzeti.views = [{ state: 'frozen', ySplit: 1 }];
 
   const buf = await workbook.xlsx.writeBuffer();
   return Buffer.from(buf);
