@@ -325,6 +325,29 @@
         "exports_heading": "Dışa Aktarma",
         "exports_body": "Bu bölüm yapım aşamasındadır ve ileride hazır olacaktır."
       },
+      "exports": {
+        "heading": "Dışa Aktarma",
+        "subtitle": "Proje verilerinizi Excel ve PDF formatında indirin.",
+        "section_ledger": "Gönderim Listesi",
+        "section_performance": "Performans Özeti",
+        "section_hakedis": "Hakkediş Dosyaları",
+        "download_excel": "Excel İndir / Download Excel",
+        "download_pdf": "PDF İndir / Download PDF",
+        "export_excel": "Excel'e Aktar / Export Excel",
+        "picker_col_period": "Dönem / Period",
+        "picker_col_end_date": "Bitiş Tarihi / End Date",
+        "picker_col_currency": "Para Birimi / Currency",
+        "picker_col_status": "Durum / Status",
+        "picker_col_net": "Net Ödeme / Net Payable",
+        "picker_col_download": "İndir / Download",
+        "empty_no_data_heading": "Seçili aralıkta veri yok.",
+        "empty_no_data_body": "Tarih aralığını veya proje filtresini genişletin.",
+        "empty_no_periods_heading": "Henüz tamamlanmış dönem yok.",
+        "empty_no_periods_body": "Hakkediş dönemlerini tamamlamak için Hakkediş sayfasına gidin.",
+        "empty_no_periods_cta": "Hakkediş Sayfasına Git",
+        "err_download_failed": "İndirme başarısız oldu. Sayfayı yenileyip tekrar deneyin.",
+        "err_unauthorized": "Bu dosyayı indirmek için yetkiniz yok."
+      },
       "hakedis": {
         "heading": "Hakkediş",
         "subtitle": "İlerleme ödeme dönemlerini oluşturun ve yönetin.",
@@ -391,7 +414,9 @@
           "row_teminat": "Teminat (%{retentionRate})",
           "row_avans": "Avans Kesintisi (%{avansRate})",
           "row_net": "Net Ödeme",
-          "err_finalize_blocked": "Bu dönem kesinleştirilmiş; yeniden hesaplama yapılamaz."
+          "err_finalize_blocked": "Bu dönem kesinleştirilmiş; yeniden hesaplama yapılamaz.",
+          "export_excel": "Excel'e Aktar / Export Excel",
+          "download_pdf": "PDF İndir / Download PDF"
         },
         "finalize_dialog": {
           "title": "Dönemi Kesinleştir",

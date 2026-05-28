@@ -325,6 +325,29 @@
         "exports_heading": "Exports",
         "exports_body": "This section is under construction and will be available in a future phase."
       },
+      "exports": {
+        "heading": "Exports",
+        "subtitle": "Download your project data in Excel and PDF format.",
+        "section_ledger": "Submission Ledger",
+        "section_performance": "Performance Summary",
+        "section_hakedis": "Hakkediş Files",
+        "download_excel": "Excel İndir / Download Excel",
+        "download_pdf": "PDF İndir / Download PDF",
+        "export_excel": "Excel'e Aktar / Export Excel",
+        "picker_col_period": "Dönem / Period",
+        "picker_col_end_date": "Bitiş Tarihi / End Date",
+        "picker_col_currency": "Para Birimi / Currency",
+        "picker_col_status": "Durum / Status",
+        "picker_col_net": "Net Ödeme / Net Payable",
+        "picker_col_download": "İndir / Download",
+        "empty_no_data_heading": "No data in selected range.",
+        "empty_no_data_body": "Try widening the date range or project filter.",
+        "empty_no_periods_heading": "No finalized periods yet.",
+        "empty_no_periods_body": "Go to the Hakkediş page to finalize a period.",
+        "empty_no_periods_cta": "Go to Hakkediş",
+        "err_download_failed": "Download failed. Refresh and try again.",
+        "err_unauthorized": "You are not authorized to download this file."
+      },
       "hakedis": {
         "heading": "Hakkediş",
         "subtitle": "Create and manage progress payment periods.",
@@ -391,7 +414,9 @@
           "row_teminat": "Retention ({retentionRate}%)",
           "row_avans": "Advance Recovery ({avansRate}%)",
           "row_net": "Net Payable",
-          "err_finalize_blocked": "This period is finalized; recomputation is not allowed."
+          "err_finalize_blocked": "This period is finalized; recomputation is not allowed.",
+          "export_excel": "Excel'e Aktar / Export Excel",
+          "download_pdf": "PDF İndir / Download PDF"
         },
         "finalize_dialog": {
           "title": "Finalize Period",
