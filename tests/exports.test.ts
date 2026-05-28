@@ -619,6 +619,125 @@ describe('EXP-03 performance summary', () => {
       }
     }
   });
+
+  it('returns 401 without session', async () => {
+    setMockSession(null);
+    const route = await import('@/app/api/exports/performance/route');
+    const res = await route.GET(new Request('http://localhost/api/exports/performance'));
+    expect(res.status).toBe(401);
+    const body = await res.json();
+    expect(body).toEqual({ error: 'Unauthorized' });
+  });
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// EXP-03 DB integration — Workers tab row count + activity log
+// ════════════════════════════════════════════════════════════════════════════
+
+describeIfDb('EXP-03 Workers tab row count', () => {
+  let db: Awaited<ReturnType<typeof getTestDb>>;
+
+  beforeEach(async () => {
+    setMockSession({ user: { id: 'test-user-id', email: 'test@example.com' } });
+    db = await getTestDb();
+    await truncateAllTables(db);
+    const { sql } = await import('drizzle-orm');
+    await db.execute(
+      sql.raw(
+        `INSERT INTO tenants (id, name) VALUES ('00000000-0000-0000-0000-000000000001', 'Default') ON CONFLICT DO NOTHING`,
+      ),
+    );
+    await db.execute(
+      sql.raw(
+        `INSERT INTO users (id, email) VALUES ('test-user-id', 'test@example.com') ON CONFLICT DO NOTHING`,
+      ),
+    );
+  });
+
+  afterEach(async () => {
+    await truncateAllTables(db);
+  });
+
+  it('Workers tab row count equals getPortfolioPeople({role:"worker"}).length', async () => {
+    const { sql } = await import('drizzle-orm');
+    const tenantId = '00000000-0000-0000-0000-000000000001';
+    const projectId = '00000000-0000-0000-0000-0000000d0001';
+    const boqItemId = '00000000-0000-0000-0000-0000000d0002';
+
+    await db.execute(sql.raw(`INSERT INTO projects (id, tenant_id, name) VALUES ('${projectId}', '${tenantId}', 'PerfRowCount') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO boq_items (id, tenant_id, project_id, material, unit, planned_qty, approved_qty, sort_order, unit_price, currency_code) VALUES ('${boqItemId}', '${tenantId}', '${projectId}', 'Pipe', 'm', 1000, 0, 1, '100', 'TRY') ON CONFLICT DO NOTHING`));
+
+    // Seed 3 workers (each gets a 'worker' assignment so they show in getPortfolioPeople)
+    for (let i = 0; i < 3; i++) {
+      const personId = `00000000-0000-0000-0000-0000000d10${String(i).padStart(2, '0')}`;
+      const assignmentId = `00000000-0000-0000-0000-0000000d20${String(i).padStart(2, '0')}`;
+      await db.execute(sql.raw(`INSERT INTO people (id, tenant_id, telegram_user_id, display_name) VALUES ('${personId}', '${tenantId}', ${500000 + i}, 'PerfWorker${i}') ON CONFLICT DO NOTHING`));
+      await db.execute(sql.raw(`INSERT INTO assignments (id, tenant_id, person_id, project_id, role_on_project) VALUES ('${assignmentId}', '${tenantId}', '${personId}', '${projectId}', 'worker') ON CONFLICT DO NOTHING`));
+    }
+
+    const { getPortfolioPeople } = await import('@/actions/analytics');
+    const expectedWorkers = await getPortfolioPeople({ role: 'worker' });
+    expect(expectedWorkers.length).toBeGreaterThanOrEqual(3);
+
+    const route = await import('@/app/api/exports/performance/route');
+    const res = await route.GET(new Request('http://localhost/api/exports/performance'));
+    expect(res.status).toBe(200);
+
+    const arrayBuf = await res.arrayBuffer();
+    const wb = new ExcelJS.Workbook();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await wb.xlsx.load(arrayBuf as any);
+    const workersSheet = wb.worksheets[0];
+    expect(workersSheet.name).toBe('Workers - Personel');
+
+    // D-110 layout: one row per worker. Data rows = rowCount - 1 (header).
+    const dataRowCount = workersSheet.rowCount - 1;
+    expect(dataRowCount).toBe(expectedWorkers.length);
+  });
+});
+
+describeIfDb('D-109 activity log — performance_summary_exported', () => {
+  let db: Awaited<ReturnType<typeof getTestDb>>;
+
+  beforeEach(async () => {
+    setMockSession({ user: { id: 'test-user-id', email: 'test@example.com' } });
+    db = await getTestDb();
+    await truncateAllTables(db);
+    const { sql } = await import('drizzle-orm');
+    await db.execute(
+      sql.raw(
+        `INSERT INTO tenants (id, name) VALUES ('00000000-0000-0000-0000-000000000001', 'Default') ON CONFLICT DO NOTHING`,
+      ),
+    );
+    await db.execute(
+      sql.raw(
+        `INSERT INTO users (id, email) VALUES ('test-user-id', 'test@example.com') ON CONFLICT DO NOTHING`,
+      ),
+    );
+  });
+
+  afterEach(async () => {
+    await truncateAllTables(db);
+  });
+
+  it('each successful performance export writes exactly one office_activity_log row of action_type performance_summary_exported', async () => {
+    const route = await import('@/app/api/exports/performance/route');
+    const res = await route.GET(new Request('http://localhost/api/exports/performance'));
+    expect(res.status).toBe(200);
+    await res.arrayBuffer();
+
+    // after() callback is mocked to execute immediately but resolves async.
+    await new Promise((r) => setTimeout(r, 200));
+
+    const { sql } = await import('drizzle-orm');
+    const rows = await db.execute(
+      sql.raw(
+        `SELECT action_type FROM office_activity_log WHERE action_type = 'performance_summary_exported'`,
+      ),
+    );
+    expect(rows.rows).toHaveLength(1);
+    expect(rows.rows[0].action_type).toBe('performance_summary_exported');
+  });
 });
 
 describe('EXP-04 hakedis PDF', () => {
