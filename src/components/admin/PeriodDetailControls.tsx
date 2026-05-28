@@ -24,7 +24,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, FileSpreadsheet, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { recomputePeriodLines, updatePaymentStatus } from '@/actions/hakedis';
@@ -133,6 +133,36 @@ export function PeriodDetailControls({
         )}
 
         {/* paid: no controls — this block intentionally empty (state-gated removal D-96) */}
+
+        {/* D-108 + UI-SPEC Surface 2: Excel + PDF download buttons.
+            Routed through the same /api/exports/hakedis/[periodId] handlers as the Exports hub
+            (D-108 single-handler contract). Buttons REMOVED — not disabled — when status === 'draft'
+            (UI-SPEC Surface 2 Draft guard; D-96 state-gated removal). Defense in depth: route
+            handlers themselves return 422 for draft periods (Plan 11-04 Pitfall 5). */}
+        {status !== 'draft' && (
+          <>
+            <a
+              href={`/api/exports/hakedis/${periodId}`}
+              download
+              aria-label={t('detail.export_excel')}
+            >
+              <Button variant="outline" size="sm">
+                <FileSpreadsheet className="h-4 w-4 mr-1" aria-hidden="true" />
+                {t('detail.export_excel')}
+              </Button>
+            </a>
+            <a
+              href={`/api/exports/hakedis/${periodId}/pdf`}
+              download
+              aria-label={t('detail.download_pdf')}
+            >
+              <Button variant="outline" size="sm">
+                <FileText className="h-4 w-4 mr-1" aria-hidden="true" />
+                {t('detail.download_pdf')}
+              </Button>
+            </a>
+          </>
+        )}
       </div>
     </div>
   );
