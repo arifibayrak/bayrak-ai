@@ -4,7 +4,7 @@ milestone: v3.0
 milestone_name: Submission-Driven Hakkediş & UX Brand Pass
 status: executing
 stopped_at: Completed 11-01b-PLAN.md
-last_updated: "2026-05-28T20:59:58.366Z"
+last_updated: "2026-05-28T21:07:34.099Z"
 last_activity: 2026-05-28
 progress:
   total_phases: 6
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-05-25)
 ## Current Position
 
 Phase: 12 (submission-driven-hakkedi) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-05-28
 
@@ -101,6 +101,7 @@ Last activity: 2026-05-28
 | Phase 11 P11-05 | 25 minutes | 2 tasks | 1 files |
 | Phase 11 P11-06 | 0 | 2 tasks | 1 files |
 | Phase 12 P01 | 5 | 3 tasks | 7 files |
+| Phase 12 P02 | 3 minutes | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -201,6 +202,7 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 12-01]: D-119 join-table schema shipped — composite PK (period_line_id, submission_id) + cascade/restrict FK split + reverse-lookup index; UNIQUE (period_id, boq_item_id) on hakedis_period_lines added as D-117 UPSERT target (Open Question 4 RESOLVED)
 - [Phase ?]: [Phase 12-01]: tests/hakedis-live.test.ts contract scaffold ships with 9 it.todo entries whose names are byte-identical to 12-VALIDATION.md verify-command -t filters — downstream Plans 12-03 + 12-04 bind deterministically by name
 - [Phase ?]: [Phase 12-01]: seedDraftPeriod fixture uses HAKEDIS_LIVE_FIXTURE_IDS in 0c00 UUID range to avoid collision with HAKEDIS_FIXTURE_IDS (0e00) in tests/fixtures/exports.ts — both fixtures coexist in the same test session
+- [Phase ?]: Phase 12-02: 0009 applied to dev (neondb) + test (neondb_test) via npx tsx src/db/migrate.ts (D-49); file untouched post-apply (Phase 9-03 hash invariant)
 
 ### Open Questions / Conflicts (surface before relevant phases)
 
@@ -244,6 +246,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-28T20:59:58.359Z
+Last session: 2026-05-28T21:07:18.866Z
 Stopped at: Completed 11-01b-PLAN.md
 Resume file: None

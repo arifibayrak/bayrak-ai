@@ -444,7 +444,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 12-02-PLAN.md — [BLOCKING] generate + hand-verify Pitfall-7-clean 0009_v3_line_submissions migration + live apply to dev DB and test DB
+- [x] 12-02-PLAN.md — [BLOCKING] generate + hand-verify Pitfall-7-clean 0009_v3_line_submissions migration + live apply to dev DB and test DB
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -489,5 +489,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 9. Performance Analytics & Scorecards | 6/6 | Complete   | 2026-05-27 |
 | 10. Hakkediş Billing | 4/4 | Complete    | 2026-05-28 |
 | 11. Exports | 7/7 | Complete    | 2026-05-28 |
-| 12. Submission-Driven Hakkediş | 1/4 | In Progress|  |
+| 12. Submission-Driven Hakkediş | 2/4 | In Progress|  |
 | 13. UX & Brand Pass | 0/TBD | Not started | - |
