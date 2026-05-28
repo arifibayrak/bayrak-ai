@@ -754,22 +754,21 @@ export async function finalizePeriod(periodId: string): Promise<{ ok: true }> {
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Does drizzle-kit 0.31.x emit correct GENERATED ALWAYS AS STORED SQL?**
+1. **RESOLVED — Does drizzle-kit 0.31.x emit correct GENERATED ALWAYS AS STORED SQL?**
+   - Adopted decision: Plan 10-01 (Task 2) runs `drizzle-kit generate`, then hand-edits/inspects the `period_qty` GENERATED DDL (must be `numeric(12,3) GENERATED ALWAYS AS (cumulative_qty_approved - previous_cumulative_qty) STORED`, via DROP COLUMN + ADD COLUMN), and applies via `npx tsx src/db/migrate.ts` ([BLOCKING] Task 3). This is the same generate-then-hand-edit-then-apply verification step used for all previous migrations.
    - What we know: The Drizzle schema API supports `.generatedAlwaysAs()` (verified at runtime). The emitted SQL is unknown without actually running `drizzle-kit generate`.
-   - What's unclear: Whether drizzle-kit 0.31.x has bugs in GENERATED column DDL emission.
-   - Recommendation: Wave 1 plan includes "run drizzle-kit generate, inspect output for period_qty, hand-edit if DDL is malformed." This is the same verification step used for all previous migrations.
+   - What's unclear: Whether drizzle-kit 0.31.x has bugs in GENERATED column DDL emission — resolved operationally by the mandatory hand-inspection step in Plan 10-01.
 
-2. **Should `recomputePeriodLines()` be a standalone exported action or a private helper called by `createPeriod()`?**
+2. **RESOLVED — Should `recomputePeriodLines()` be a standalone exported action or a private helper called by `createPeriod()`?**
+   - Adopted decision: `recomputePeriodLines(periodId)` is a standalone exported action in Plan 10-02 (with its own auth+tenant+status guard); `createPeriod()` calls it internally after inserting the period header (D-98). This avoids code duplication and makes the recompute action independently testable.
    - What we know: Both `createPeriod()` (D-98: compute on create) and the "Yeniden Hesapla" button call the same computation logic.
-   - What's unclear: Whether to export it directly or via a wrapper.
-   - Recommendation: Export it as `recomputePeriodLines(periodId: string)` with its own auth+status guard, and have `createPeriod()` call it internally after inserting the period header. This avoids code duplication and makes the recompute action independently testable.
 
-3. **Period-number auto-suggest format (`HK-{YYYY}-{NN}`) — how is NN derived?**
+3. **RESOLVED — Period-number auto-suggest format (`HK-{YYYY}-{NN}`) — how is NN derived?**
+   - Adopted decision: `period_number` is derived in Plan 10-02 `createPeriod()` via `COUNT(*)` of periods for the project in the current year + 1, zero-padded to 2 digits, formatted as `HK-{YYYY}-{NN}`. Computed server-side as a default the user can override.
    - What we know: UI-SPEC says "Auto-suggested: `HK-{YYYY}-{NN}`" and "Free-text, max 50 chars."
-   - What's unclear: NN could be the count of periods for the project in the year, or a global sequence.
-   - Recommendation: Query `COUNT(*) FROM hakedis_periods WHERE project_id = ? AND period_end_date >= '{YYYY}-01-01'` and use `count + 1` as NN, zero-padded to 2 digits. This is computed server-side in `createPeriod()` as a default that the user can override.
+   - Implementation note: `COUNT(*) FROM hakedis_periods WHERE project_id = ? AND period_end_date >= '{YYYY}-01-01'`, `count + 1` as NN.
 
 ---
 
