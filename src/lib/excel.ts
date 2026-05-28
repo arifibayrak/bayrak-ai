@@ -16,6 +16,7 @@
  */
 
 import ExcelJS from 'exceljs';
+import type { CanonicalSubmission } from '@/lib/types';
 
 export type BoqRow = {
   rowNumber: number;
@@ -148,4 +149,82 @@ const FORMULA_PREFIX_RE = /^[=+\-@\t\r]/;
 export function sanitizeExcelCell(value: string): string {
   if (typeof value !== 'string' || value.length === 0) return value;
   return FORMULA_PREFIX_RE.test(value) ? `'${value}` : value;
+}
+
+// ── buildSubmissionLedger (EXP-01 Plan 11-02) ────────────────────────────────
+
+/**
+ * buildSubmissionLedger — build a single-sheet ExcelJS workbook for the EXP-01
+ * submission ledger export.
+ *
+ * Sheet name:   'Gönderim Listesi'
+ * Header row:   14 bilingual TR/EN columns (D-111 — each contains ' / ')
+ * Styling:      bold header (row 1), freeze pane ySplit:1
+ * Money cells:  numFmt '#,##0.00' applied at column level — Postgres decimal
+ *               strings flow into cell values WITHOUT parseFloat (D-116).
+ * User content: wrapped in sanitizeExcelCell to mitigate CVE-2014-3524
+ *               formula injection (T-11-02-FORMULA / WARNING 5).
+ * Dates:        ISO strings → new Date(...) → numFmt 'dd.MM.yyyy HH:mm';
+ *               Istanbul rendering happens client-side in Excel.
+ * Empty rows:   returns non-empty buffer with header row + frozen pane.
+ *
+ * Returns:      Node Buffer — caller wraps in new Uint8Array(buf) for NextResponse.
+ */
+export async function buildSubmissionLedger(
+  rows: CanonicalSubmission[],
+): Promise<Buffer> {
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet('Gönderim Listesi');
+
+  // 14 bilingual TR/EN headers per UI-SPEC + D-111 (verbatim).
+  sheet.columns = [
+    { header: 'ID / ID', key: 'id', width: 38 },
+    { header: 'Proje / Project', key: 'projectName', width: 24 },
+    { header: 'Personel / Person', key: 'workerName', width: 24 },
+    { header: 'Denetçi / Auditor', key: 'auditorName', width: 24 },
+    { header: 'Malzeme / Material', key: 'material', width: 30 },
+    { header: 'Birim / Unit', key: 'unit', width: 10 },
+    { header: 'Miktar / Quantity', key: 'quantity', width: 12 },
+    { header: 'Birim Fiyat / Unit Price', key: 'unitPrice', width: 14 },
+    { header: 'Para Birimi / Currency', key: 'currencyCode', width: 10 },
+    { header: 'Kazanılan Değer / Earned Value', key: 'earnedValue', width: 16 },
+    { header: 'Durum / Status', key: 'status', width: 14 },
+    { header: 'Gönderim Tarihi / Submitted At', key: 'submittedAt', width: 18 },
+    { header: 'Karar Tarihi / Decided At', key: 'decidedAt', width: 18 },
+    { header: 'Konum Uyumu / Location Match', key: 'locationMatch', width: 16 },
+  ];
+
+  sheet.getRow(1).font = { bold: true };
+  sheet.views = [{ state: 'frozen', ySplit: 1 }];
+
+  for (const r of rows) {
+    sheet.addRow({
+      id: r.id,
+      // WARNING 5 / T-11-02-FORMULA: wrap all worker-typed string content
+      projectName: sanitizeExcelCell(r.projectName),
+      workerName: sanitizeExcelCell(r.workerName),
+      auditorName: sanitizeExcelCell(r.auditorName ?? ''),
+      material: sanitizeExcelCell(r.material),
+      unit: r.unit,
+      // D-116: money/quantity strings flow direct into cells — NEVER parseFloat
+      quantity: r.quantity,
+      unitPrice: r.unitPrice ?? '',
+      currencyCode: r.currencyCode ?? '',
+      earnedValue: r.earnedValue ?? '',
+      status: r.status,
+      submittedAt: r.submittedAt ? new Date(r.submittedAt) : null,
+      decidedAt: r.decidedAt ? new Date(r.decidedAt) : null,
+      locationMatch: r.locationMatch ?? '',
+    });
+  }
+
+  // D-116: apply numFmt at column level — Excel formats the string-typed cells.
+  sheet.getColumn('quantity').numFmt = '#,##0.00';
+  sheet.getColumn('unitPrice').numFmt = '#,##0.00';
+  sheet.getColumn('earnedValue').numFmt = '#,##0.00';
+  sheet.getColumn('submittedAt').numFmt = 'dd.MM.yyyy HH:mm';
+  sheet.getColumn('decidedAt').numFmt = 'dd.MM.yyyy HH:mm';
+
+  const buf = await workbook.xlsx.writeBuffer();
+  return Buffer.from(buf);
 }

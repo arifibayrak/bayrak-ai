@@ -130,9 +130,12 @@ describe('EXP-01 submission ledger', () => {
     const sheet = workbook.worksheets[0];
 
     // Cells should retain string precision (no float drift). Read raw values.
-    const quantityCell = sheet.getRow(2).getCell('quantity');
-    const earnedValueCell = sheet.getRow(2).getCell('earnedValue');
-    // Either preserved as exact string, or as a number whose toString preserves the digits we wrote
+    // Column order (1-based): id, projectName, workerName, auditorName, material,
+    //                         unit, quantity, unitPrice, currencyCode, earnedValue,
+    //                         status, submittedAt, decidedAt, locationMatch.
+    // Column keys are not persisted in the XLSX file format, so look up by index.
+    const quantityCell = sheet.getRow(2).getCell(7);
+    const earnedValueCell = sheet.getRow(2).getCell(10);
     expect(String(quantityCell.value)).toBe('1.23456789');
     expect(String(earnedValueCell.value)).toBe('1524.157875207468');
   });
@@ -198,11 +201,12 @@ describe('EXP-01 submission ledger', () => {
     const sheet = workbook.worksheets[0];
 
     // Row 2: workerName starts with =, should be apostrophe-prefixed
-    const workerCellRow2 = sheet.getRow(2).getCell('workerName');
+    // workerName is column 3, material is column 5 (1-based index)
+    const workerCellRow2 = sheet.getRow(2).getCell(3);
     expect(String(workerCellRow2.value)).toBe("'=cmd|/c calc");
 
     // Row 3: material starts with +, should be apostrophe-prefixed
-    const materialCellRow3 = sheet.getRow(3).getCell('material');
+    const materialCellRow3 = sheet.getRow(3).getCell(5);
     expect(String(materialCellRow3.value)).toBe("'+1234");
   });
 });
@@ -272,10 +276,11 @@ describeIfDb('EXP-01 tenant scope', () => {
     const sheet = wb.worksheets[0];
 
     // Collect every cell value from data rows; assert no tenant-B identifiers appear.
+    // Column 1 is the submission id.
     const seenIds: string[] = [];
     sheet.eachRow((row, rowNum) => {
       if (rowNum === 1) return;
-      seenIds.push(String(row.getCell('id').value));
+      seenIds.push(String(row.getCell(1).value));
     });
     expect(seenIds).toContain(subA);
     expect(seenIds).not.toContain(subB);
