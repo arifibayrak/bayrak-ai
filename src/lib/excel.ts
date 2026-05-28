@@ -126,3 +126,26 @@ export async function generateBoqTemplate(): Promise<Buffer> {
   const buf = await workbook.xlsx.writeBuffer();
   return Buffer.from(buf);
 }
+
+// ── sanitizeExcelCell ────────────────────────────────────────────────────────
+
+const FORMULA_PREFIX_RE = /^[=+\-@\t\r]/;
+
+/**
+ * sanitizeExcelCell — CVE-2014-3524 formula-injection mitigation (WARNING 5 fix).
+ *
+ * Prefixes a single apostrophe to any string starting with `=`, `+`, `-`, `@`,
+ * TAB (`\t`), or CR (`\r`). Excel (and other spreadsheet apps) treats the leading
+ * apostrophe as a literal-text marker — it is not displayed in the rendered cell
+ * but prevents the cell from being interpreted as a formula.
+ *
+ * Apply to every user-content string cell in Plans 11-02 / 11-03 / 11-04
+ * (displayName, materialSnapshot, notes, rejectionReason, etc.). Numeric strings
+ * (decimal money like `1234.56`) never match the formula prefix and pass through
+ * unchanged.
+ */
+// Consumed by buildSubmissionLedger (Plan 11-02), buildPerformanceSummary (Plan 11-03), buildHakedisExcel (Plan 11-04).
+export function sanitizeExcelCell(value: string): string {
+  if (typeof value !== 'string' || value.length === 0) return value;
+  return FORMULA_PREFIX_RE.test(value) ? `'${value}` : value;
+}
