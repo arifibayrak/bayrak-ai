@@ -356,7 +356,7 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 10-01-PLAN.md — Schema: 4 deduction columns (D-91) + GENERATED period_qty (D-104) + 0008 migration + [BLOCKING] live apply + OFFICE_ACTION_TYPES delete + Switch + full hakedis i18n + Wave 0 scaffold
+- [x] 10-01-PLAN.md — Schema: 4 deduction columns (D-91) + GENERATED period_qty (D-104) + 0008 migration + [BLOCKING] live apply + OFFICE_ACTION_TYPES delete + Switch + full hakedis i18n + Wave 0 scaffold
 
 **Wave 2** *(blocked on Wave 1)*
 
@@ -404,5 +404,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 7. Data Foundation & Canonical Record | 5/5 | Complete   | 2026-05-26 |
 | 8. Admin Shell & Information Architecture | 6/6 | Complete   | 2026-05-26 |
 | 9. Performance Analytics & Scorecards | 6/6 | Complete   | 2026-05-27 |
-| 10. Hakkediş Billing | 0/4 | Planned | - |
+| 10. Hakkediş Billing | 1/4 | In Progress|  |
 | 11. Exports | 0/TBD | Not started | - |
