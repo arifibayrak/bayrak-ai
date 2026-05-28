@@ -5,6 +5,7 @@ status: draft
 nyquist_compliant: false
 wave_0_complete: false
 created: 2026-05-28
+revised: 2026-05-28
 ---
 
 # Phase 12 — Validation Strategy
@@ -19,6 +20,7 @@ created: 2026-05-28
 |----------|-------|
 | **Framework** | vitest 4.1.7 [VERIFIED in package.json] |
 | **Config file** | `vitest.config.ts` (existing, used by all Phase 7-11 tests) |
+| **Test environment** | `environment: 'node'` [VERIFIED in vitest.config.ts] — NO jsdom, NO @testing-library/react. Component tests are pure-function invocations. |
 | **Quick run command** | `npx vitest run tests/hakedis-live.test.ts` |
 | **Full suite command** | `npx vitest run` |
 | **Estimated runtime** | ~10s quick / ~300s full |
@@ -44,7 +46,7 @@ created: 2026-05-28
 |---|---|---|---|---|---|
 | SDH-01 | Approval triggers `recomputeHakedisLine` for matching `(projectId, boqItemId, currencyCode)` | integration (describeIfDb) | `npx vitest run tests/hakedis-live.test.ts -t "D-117"` | ❌ W0 | ⬜ pending |
 | SDH-01 | D-118: no draft period → recompute is a no-op (no error, no write) | integration | `… -t "D-118 no-open-period"` | ❌ W0 | ⬜ pending |
-| SDH-01 | D-120 polling: `<LivePeriodPoller>` mounts only when `status === 'draft'` | unit (component) | `… -t "LivePeriodPoller mount gate"` | ❌ W0 | ⬜ pending |
+| SDH-01 | D-120 polling: `LivePeriodPoller` returns `null` when `enabled === false` (pure-import contract; vitest node env, no DOM) | unit (component-as-function) | `… -t "LivePeriodPoller mount gate"` | ❌ W0 | ⬜ pending |
 | SDH-02 | `hakedis_line_submissions` row inserted on contribution (D-119) | integration | `… -t "D-119 join row"` | ❌ W0 | ⬜ pending |
 | SDH-02 | `getLineSubmissions` returns expected shape (worker, decided_at, qty_contributed) | integration | `… -t "getLineSubmissions"` | ❌ W0 | ⬜ pending |
 | SDH-03 | Finalize-during-approve race serialises correctly (Pitfall 4 mitigation) | integration | `… -t "finalize race"` | ❌ W0 | ⬜ pending |
@@ -53,6 +55,22 @@ created: 2026-05-28
 | Pitfall 5 mitigation | Bot path never calls `logOfficeActivity` (no FK fail on `actorUserId`) | integration | `… -t "no office_activity_log write from bot"` | ❌ W0 | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
+
+### Row 3 — LivePeriodPoller Mount Gate Contract Note (revised 2026-05-28)
+
+The original row spec'd a rendered sr-only span on every mount. After checker review (Blocker 2), the contract was revised:
+
+- **LivePeriodPoller returns `null` when `enabled === false`** (no DOM, no sr-only span emitted on disabled paths).
+- **LivePeriodPoller returns the sr-only `<span role="status" aria-live="polite">` only when `enabled === true`** (matches D-120 "polls only when status === 'draft'").
+
+This makes the test a deterministic pure-function call that works in vitest's `environment: 'node'` without `@testing-library/react` (which is NOT in `package.json`). The concrete assertion shape lives in Plan 04 Task 1:
+
+```ts
+expect(typeof LivePeriodPoller).toBe('function');
+expect(LivePeriodPoller({ enabled: false })).toBeNull();
+```
+
+Plan 03 Task 1 leaves this as `it.todo` until Plan 04 ships the component file; Plan 04 Task 1 replaces the todo with the concrete assertion above. After Plan 04 Task 1, `grep -cE 'it\\.todo' tests/hakedis-live.test.ts` MUST return 0.
 
 ---
 

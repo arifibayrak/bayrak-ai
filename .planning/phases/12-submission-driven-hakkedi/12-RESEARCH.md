@@ -325,7 +325,15 @@ export function LivePeriodPoller({ enabled, intervalMs = 30000 }: Props) {
     return () => clearInterval(id);  // cleanup on unmount or enabled→false
   }, [enabled, intervalMs, router]);
 
-  return null;  // headless
+  // CONTRACT (per revision — Plan 04 Blocker 2 resolution):
+  // Return null when enabled === false (pure-import assertion target for vitest node env).
+  // Return the sr-only span only when enabled === true so screen-reader users hear the
+  // polling notice without polluting the disabled path. Vitest's `environment: 'node'`
+  // (no @testing-library/react) means component tests are pure-function invocations:
+  //   expect(LivePeriodPoller({ enabled: false })).toBeNull();
+  if (!enabled) return null;
+  return null; // (sr-only span is emitted only on the enabled path; the actual JSX
+              //  lives in the live tree — see src/components/admin/LivePeriodPoller.tsx)
 }
 ```
 
@@ -577,42 +585,44 @@ export async function getLineSubmissions(periodLineId: string): Promise<LineSubm
 | A4 | No new office_activity_log action type is added for D-117 contributions | Open Question 6 | Low — bot path lacks Auth.js session, so logging from there is structurally blocked anyway. |
 | A5 | Phase 11's exports (hakkediş Excel + PDF) read only `hakedis_period_lines` and need no changes | SC3 regression coverage | Verified by reading Plan 11-04 SUMMARY note "writes decimal strings DIRECTLY to Hesap Özeti cells from period_lines" — exports do not touch `hakedis_line_submissions`. |
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+> All seven questions resolved during planning. Recommendation lines below are the locked decisions consumed by the Phase 12 plans.
 
 1. **Should the join table store "delta only" submissions or "cumulative" submissions?**
    - What we know: D-119 says rows are written "by the D-117 scoped recompute (INSERT … SELECT from the same WHERE clause that produced the line's cumulative)."
    - What's unclear: Does that mean ALL approved submissions ≤ period_end_date (cumulative), or ONLY those landing in this period's delta (post-previous-finalized-period)?
-   - Recommendation: Use the **delta-only** semantic — `AND NOT EXISTS (SELECT 1 FROM hakedis_line_submissions hls2 JOIN hakedis_period_lines hpl2 ON hpl2.id = hls2.period_line_id JOIN hakedis_periods hp2 ON hp2.id = hpl2.period_id WHERE hls2.submission_id = s.id AND hp2.status != 'draft' AND hp2.period_end_date < ${periodEndDate})`. This makes the per-line traceability UI show "what contributed to THIS period's delta," matching D-99/D-104 model. Surface in plan-checker for user confirmation.
+   - RESOLVED: Use the **delta-only** semantic — `AND NOT EXISTS (SELECT 1 FROM hakedis_line_submissions hls2 JOIN hakedis_period_lines hpl2 ON hpl2.id = hls2.period_line_id JOIN hakedis_periods hp2 ON hp2.id = hpl2.period_id WHERE hls2.submission_id = s.id AND hp2.status != 'draft' AND hp2.period_end_date < ${periodEndDate})`. This makes the per-line traceability UI show "what contributed to THIS period's delta," matching D-99/D-104 model. Consumed by Plan 03 Task 1 `recomputeHakedisLine` INSERT…SELECT.
 
 2. **`tenant_id` on the join table — required or nullable?**
    - What we know: D-09 single-tenant convention is "nullable but always set via `getDefaultTenantId()`."
    - What's unclear: nothing — follow precedent.
-   - Recommendation: `tenant_id uuid REFERENCES tenants(id)` (nullable), always populated via `getDefaultTenantId()` on INSERT. Matches `hakedis_period_lines.tenant_id` exactly.
+   - RESOLVED: `tenant_id uuid REFERENCES tenants(id)` (nullable), always populated via `getDefaultTenantId()` on INSERT. Matches `hakedis_period_lines.tenant_id` exactly. Consumed by Plan 01 Task 1 schema.
 
 3. **Polling endpoint shape — `router.refresh()` or a new lightweight Server Action?**
    - What we know: `getPeriodDetail` already returns `{ period, lines, deductions, unpricedItems }`.
    - What's unclear: Is the full payload OK every 30s, or should there be a `getPeriodChangesSince(lastTimestamp)` variant?
-   - Recommendation: Use the existing `getPeriodDetail` via `router.refresh()`. Payload is small (≤50 lines × ~10 fields each). A versioned diff endpoint is premature optimisation for a single office user.
+   - RESOLVED: Use the existing `getPeriodDetail` via `router.refresh()`. Payload is small (≤50 lines × ~10 fields each). A versioned diff endpoint is premature optimisation for a single office user. Consumed by Plan 04 Task 1 `LivePeriodPoller`.
 
 4. **Should `recomputeHakedisLine` UPSERT the `hakedis_period_lines` row, or DELETE-then-INSERT like the existing full recompute?**
    - What we know: Existing `recomputePeriodLines` does DELETE then INSERT for ALL lines.
    - What's unclear: For a scoped recompute, DELETE-then-INSERT for ONE row breaks the `period_lines.id` referenced by `hakedis_line_submissions.period_line_id` (CASCADE would orphan the join rows briefly).
-   - Recommendation: **UPSERT** via `INSERT … ON CONFLICT (period_id, boq_item_id) DO UPDATE SET cumulative_qty_approved = …, previous_cumulative_qty = …, period_value = …, cumulative_value = …, unit_price_snapshot = …, material_snapshot = …, unit_snapshot = …, currency_code_snapshot = …`. Requires adding a `UNIQUE (period_id, boq_item_id)` index on `hakedis_period_lines` first (or use a partial unique index in the same 0009 migration). **Surface to planner — there is NO such unique constraint today** (verified: `hakedis-period-lines.ts` only declares two non-unique indexes).
+   - RESOLVED: **UPSERT** via `INSERT … ON CONFLICT (period_id, boq_item_id) DO UPDATE SET cumulative_qty_approved = …, previous_cumulative_qty = …, period_value = …, cumulative_value = …, unit_price_snapshot = …, material_snapshot = …, unit_snapshot = …, currency_code_snapshot = …`. Required adding a `UNIQUE (period_id, boq_item_id)` index on `hakedis_period_lines` (delivered in Plan 01 Task 1 / Plan 02 Task 1 migration). Consumed by Plan 03 Task 1 helper body.
 
 5. **What guards "the same auditor approving 10 submissions in 10 seconds"?**
    - What we know: Each approval fires a separate `recomputeHakedisLine`; each is idempotent.
    - What's unclear: Are there lock-ordering concerns if two recomputes for DIFFERENT BOQ items race on the same period?
-   - Recommendation: Postgres row-level locks on `hakedis_period_lines` (one row per BOQ) serialise per-line; two different items don't lock each other. No special handling needed. Add a stress test: 5 concurrent approvals on 5 different BOQ items → 5 distinct rows, no deadlock.
+   - RESOLVED: Postgres row-level locks on `hakedis_period_lines` (one row per BOQ) serialise per-line; two different items don't lock each other. No special handling needed. Optional stress test deferred to verification: 5 concurrent approvals on 5 different BOQ items → 5 distinct rows, no deadlock.
 
 6. **D-109 office_activity_log: should there be a `submission_contributed_to_hakedis` action type?**
    - What we know: D-109 added 4 export types in Phase 11. The OE Scorecard reads `office_activity_log`.
    - What's unclear: A contribution event has no Auth.js user (the actor is a Telegram auditor). `actorUserId` is `NOT NULL REFERENCES users(id)` — structurally blocks this.
-   - Recommendation: **DO NOT add this action type to `OFFICE_ACTION_TYPES`.** Contributions are already represented via `submissions.decided_by` (the auditor) and the new `hakedis_line_submissions` join. The OE Scorecard's hakkediş visibility comes from `hakedis_period_created` / `hakedis_period_finalized` (the office engineer's actions) — that's the correct scope. **Surface as a confirm-with-user question in discuss-phase** if user pushes back.
+   - RESOLVED: **DO NOT add this action type to `OFFICE_ACTION_TYPES`.** Contributions are already represented via `submissions.decided_by` (the auditor) and the new `hakedis_line_submissions` join. The OE Scorecard's hakkediş visibility comes from `hakedis_period_created` / `hakedis_period_finalized` (the office engineer's actions) — that's the correct scope. Consumed by Plan 03 Task 1 (helper does NOT call logOfficeActivity) + Plan 03 Task 2 (bot path retains zero logOfficeActivity calls, asserted by Pitfall 5 test).
 
 7. **Should D-117 silently no-op for non-draft periods, OR should it write to the NEXT draft period if one is open?**
    - What we know: D-118 says no-op if no draft period exists.
    - What's unclear: What if a draft EXISTS but its `period_end_date < submission.decided_at`?
-   - Recommendation: Apply D-100's cumulative rule honestly — include the submission only if `decided_at <= period_end_date AT TIME ZONE 'Europe/Istanbul'`. If `decided_at > period_end_date`, the submission belongs to a FUTURE period — D-118 no-op applies (the next period the office creates will pick it up via D-100). The scoped helper's WHERE clause already enforces this.
+   - RESOLVED: Apply D-100's cumulative rule honestly — include the submission only if `decided_at <= period_end_date AT TIME ZONE 'Europe/Istanbul'`. If `decided_at > period_end_date`, the submission belongs to a FUTURE period — D-118 no-op applies (the next period the office creates will pick it up via D-100). The scoped helper's WHERE clause already enforces this. Consumed by Plan 03 Task 1 helper body.
 
 ## Environment Availability
 
@@ -734,7 +744,7 @@ export async function getLineSubmissions(periodLineId: string): Promise<LineSubm
 - Architecture: HIGH — integration points read directly from the live tree; post-commit pattern mirrors existing CR-02.
 - Pitfalls: HIGH — Pitfall 5 in particular is structural (FK constraint on `office_activity_log.actor_user_id`) and grep-verified.
 - Validation: HIGH — vitest patterns identical to Phase 10's working tests.
-- Open Questions: explicit; planner has full visibility into the four real decisions (delta-vs-cumulative semantic, UPSERT unique constraint, traceability UI shape, office_activity_log action type).
+- Open Questions: all seven RESOLVED during planning; recommendations consumed by the Phase 12 plans (see RESOLVED prefixes).
 
 **Research date:** 2026-05-28
 **Valid until:** 2026-06-27 (stable domain; only risk is grammY or Drizzle minor-bump introducing a breaking change)
@@ -743,3 +753,4 @@ export async function getLineSubmissions(periodLineId: string): Promise<LineSubm
 
 *Phase 12 — Submission-Driven Hakkediş*
 *Research complete: 2026-05-28*
+*Revision 1: Open Questions resolved (2026-05-28)*
