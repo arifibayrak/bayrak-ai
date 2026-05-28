@@ -194,22 +194,24 @@ export default async function PeriodDetailPage({ params }: Props) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead scope="col">{/* Malzeme / Material */}Malzeme</TableHead>
-                <TableHead scope="col" className="w-[80px]">Birim</TableHead>
-                <TableHead scope="col" className="w-[120px] text-right tabular-nums">
-                  Birim Fiyat
+                <TableHead scope="col">{t('detail.lines_col_material')}</TableHead>
+                <TableHead scope="col" className="w-[80px]">
+                  {t('detail.lines_col_unit')}
                 </TableHead>
                 <TableHead scope="col" className="w-[120px] text-right tabular-nums">
-                  Önceki Kümülatif
+                  {t('detail.lines_col_unit_price')}
                 </TableHead>
                 <TableHead scope="col" className="w-[120px] text-right tabular-nums">
-                  Kümülatif
+                  {t('detail.lines_col_prev_cumulative')}
                 </TableHead>
                 <TableHead scope="col" className="w-[120px] text-right tabular-nums">
-                  Dönem Miktarı
+                  {t('detail.lines_col_cumulative')}
+                </TableHead>
+                <TableHead scope="col" className="w-[120px] text-right tabular-nums">
+                  {t('detail.lines_col_period_qty')}
                 </TableHead>
                 <TableHead scope="col" className="w-[140px] text-right tabular-nums">
-                  Dönem Tutarı
+                  {t('detail.lines_col_period_value')}
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -236,7 +238,7 @@ export default async function PeriodDetailPage({ params }: Props) {
                       <TableCell className="text-sm w-[80px]">{line.unitSnapshot}</TableCell>
                       <TableCell
                         className="text-right tabular-nums text-sm w-[120px]"
-                        aria-label={`Birim Fiyat: ${line.unitPriceSnapshot} ${line.currencyCodeSnapshot}`}
+                        aria-label={`${t('detail.lines_col_unit_price')}: ${line.unitPriceSnapshot} ${line.currencyCodeSnapshot}`}
                       >
                         {line.unitPriceSnapshot} {line.currencyCodeSnapshot}
                       </TableCell>
@@ -253,7 +255,7 @@ export default async function PeriodDetailPage({ params }: Props) {
                       </TableCell>
                       <TableCell
                         className="text-right tabular-nums font-semibold text-sm w-[140px]"
-                        aria-label={`Dönem Tutarı: ${formatMoney(line.periodValue, currency, locale)}`}
+                        aria-label={`${t('detail.lines_col_period_value')}: ${formatMoney(line.periodValue, currency, locale)}`}
                       >
                         {formatMoney(line.periodValue, currency, locale)}
                       </TableCell>
