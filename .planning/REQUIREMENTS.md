@@ -95,7 +95,7 @@ Current milestone. Admin-grade performance + cost analytics, Turkish hakkediş b
 - [x] **HAK-01**: Office engineer can create progress-payment periods (dönem) for a project with a cutoff date
 - [x] **HAK-02**: System computes per-period line items using cumulative (yeşil defter) quantities anchored on approval date: period qty = cumulative-to-cutoff − previous-period cumulative, with a locked unit-price snapshot
 - [x] **HAK-03**: System computes hakkediş deductions (KDV, KDV tevkifat, stopaj, teminat) using configurable per-period rates, producing gross and net payable
-- [ ] **HAK-04**: Office engineer can track payment status per period (draft → submitted → paid)
+- [x] **HAK-04**: Office engineer can track payment status per period (draft → submitted → paid)
 - [x] **HAK-05**: A finalized hakkediş period is locked as an immutable snapshot (quantities, prices, rates frozen)
 
 ### Exports
@@ -213,7 +213,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | HAK-01 | Phase 10 | Complete |
 | HAK-02 | Phase 10 | Complete |
 | HAK-03 | Phase 10 | Complete |
-| HAK-04 | Phase 10 | Pending |
+| HAK-04 | Phase 10 | Complete |
 | HAK-05 | Phase 10 | Complete |
 | EXP-01 | Phase 11 | Pending |
 | EXP-02 | Phase 11 | Pending |

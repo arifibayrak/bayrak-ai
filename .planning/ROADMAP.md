@@ -360,7 +360,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 10-02-PLAN.md — src/actions/hakedis.ts: computePeriodLines (yeşil-defter, Istanbul cutoff, finalized-only chaining) + deduction chain in getPeriodDetail + create/recompute/finalize/advance/delete actions + HAK tests
+- [x] 10-02-PLAN.md — src/actions/hakedis.ts: computePeriodLines (yeşil-defter, Istanbul cutoff, finalized-only chaining) + deduction chain in getPeriodDetail + create/recompute/finalize/advance/delete actions + HAK tests
 
 **Wave 3** *(blocked on Wave 2)*
 
@@ -404,5 +404,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 7. Data Foundation & Canonical Record | 5/5 | Complete   | 2026-05-26 |
 | 8. Admin Shell & Information Architecture | 6/6 | Complete   | 2026-05-26 |
 | 9. Performance Analytics & Scorecards | 6/6 | Complete   | 2026-05-27 |
-| 10. Hakkediş Billing | 1/4 | In Progress|  |
+| 10. Hakkediş Billing | 2/4 | In Progress|  |
 | 11. Exports | 0/TBD | Not started | - |
