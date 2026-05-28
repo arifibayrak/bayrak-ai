@@ -443,8 +443,178 @@ describe('EXP-02 hakedis Excel', () => {
 });
 
 describe('EXP-03 performance summary', () => {
-  it.todo('returns 401 without session');
-  it.todo('Workers tab row count equals getPortfolioPeople({role:"worker"}).length');
+  beforeEach(() => {
+    setMockSession({ user: { id: 'test-user-id', email: 'test@example.com' } });
+  });
+
+  it('workbook contains exactly two sheets named Workers / Personel and Auditors / Denetçiler (D-110: no Office Engineers sheet)', async () => {
+    const { buildPerformanceSummary } = await import('@/lib/excel');
+    const buf = await buildPerformanceSummary({ workers: [], auditors: [] });
+
+    const workbook = new ExcelJS.Workbook();
+    const arrayBuffer = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await workbook.xlsx.load(arrayBuffer as any);
+
+    expect(workbook.worksheets).toHaveLength(2);
+    expect(workbook.worksheets[0].name).toBe('Workers / Personel');
+    expect(workbook.worksheets[1].name).toBe('Auditors / Denetçiler');
+
+    // Freeze pane on row 1 of both sheets
+    expect(workbook.worksheets[0].views?.[0]).toMatchObject({ state: 'frozen', ySplit: 1 });
+    expect(workbook.worksheets[1].views?.[0]).toMatchObject({ state: 'frozen', ySplit: 1 });
+  });
+
+  it('multi-currency worker emits ONE row with JSON-stringified value map (D-110 layout — supersedes Pitfall 8)', async () => {
+    const { buildPerformanceSummary } = await import('@/lib/excel');
+    const worker = {
+      personId: 'w1',
+      displayName: 'MultiCurrency Worker',
+      submissionsApproved: 5,
+      submissionsRejected: 0,
+      submissionsPending: 1,
+      valueContributedByCurrency: { TRY: '1000', USD: '500' },
+      locationComplianceRate: null,
+    };
+    const buf = await buildPerformanceSummary({ workers: [worker], auditors: [] });
+
+    const workbook = new ExcelJS.Workbook();
+    const arrayBuffer = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await workbook.xlsx.load(arrayBuffer as any);
+    const sheet = workbook.worksheets[0];
+
+    // Header + 1 data row only — D-110 layout (NOT one row per currency)
+    expect(sheet.rowCount).toBe(2);
+
+    // Workers sheet column order (1-based): displayName, submissionsApproved, submissionsRejected,
+    //   submissionsPending, locationCompliance, outputQuantity, currencyCode, valueContribution
+    const currencyCell = sheet.getRow(2).getCell(7);
+    const valueCell = sheet.getRow(2).getCell(8);
+    expect(String(currencyCell.value)).toBe('multi');
+    expect(JSON.parse(String(valueCell.value))).toEqual({ TRY: '1000', USD: '500' });
+  });
+
+  it('single-currency worker uses plain currency code + value cells', async () => {
+    const { buildPerformanceSummary } = await import('@/lib/excel');
+    const worker = {
+      personId: 'w1',
+      displayName: 'SingleCurrency Worker',
+      submissionsApproved: 3,
+      submissionsRejected: 0,
+      submissionsPending: 0,
+      valueContributedByCurrency: { TRY: '1000' },
+      locationComplianceRate: null,
+    };
+    const buf = await buildPerformanceSummary({ workers: [worker], auditors: [] });
+
+    const workbook = new ExcelJS.Workbook();
+    const arrayBuffer = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await workbook.xlsx.load(arrayBuffer as any);
+    const sheet = workbook.worksheets[0];
+
+    const currencyCell = sheet.getRow(2).getCell(7);
+    const valueCell = sheet.getRow(2).getCell(8);
+    expect(String(currencyCell.value)).toBe('TRY');
+    expect(String(valueCell.value)).toBe('1000');
+  });
+
+  it('locationCompliance cell is non-null when PortfolioWorker.locationComplianceRate is populated (WARNING 4 / D-110 gate)', async () => {
+    const { buildPerformanceSummary } = await import('@/lib/excel');
+    const workerCompliant = {
+      personId: 'w1',
+      displayName: 'Compliant Worker',
+      submissionsApproved: 4,
+      submissionsRejected: 0,
+      submissionsPending: 0,
+      valueContributedByCurrency: {},
+      locationComplianceRate: 0.75,
+    };
+    const workerNoApproved = {
+      personId: 'w2',
+      displayName: 'No Approved Worker',
+      submissionsApproved: 0,
+      submissionsRejected: 0,
+      submissionsPending: 2,
+      valueContributedByCurrency: {},
+      locationComplianceRate: null,
+    };
+    const buf = await buildPerformanceSummary({
+      workers: [workerCompliant, workerNoApproved],
+      auditors: [],
+    });
+
+    const workbook = new ExcelJS.Workbook();
+    const arrayBuffer = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await workbook.xlsx.load(arrayBuffer as any);
+    const sheet = workbook.worksheets[0];
+
+    // Column 5 is locationCompliance
+    const complianceRow2 = sheet.getRow(2).getCell(5);
+    expect(complianceRow2.value).toBe(0.75);
+
+    const complianceRow3 = sheet.getRow(3).getCell(5);
+    // null/empty cell — ExcelJS reads as null or empty string when no value was written
+    expect(complianceRow3.value == null || complianceRow3.value === '').toBe(true);
+  });
+
+  it('sanitizeExcelCell prefixes apostrophe on formula-prefix displayName (WARNING 5 / T-11-03-FORMULA regression gate)', async () => {
+    const { buildPerformanceSummary } = await import('@/lib/excel');
+    const worker = {
+      personId: 'w1',
+      displayName: '=cmd|/c calc',
+      submissionsApproved: 1,
+      submissionsRejected: 0,
+      submissionsPending: 0,
+      valueContributedByCurrency: {},
+      locationComplianceRate: null,
+    };
+    const auditor = {
+      personId: 'a1',
+      displayName: '+1234',
+      decisionsCount: 1,
+      avgDecisionLatencyHours: null,
+      pendingBacklogCount: 0,
+      slaBreachRateDecided: null,
+    };
+    const buf = await buildPerformanceSummary({ workers: [worker], auditors: [auditor] });
+
+    const workbook = new ExcelJS.Workbook();
+    const arrayBuffer = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await workbook.xlsx.load(arrayBuffer as any);
+
+    // Workers sheet — Personel column is column 1
+    const workerSheet = workbook.worksheets[0];
+    const workerPersonelCell = workerSheet.getRow(2).getCell(1);
+    expect(String(workerPersonelCell.value)).toBe("'=cmd|/c calc");
+
+    // Auditors sheet — Personel column is column 1
+    const auditorSheet = workbook.worksheets[1];
+    const auditorPersonelCell = auditorSheet.getRow(2).getCell(1);
+    expect(String(auditorPersonelCell.value)).toBe("'+1234");
+  });
+
+  it('headers in both sheets contain " / " separator (D-111 bilingual gate)', async () => {
+    const { buildPerformanceSummary } = await import('@/lib/excel');
+    const buf = await buildPerformanceSummary({ workers: [], auditors: [] });
+
+    const workbook = new ExcelJS.Workbook();
+    const arrayBuffer = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await workbook.xlsx.load(arrayBuffer as any);
+
+    for (const sheet of workbook.worksheets) {
+      const headerValues = sheet.getRow(1).values as unknown[];
+      const headers = headerValues.filter((v) => typeof v === 'string') as string[];
+      expect(headers.length).toBeGreaterThan(0);
+      for (const h of headers) {
+        expect(h).toContain(' / ');
+      }
+    }
+  });
 });
 
 describe('EXP-04 hakedis PDF', () => {
