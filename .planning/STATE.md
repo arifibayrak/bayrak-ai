@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Operations Intelligence & Hakkediş
-status: executing
-stopped_at: Completed 11-01b-PLAN.md
-last_updated: "2026-05-28T16:27:09.535Z"
+status: verifying
+stopped_at: Completed 11-06-PLAN.md (Phase 11 complete — ready for /gsd:verify-work)
+last_updated: "2026-05-28T16:36:08.380Z"
 last_activity: 2026-05-28
 progress:
   total_phases: 11
-  completed_phases: 9
+  completed_phases: 10
   total_plans: 56
-  completed_plans: 55
-  percent: 82
+  completed_plans: 56
+  percent: 91
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-05-25)
 
 Phase: 11 (exports) — EXECUTING
 Plan: 7 of 7
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-05-28
 
 **Progress bar (v2.0 phases only):**
@@ -108,6 +108,7 @@ Phase 11 [          ] 0%
 | Phase 11 P11-03 | 378 | 2 tasks | 4 files |
 | Phase 11 P11-04 | 18 minutes | 4 tasks | 11 files |
 | Phase 11 P11-05 | 25 minutes | 2 tasks | 1 files |
+| Phase 11 P11-06 | 0 | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -202,6 +203,9 @@ Recent decisions affecting current work:
 - [Phase 11]: Plan 11-05: D-108 hub side delivered — /dashboard/exports replaces Phase 8 stub with 3 trigger surfaces (Submission Ledger + Performance Summary + Hakkediş Files picker); zero generation logic duplicated; FilterBar threads from/to/project via URLSearchParams
 - [Phase 11]: Plan 11-05: server component with auth() first statement + redirect on null (D-114 page-level pattern, mirrors hakedis/page.tsx); export const dynamic = 'force-dynamic' (v2.0 financial lock)
 - [Phase 11]: Plan 11-05: Task 2 visual+TR/EN UAT APPROVED by user — hub renders in both locales, both top-button Excel downloads work, PDF Turkish glyphs (ğ ş ı ö ü ç) render correctly; VALIDATION.md Manual-Only Verifications row 1 SATISFIED
+- [Phase ?]: Plan 11-06: Period-detail PeriodDetailControls.tsx gains Excel + PDF outline buttons (D-96 state-gated removal on draft); same handlers as Plan 11-05 hub; D-108 fully complete
+- [Phase ?]: Plan 11-06: end-of-phase UAT APPROVED — draft guard verified (buttons absent for draft, present for finalized), PDF Turkish glyphs render correctly in Preview, Excel money values formatted, OE scorecard shows all 4 D-109 action labels in both TR and EN; VALIDATION.md Manual rows 2-4 SATISFIED
+- [Phase ?]: Phase 11 closure: D-108 distributed UX fully delivered (hub Plan 11-05 + period-detail Plan 11-06 both wired to same 4 route handlers); D-109 traceability end-to-end verified; EXP-01..04 all reachable via UI; Phase 11 ready for /gsd:verify-work
 
 ### Open Questions / Conflicts (surface before relevant phases)
 
@@ -245,6 +249,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-28T16:27:09.530Z
+Last session: 2026-05-28T16:35:36.070Z
 Stopped at: Completed 11-01b-PLAN.md
 Resume file: None

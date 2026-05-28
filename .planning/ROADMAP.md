@@ -39,7 +39,7 @@ Turn raw submission/audit data into an admin-grade operations console: role-base
 - [x] **Phase 8: Admin Shell & Information Architecture** - Build the `(admin)` route group with persistent sidebar nav (Overview · Projects · People · Analytics · Hakkediş · Exports), cross-project Overview command-center page, and all TR/EN i18n strings for new surfaces (completed 2026-05-26)
 - [x] **Phase 9: Performance Analytics & Scorecards** - Worker/auditor/office-engineer scorecards, global date-range and project/person filters, trend charts, drill-down submission detail page, per-employee profile pages, leaderboard, and SLA alerts (completed 2026-05-27)
 - [x] **Phase 10: Hakkediş Billing** - Hakkediş period CRUD, yeşil-defter computation (cumulative−previous period delta), configurable KDV/tevkifat/stopaj/teminat deductions, payment status tracking, and finalization lock (completed 2026-05-28)
-- [ ] **Phase 11: Exports** - Multi-sheet bilingual Excel exports (submission ledger, BOQ/hakkediş yeşil defter, performance summaries), PDF hakkediş certificate with Turkish font rendering, and authenticated route handlers with Exports trigger UI
+- [x] **Phase 11: Exports** - Multi-sheet bilingual Excel exports (submission ledger, BOQ/hakkediş yeşil defter, performance summaries), PDF hakkediş certificate with Turkish font rendering, and authenticated route handlers with Exports trigger UI (completed 2026-05-28)
 
 ## Phase Details
 
@@ -407,7 +407,7 @@ Plans:
 **Wave 5** *(blocked on Wave 4)*
 
 - [x] 11-05-PLAN.md — Replace Phase 8 Exports stub at src/app/dashboard/(admin)/exports/page.tsx with the hub UI: 3 trigger surfaces per D-108 + UI-SPEC Surface 1 (Submission Ledger card, Performance Summary card, Hakkediş Files period picker), force-dynamic, auth-redirect, FilterBar in Suspense (dead getPortfolioPeople import removed per WARNING 3 fix)
-- [ ] 11-06-PLAN.md — Extend PeriodDetailControls.tsx with Excel + PDF outline buttons gated on status!=='draft' (D-108 primary trigger) + end-of-phase UAT (OE Scorecard actionTypeToKey() extension was hoisted to Plan 11-01a Task 2 during revision; UAT verifies labels render correctly)
+- [x] 11-06-PLAN.md — Extend PeriodDetailControls.tsx with Excel + PDF outline buttons gated on status!=='draft' (D-108 primary trigger) + end-of-phase UAT (OE Scorecard actionTypeToKey() extension was hoisted to Plan 11-01a Task 2 during revision; UAT verifies labels render correctly)
 **UI hint**: yes
 
 ## Progress
@@ -427,4 +427,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 8. Admin Shell & Information Architecture | 6/6 | Complete   | 2026-05-26 |
 | 9. Performance Analytics & Scorecards | 6/6 | Complete   | 2026-05-27 |
 | 10. Hakkediş Billing | 4/4 | Complete    | 2026-05-28 |
-| 11. Exports | 6/7 | In Progress|  |
+| 11. Exports | 7/7 | Complete   | 2026-05-28 |
