@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Operations Intelligence & Hakkediş
 status: executing
-stopped_at: Phase 11 UI-SPEC approved
-last_updated: "2026-05-28T14:52:38.855Z"
-last_activity: 2026-05-28 -- Phase 11 planning complete
+stopped_at: Completed Phase 11 Plan 11-01a (setup half-A)
+last_updated: "2026-05-28T15:10:32.777Z"
+last_activity: 2026-05-28
 progress:
   total_phases: 11
   completed_phases: 9
   total_plans: 56
-  completed_plans: 49
+  completed_plans: 50
   percent: 82
 ---
 
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-05-25)
 
 ## Current Position
 
-Phase: 11
-Plan: Not started
+Phase: 11 (exports) — EXECUTING
+Plan: 2 of 7
 Status: Ready to execute
-Last activity: 2026-05-28 -- Phase 11 planning complete
+Last activity: 2026-05-28
 
 **Progress bar (v2.0 phases only):**
 
@@ -102,6 +102,7 @@ Phase 11 [          ] 0%
 | Phase 09 P06 | 25 | 3 tasks | 6 files |
 | Phase 10-hakkedi-billing P02 | 90 | 2 tasks | 2 files |
 | Phase 10 P03 | 9 minutes | 2 tasks | 5 files |
+| Phase 11-exports P01a | 2 minutes | 2 tasks tasks | 8 files files |
 
 ## Accumulated Context
 
@@ -176,6 +177,8 @@ Recent decisions affecting current work:
 - [Phase 09-04]: auditSlaHours bound as null when not provided, causing sla_breach_rate > null to always be false — safe null-result without conditional SQL
 - [Phase 09-04]: getTenantSettings returns D-84 Moderate code-level defaults when no row exists — enables test DB (no seed row) and production safety
 - [Phase ?]: Phase 09 Plan 06
+- [Phase ?]: [Phase 11-01a]: @react-pdf/renderer 4.5.1 + dejavu-fonts-ttf 2.37.3 + pdf-parse 1.1.1 installed; DejaVu Sans TTFs (757K + 706K) copied to public/fonts/; next.config.ts unchanged (Next.js 15 auto-externalizes @react-pdf/renderer per Research A1)
+- [Phase ?]: [Phase 11-01a]: OFFICE_ACTION_TYPES extended with 4 export action types (D-109) as TypeScript-only as-const tuple change — no migration (text column, not pg enum); OE scorecard actionTypeToKey() map + i18n action_*_exported keys (EN+TR) hoisted into Wave 1 to prevent transient 'action_unknown' window in Wave 2
 
 ### Open Questions / Conflicts (surface before relevant phases)
 
@@ -219,6 +222,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-28T13:46:51.943Z
-Stopped at: Phase 11 UI-SPEC approved
-Resume file: .planning/phases/11-exports/11-UI-SPEC.md
+Last session: 2026-05-28T15:10:23.618Z
+Stopped at: Completed Phase 11 Plan 11-01a (setup half-A)
+Resume file: None
