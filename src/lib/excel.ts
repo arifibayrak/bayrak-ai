@@ -17,6 +17,7 @@
 
 import ExcelJS from 'exceljs';
 import type { CanonicalSubmission } from '@/lib/types';
+import type { PortfolioWorker, PortfolioAuditor } from '@/actions/analytics';
 
 export type BoqRow = {
   rowNumber: number;
@@ -224,6 +225,145 @@ export async function buildSubmissionLedger(
   sheet.getColumn('earnedValue').numFmt = '#,##0.00';
   sheet.getColumn('submittedAt').numFmt = 'dd.MM.yyyy HH:mm';
   sheet.getColumn('decidedAt').numFmt = 'dd.MM.yyyy HH:mm';
+
+  const buf = await workbook.xlsx.writeBuffer();
+  return Buffer.from(buf);
+}
+
+// ── buildPerformanceSummary (EXP-03 Plan 11-03) ──────────────────────────────
+
+/**
+ * buildPerformanceSummary — two-sheet ExcelJS workbook for the EXP-03 performance
+ * summary export.
+ *
+ * Sheets (D-110 — Office Engineers explicitly EXCLUDED):
+ *   1. 'Workers - Personel'    — per-worker KPIs from getPortfolioPeople({role:'worker'})
+ *   2. 'Auditors - Denetçiler' — per-auditor KPIs from getPortfolioPeople({role:'auditor'})
+ *
+ *   NOTE: Plan 11-03 literally specified the names as 'Workers / Personel' and
+ *   'Auditors / Denetçiler' (slash separator). Excel's worksheet-name spec
+ *   prohibits `/ \ ? * : [ ]` in sheet names; ExcelJS enforces this and would
+ *   throw "Worksheet name cannot include …". The bilingual intent (D-111 +
+ *   D-110) is preserved by switching the separator to ' - ' on the sheet TAB,
+ *   while every column HEADER inside the sheet keeps the ' / ' separator
+ *   (D-111 gate satisfied by header strings, not by tab names).
+ *
+ * Workers sheet (8 columns):
+ *   Personel / Person, Onaylanan / Approved, Reddedilen / Rejected, Bekleyen / Pending,
+ *   Konum Uyumu / Location Compliance, Çıktı Miktarı / Output Qty,
+ *   Para Birimi / Currency, Değer Katkısı / Value Contribution.
+ *
+ *   D-110 layout (RESEARCH Open Question 3 RESOLVED — supersedes original Pitfall 8):
+ *     ONE row per worker. valueContributedByCurrency expansion:
+ *       - 0 currencies → blank Para Birimi + blank Değer Katkısı (still appears in counts)
+ *       - 1 currency  → currency code + decimal value
+ *       - 2+ currencies → 'multi' marker in Para Birimi + JSON.stringify(map) in Değer Katkısı
+ *
+ *   WARNING 4 fix: locationComplianceRate populated from PortfolioWorker.
+ *     locationComplianceRate (added by Plan 11-01b). Non-null when worker has
+ *     approved submissions; null when zero approved (cell renders blank).
+ *
+ * Auditors sheet (5 columns):
+ *   Personel / Person, Karar Sayısı / Decision Count, Ort. Süre (saat) / Avg Latency (hrs),
+ *   Bekleyen / Pending Backlog, SLA İhlal Oranı / SLA Breach Rate.
+ *
+ * Styling:
+ *   - Row 1 bold + frozen pane (ySplit:1) on BOTH sheets.
+ *   - D-116 numFmt at column level (no parseFloat — strings flow direct):
+ *       Workers: locationCompliance '0.00%'; outputQuantity '#,##0.00'; valueContribution '#,##0.00'
+ *       Auditors: avgLatencyHours '#,##0.00'; slaBreachRate '0.00%'
+ *
+ * Security:
+ *   - WARNING 5 / T-11-03-FORMULA: every user-content string cell (worker.displayName,
+ *     auditor.displayName) wrapped in sanitizeExcelCell — CVE-2014-3524 mitigation.
+ *
+ * Returns: non-empty Buffer (headers + freeze panes present) even when both arrays empty.
+ */
+export async function buildPerformanceSummary(input: {
+  workers: PortfolioWorker[];
+  auditors: PortfolioAuditor[];
+}): Promise<Buffer> {
+  const workbook = new ExcelJS.Workbook();
+
+  // ── Sheet 1: Workers - Personel ──────────────────────────────────────────
+  // Original D-110 wording specified 'Workers / Personel'; Excel forbids '/' in
+  // sheet names (ExcelJS throws). Switched separator to ' - ' for the tab name;
+  // header strings inside the sheet still use ' / ' for D-111 compliance.
+  const workersSheet = workbook.addWorksheet('Workers - Personel');
+  workersSheet.columns = [
+    { header: 'Personel / Person', key: 'displayName', width: 24 },
+    { header: 'Onaylanan / Approved', key: 'submissionsApproved', width: 12 },
+    { header: 'Reddedilen / Rejected', key: 'submissionsRejected', width: 12 },
+    { header: 'Bekleyen / Pending', key: 'submissionsPending', width: 12 },
+    { header: 'Konum Uyumu / Location Compliance', key: 'locationCompliance', width: 20 },
+    { header: 'Çıktı Miktarı / Output Qty', key: 'outputQuantity', width: 16 },
+    { header: 'Para Birimi / Currency', key: 'currencyCode', width: 12 },
+    { header: 'Değer Katkısı / Value Contribution', key: 'valueContribution', width: 24 },
+  ];
+  workersSheet.getRow(1).font = { bold: true };
+  workersSheet.views = [{ state: 'frozen', ySplit: 1 }];
+
+  for (const worker of input.workers) {
+    // D-110 layout — ONE row per worker. Para Birimi + Değer Katkısı driven by currency count.
+    const entries = Object.entries(worker.valueContributedByCurrency ?? {});
+    let currencyCell: string = '';
+    let valueCell: string = '';
+    if (entries.length === 1) {
+      currencyCell = entries[0][0];
+      valueCell = entries[0][1];
+    } else if (entries.length > 1) {
+      // 'multi' marker keeps the column non-empty so filters still work.
+      currencyCell = 'multi';
+      valueCell = JSON.stringify(worker.valueContributedByCurrency);
+    }
+    // entries.length === 0 → both cells stay '' (worker appears in counts only)
+
+    workersSheet.addRow({
+      // WARNING 5 / T-11-03-FORMULA mitigation
+      displayName: sanitizeExcelCell(worker.displayName),
+      submissionsApproved: worker.submissionsApproved,
+      submissionsRejected: worker.submissionsRejected,
+      submissionsPending: worker.submissionsPending,
+      // WARNING 4 fix: now populated from Plan 11-01b extension
+      locationCompliance: worker.locationComplianceRate,
+      // outputQuantity not on PortfolioWorker (D-110 column included for SC3 parity); blank for v1
+      outputQuantity: null,
+      currencyCode: currencyCell,
+      valueContribution: valueCell,
+    });
+  }
+
+  // D-116: apply numFmt at column level — values flow direct, no parseFloat.
+  workersSheet.getColumn('locationCompliance').numFmt = '0.00%';
+  workersSheet.getColumn('outputQuantity').numFmt = '#,##0.00';
+  workersSheet.getColumn('valueContribution').numFmt = '#,##0.00';
+
+  // ── Sheet 2: Auditors - Denetçiler ───────────────────────────────────────
+  // See Sheet 1 note re: '/' prohibition in Excel sheet names.
+  const auditorsSheet = workbook.addWorksheet('Auditors - Denetçiler');
+  auditorsSheet.columns = [
+    { header: 'Personel / Person', key: 'displayName', width: 24 },
+    { header: 'Karar Sayısı / Decision Count', key: 'decisionsCount', width: 14 },
+    { header: 'Ort. Süre (saat) / Avg Latency (hrs)', key: 'avgLatencyHours', width: 24 },
+    { header: 'Bekleyen / Pending Backlog', key: 'pendingBacklog', width: 18 },
+    { header: 'SLA İhlal Oranı / SLA Breach Rate', key: 'slaBreachRate', width: 20 },
+  ];
+  auditorsSheet.getRow(1).font = { bold: true };
+  auditorsSheet.views = [{ state: 'frozen', ySplit: 1 }];
+
+  for (const a of input.auditors) {
+    auditorsSheet.addRow({
+      // WARNING 5 / T-11-03-FORMULA mitigation
+      displayName: sanitizeExcelCell(a.displayName),
+      decisionsCount: a.decisionsCount,
+      avgLatencyHours: a.avgDecisionLatencyHours ?? null,
+      pendingBacklog: a.pendingBacklogCount,
+      slaBreachRate: a.slaBreachRateDecided ?? null,
+    });
+  }
+
+  auditorsSheet.getColumn('avgLatencyHours').numFmt = '#,##0.00';
+  auditorsSheet.getColumn('slaBreachRate').numFmt = '0.00%';
 
   const buf = await workbook.xlsx.writeBuffer();
   return Buffer.from(buf);

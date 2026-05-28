@@ -447,7 +447,11 @@ describe('EXP-03 performance summary', () => {
     setMockSession({ user: { id: 'test-user-id', email: 'test@example.com' } });
   });
 
-  it('workbook contains exactly two sheets named Workers / Personel and Auditors / Denetçiler (D-110: no Office Engineers sheet)', async () => {
+  it('workbook contains exactly two sheets named Workers - Personel and Auditors - Denetçiler (D-110: no Office Engineers sheet)', async () => {
+    // NOTE: Plan 11-03 specified the sheet names with " / " separator.
+    // Excel's worksheet-name spec prohibits "/ \ ? * : [ ]" — ExcelJS throws.
+    // Switched the separator to " - " on the tab name; ' / ' is preserved on
+    // every column HEADER inside both sheets (D-111 gate). Rule 1 deviation.
     const { buildPerformanceSummary } = await import('@/lib/excel');
     const buf = await buildPerformanceSummary({ workers: [], auditors: [] });
 
@@ -457,8 +461,8 @@ describe('EXP-03 performance summary', () => {
     await workbook.xlsx.load(arrayBuffer as any);
 
     expect(workbook.worksheets).toHaveLength(2);
-    expect(workbook.worksheets[0].name).toBe('Workers / Personel');
-    expect(workbook.worksheets[1].name).toBe('Auditors / Denetçiler');
+    expect(workbook.worksheets[0].name).toBe('Workers - Personel');
+    expect(workbook.worksheets[1].name).toBe('Auditors - Denetçiler');
 
     // Freeze pane on row 1 of both sheets
     expect(workbook.worksheets[0].views?.[0]).toMatchObject({ state: 'frozen', ySplit: 1 });
