@@ -352,7 +352,24 @@ Plans:
   4. Office engineer can update a draft period's payment status through the lifecycle (`draft → submitted → paid`) and the current status is visible on the period list page
   5. After an office engineer clicks Finalize, the period's status becomes `finalized`; all snapshot columns (material name, unit, unit price, quantities, computed values) are frozen; any attempt to recompute or edit a finalized period returns an error
 
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+**Wave 1**
+
+- [ ] 10-01-PLAN.md — Schema: 4 deduction columns (D-91) + GENERATED period_qty (D-104) + 0008 migration + [BLOCKING] live apply + OFFICE_ACTION_TYPES delete + Switch + full hakedis i18n + Wave 0 scaffold
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 10-02-PLAN.md — src/actions/hakedis.ts: computePeriodLines (yeşil-defter, Istanbul cutoff, finalized-only chaining) + deduction chain in getPeriodDetail + create/recompute/finalize/advance/delete actions + HAK tests
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [ ] 10-03-PLAN.md — Period list page (replace stub) + project filter + status badge + Create Period dialog (D-92 defaults, D-93 stopaj toggle, % → fraction, create+compute+navigate)
+
+**Wave 4** *(blocked on Wave 2 + Wave 3)*
+
+- [ ] 10-04-PLAN.md — Period detail page (yeşil-defter line table + D-90 deduction summary, Net Ödeme focal point) + state-gated controls + Finalize/Delete confirmation dialogs + immutability banner + unpriced warning
+
 **UI hint**: yes
 
 ### Phase 11: Exports
@@ -387,5 +404,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 7. Data Foundation & Canonical Record | 5/5 | Complete   | 2026-05-26 |
 | 8. Admin Shell & Information Architecture | 6/6 | Complete   | 2026-05-26 |
 | 9. Performance Analytics & Scorecards | 6/6 | Complete   | 2026-05-27 |
-| 10. Hakkediş Billing | 0/TBD | Not started | - |
+| 10. Hakkediş Billing | 0/4 | Planned | - |
 | 11. Exports | 0/TBD | Not started | - |
