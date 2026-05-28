@@ -64,6 +64,13 @@
       "when": 1779930900000,
       "tag": "0008_v2_hakedis_deductions",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1780002113500,
+      "tag": "0009_v3_line_submissions",
+      "breakpoints": true
     }
   ]
 }
