@@ -402,7 +402,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 — both edit src/lib/excel.ts)*
 
-- [ ] 11-04-PLAN.md — EXP-02 + EXP-04: GET /api/exports/hakedis/[periodId] (three sheets per D-115) + GET /api/exports/hakedis/[periodId]/pdf (DejaVu Sans embedded per D-106, registerFonts try/catch for T-11-04-FONT-MISSING per WARNING 6 fix, snapshot-only per D-107, Pitfall 5 draft guard, sanitizeExcelCell on materialSnapshot/unitSnapshot per T-11-04-FORMULA, D-109 logging) + HakedisPdf React component
+- [x] 11-04-PLAN.md — EXP-02 + EXP-04: GET /api/exports/hakedis/[periodId] (three sheets per D-115) + GET /api/exports/hakedis/[periodId]/pdf (DejaVu Sans embedded per D-106, registerFonts try/catch for T-11-04-FONT-MISSING per WARNING 6 fix, snapshot-only per D-107, Pitfall 5 draft guard, sanitizeExcelCell on materialSnapshot/unitSnapshot per T-11-04-FORMULA, D-109 logging) + HakedisPdf React component
 
 **Wave 5** *(blocked on Wave 4)*
 
@@ -427,4 +427,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 8. Admin Shell & Information Architecture | 6/6 | Complete   | 2026-05-26 |
 | 9. Performance Analytics & Scorecards | 6/6 | Complete   | 2026-05-27 |
 | 10. Hakkediş Billing | 4/4 | Complete    | 2026-05-28 |
-| 11. Exports | 4/7 | In Progress|  |
+| 11. Exports | 5/7 | In Progress|  |

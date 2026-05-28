@@ -4,13 +4,13 @@ milestone: v2.0
 milestone_name: Operations Intelligence & Hakkediş
 status: executing
 stopped_at: Completed 11-01b-PLAN.md
-last_updated: "2026-05-28T15:51:38.307Z"
+last_updated: "2026-05-28T16:16:52.109Z"
 last_activity: 2026-05-28
 progress:
   total_phases: 11
   completed_phases: 9
   total_plans: 56
-  completed_plans: 53
+  completed_plans: 54
   percent: 82
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-05-25)
 ## Current Position
 
 Phase: 11 (exports) — EXECUTING
-Plan: 5 of 7
+Plan: 6 of 7
 Status: Ready to execute
 Last activity: 2026-05-28
 
@@ -106,6 +106,7 @@ Phase 11 [          ] 0%
 | Phase 11 P01b | 596 | 3 tasks | 10 files |
 | Phase 11 P02 | 8 minutes | 2 tasks | 3 files |
 | Phase 11 P11-03 | 378 | 2 tasks | 4 files |
+| Phase 11 P11-04 | 18 minutes | 4 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -193,6 +194,10 @@ Recent decisions affecting current work:
 - [Phase 11]: Plan 11-03: D-110 sheet name separator changed from ' / ' to ' - ' (Rule 1) — Excel forbids '/' in sheet names; column HEADERS still use ' / ' for D-111 compliance
 - [Phase 11]: Plan 11-03: D-110 multi-currency layout = one row per worker with JSON.stringify map in Değer Katkısı cell (RESEARCH Open Question 3 RESOLVED — supersedes original Pitfall 8)
 - [Phase 11]: Plan 11-03: buildPerformanceSummary mirrors Plan 11-02 binary-route skeleton verbatim — proves the pattern generalises across exports (auth-first, Promise.all data fetch, after()-fire-and-forget log, NextResponse Uint8Array body)
+- [Phase ?]: Plan 11-04: buildHakedisExcel writes decimal strings DIRECTLY to Hesap Özeti cells (D-107 + D-116); zero parseFloat
+- [Phase ?]: Plan 11-04: renderHakedisPdf helper keeps route.ts pure-TS (sidesteps vitest/rolldown JSX-parse failure under [periodId] paths)
+- [Phase ?]: Plan 11-04: @vitejs/plugin-react required in vitest.config.ts so test loader can parse JSX in src/lib/pdf/hakedis-pdf.tsx
+- [Phase ?]: Plan 11-04: pdf-parse imported via lib/pdf-parse.js (package root index.js auto-runs debug block under vitest where module.parent is null)
 
 ### Open Questions / Conflicts (surface before relevant phases)
 
@@ -236,6 +241,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-28T15:51:07.978Z
+Last session: 2026-05-28T16:16:34.327Z
 Stopped at: Completed 11-01b-PLAN.md
 Resume file: None
