@@ -1,10 +1,10 @@
 /**
  * tests/hakedis-live.test.ts — Phase 12 submission-driven hakkediş contract.
  *
- * Wave 3 (Plan 12-03): 8 of 9 it.todo entries replaced with concrete assertions.
- * The 9th (LivePeriodPoller mount gate) stays as it.todo until Plan 12-04 ships
- * src/components/admin/LivePeriodPoller.tsx — the pure-function contract is locked
- * in 12-VALIDATION.md and consumed verbatim then.
+ * Wave 3 (Plan 12-03): 8 of 9 pending entries replaced with concrete assertions.
+ * Wave 4 (Plan 12-04): the 9th (LivePeriodPoller mount gate) replaced with a
+ * concrete pure-function assertion now that src/components/admin/LivePeriodPoller.tsx
+ * ships — zero pending entries remain.
  *
  * Test naming MUST stay byte-identical to 12-VALIDATION.md verify-command -t
  * filters so `npx vitest run … -t "<name>"` continues to bind deterministically.
