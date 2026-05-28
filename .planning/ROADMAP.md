@@ -364,7 +364,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2)*
 
-- [ ] 10-03-PLAN.md — Period list page (replace stub) + project filter + status badge + Create Period dialog (D-92 defaults, D-93 stopaj toggle, % → fraction, create+compute+navigate)
+- [x] 10-03-PLAN.md — Period list page (replace stub) + project filter + status badge + Create Period dialog (D-92 defaults, D-93 stopaj toggle, % → fraction, create+compute+navigate)
 
 **Wave 4** *(blocked on Wave 2 + Wave 3)*
 
@@ -404,5 +404,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 7. Data Foundation & Canonical Record | 5/5 | Complete   | 2026-05-26 |
 | 8. Admin Shell & Information Architecture | 6/6 | Complete   | 2026-05-26 |
 | 9. Performance Analytics & Scorecards | 6/6 | Complete   | 2026-05-27 |
-| 10. Hakkediş Billing | 2/4 | In Progress|  |
+| 10. Hakkediş Billing | 3/4 | In Progress|  |
 | 11. Exports | 0/TBD | Not started | - |
