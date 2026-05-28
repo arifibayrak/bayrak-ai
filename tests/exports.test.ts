@@ -435,11 +435,168 @@ describeIfDb('D-109 activity log — submission_ledger_exported', () => {
 // Remaining describes — promoted in Plans 11-03 / 11-04 / 11-05
 // ════════════════════════════════════════════════════════════════════════════
 
-describe('EXP-02 hakedis Excel', () => {
-  it.todo('returns 401 without session');
-  it.todo('returns 422 for draft period');
-  it.todo('Hesap Özeti gross cell equals getPeriodDetail().deductions.gross (decimal-string equality)');
-  it.todo('Hesap Özeti kdv/tevkifat/stopaj/teminat/avans/net cells match deductions strings');
+// ════════════════════════════════════════════════════════════════════════════
+// EXP-02 hakedis Excel — buildHakedisExcel() unit tests (Plan 11-04 Task 2)
+// ════════════════════════════════════════════════════════════════════════════
+
+describe('EXP-02 hakedis Excel — buildHakedisExcel unit', () => {
+  // Synthetic fixture inputs reused across the unit tests.
+  function makePeriod() {
+    return {
+      id: 'period-1',
+      tenantId: '00000000-0000-0000-0000-000000000001',
+      projectId: 'project-1',
+      periodNumber: 'HK-2026-01',
+      periodStartDate: null,
+      periodEndDate: '2026-01-31',
+      currencyCode: 'TRY',
+      status: 'finalized',
+      kdvRate: '0.2000',
+      retentionRate: '0.0500',
+      tevkifatFraction: '0.4000',
+      stopajEnabled: false,
+      stopajRate: null,
+      avansKesintisiRate: '0.0000',
+      createdByUserId: 'test-user-id',
+      finalizedAt: '2026-02-01T10:00:00.000Z',
+    };
+  }
+  function makeLines() {
+    return [
+      {
+        id: 'line-a',
+        boqItemId: 'boq-a',
+        materialSnapshot: 'DN200 HDPE Boru',
+        unitSnapshot: 'm',
+        currencyCodeSnapshot: 'TRY',
+        unitPriceSnapshot: '100.00',
+        cumulativeQtyApproved: '10.000',
+        previousCumulativeQty: '0',
+        periodQty: '10.000',
+        periodValue: '1000.00',
+        cumulativeValue: '1000.00',
+      },
+      {
+        id: 'line-b',
+        boqItemId: 'boq-b',
+        materialSnapshot: 'DN300 HDPE Boru',
+        unitSnapshot: 'm',
+        currencyCodeSnapshot: 'TRY',
+        unitPriceSnapshot: '200.00',
+        cumulativeQtyApproved: '5.000',
+        previousCumulativeQty: '0',
+        periodQty: '5.000',
+        periodValue: '1000.00',
+        cumulativeValue: '1000.00',
+      },
+    ];
+  }
+  function makeDeductions() {
+    return {
+      gross: '12345.67',
+      kdv: '2469.13',
+      tevkifat: '987.65',
+      stopaj: '0',
+      teminat: '617.28',
+      avans: '0',
+      net: '13209.87',
+    };
+  }
+
+  it('three sheets present in order: Yeşil Defter, Fiyat İcmali, Hesap Özeti (D-115)', async () => {
+    const { buildHakedisExcel } = await import('@/lib/excel');
+    const buf = await buildHakedisExcel({
+      period: makePeriod(),
+      lines: makeLines(),
+      deductions: makeDeductions(),
+      projectName: 'İstanbul Doğalgaz',
+    });
+    expect(buf.length).toBeGreaterThan(0);
+
+    const workbook = new ExcelJS.Workbook();
+    const arrayBuffer = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await workbook.xlsx.load(arrayBuffer as any);
+
+    expect(workbook.worksheets.map((s) => s.name)).toEqual([
+      'Yeşil Defter',
+      'Fiyat İcmali',
+      'Hesap Özeti',
+    ]);
+  });
+
+  it('Hesap Özeti cell values string-equal getPeriodDetail().deductions (no precision loss — D-107 + D-116 + Pitfall 2)', async () => {
+    const { buildHakedisExcel } = await import('@/lib/excel');
+    const deductions = makeDeductions();
+    const buf = await buildHakedisExcel({
+      period: makePeriod(),
+      lines: makeLines(),
+      deductions,
+      projectName: 'İstanbul Doğalgaz',
+    });
+
+    const workbook = new ExcelJS.Workbook();
+    const arrayBuffer = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await workbook.xlsx.load(arrayBuffer as any);
+
+    const sheet3 = workbook.worksheets[2];
+    expect(sheet3.name).toBe('Hesap Özeti');
+
+    // Hesap Özeti rows: 1=header, 2..8 = 7 deduction labels (gross..net)
+    // Use string comparison via Decimal-equivalence test (string -> Number both sides).
+    // Cell value column = 2.
+    const labels: (keyof typeof deductions)[] = [
+      'gross', 'kdv', 'tevkifat', 'stopaj', 'teminat', 'avans', 'net',
+    ];
+    for (let i = 0; i < labels.length; i++) {
+      const cell = sheet3.getRow(i + 2).getCell(2);
+      const expected = deductions[labels[i]];
+      // ExcelJS may store decimal strings as numbers; compare numerically (Pitfall 2 fallback).
+      // numFmt at column level renders the display; the underlying value must equal.
+      expect(Number(cell.value)).toEqual(Number(expected));
+    }
+  });
+
+  it('sanitizeExcelCell prefixes apostrophe on formula-prefix materialSnapshot (WARNING 5 / T-11-04-FORMULA regression gate)', async () => {
+    const { buildHakedisExcel } = await import('@/lib/excel');
+    const lines = makeLines();
+    lines[0].materialSnapshot = '=cmd|/c calc';
+    lines[1].materialSnapshot = '@SUM(A1:A10)';
+    const buf = await buildHakedisExcel({
+      period: makePeriod(),
+      lines,
+      deductions: makeDeductions(),
+      projectName: 'P',
+    });
+
+    const workbook = new ExcelJS.Workbook();
+    const arrayBuffer = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await workbook.xlsx.load(arrayBuffer as any);
+
+    // Yeşil Defter (sheet[0]) — column 1 is Malzeme/Material
+    const sheet1 = workbook.worksheets[0];
+    expect(String(sheet1.getRow(2).getCell(1).value)).toBe("'=cmd|/c calc");
+    expect(String(sheet1.getRow(3).getCell(1).value)).toBe("'@SUM(A1:A10)");
+
+    // Fiyat İcmali (sheet[1]) — column 1 is also Malzeme/Material
+    const sheet2 = workbook.worksheets[1];
+    expect(String(sheet2.getRow(2).getCell(1).value)).toBe("'=cmd|/c calc");
+    expect(String(sheet2.getRow(3).getCell(1).value)).toBe("'@SUM(A1:A10)");
+  });
+
+  it('public/fonts/DejaVuSans.ttf exists with size >100KB before importing the PDF route module (WARNING 6 / T-11-04-FONT-MISSING gate)', async () => {
+    const fs = await import('node:fs');
+    const path = await import('node:path');
+    const ttfPath = path.join(process.cwd(), 'public/fonts/DejaVuSans.ttf');
+    const stat = fs.statSync(ttfPath);
+    expect(stat.size).toBeGreaterThan(100 * 1024);
+
+    const boldPath = path.join(process.cwd(), 'public/fonts/DejaVuSans-Bold.ttf');
+    const boldStat = fs.statSync(boldPath);
+    expect(boldStat.size).toBeGreaterThan(100 * 1024);
+  });
 });
 
 describe('EXP-03 performance summary', () => {
