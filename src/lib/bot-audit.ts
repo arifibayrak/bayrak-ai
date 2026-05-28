@@ -467,6 +467,45 @@ export async function handleAuditDecision(
     const auditorDisplayName = auditorPerson.displayName;
     await editAllSiblingMessages(submissionId, MESSAGES.auditApprovedOutcome(auditorDisplayName));
 
+    // D-117 post-commit hook (Phase 12): scoped hakkediş recompute for the just-approved
+    // submission's (project_id, boq_item_id, currency_code) triplet. Lands here AFTER
+    // editAllSiblingMessages and BEFORE the worker notification so a failed recompute
+    // does not leave stale auditor keyboards.
+    //
+    // Best-effort per D-40 + CR-02: a transient hakkediş failure MUST NOT propagate
+    // back to the auditor (the approval is already committed atomically). The next
+    // approval OR the manual Recompute button self-heals via the helper's ON CONFLICT
+    // DO UPDATE idempotency.
+    //
+    // NEVER inside the approve TX (Pitfall 1): the approve transaction is already
+    // holding row locks on submissions + boq_items; extending it to also do a
+    // multi-row aggregate INSERT triples the lock window during a Telegram webhook
+    // that has a 60s server retry budget.
+    //
+    // NEVER calls the office-activity logger (Pitfall 5): the bot path has no
+    // Auth.js session, so actor_user_id FK to users would violate, and after()
+    // requires Next.js request scope which the webhook handler does not have.
+    // See src/lib/log-office-activity.ts and Phase 12 RESEARCH §Pitfall 5.
+    try {
+      const hakedisActions = await import('@/actions/hakedis');
+      const { boqItems } = await import('@/db/schema/boq-items');
+      const { eq: eqHak } = await import('drizzle-orm');
+      const boqRows = await db
+        .select({ currencyCode: boqItems.currencyCode, projectId: boqItems.projectId })
+        .from(boqItems)
+        .where(eqHak(boqItems.id, boqItemId));
+      if (boqRows.length > 0) {
+        await hakedisActions.recomputeHakedisLine(
+          boqRows[0].projectId,
+          boqItemId,
+          boqRows[0].currencyCode,
+        );
+      }
+    } catch (hakErr) {
+      // D-40 best-effort: log, do not throw. The approval is already committed.
+      console.error('[handleAuditDecision] hakkediş recompute failed for submission', submissionId, ':', hakErr);
+    }
+
     // CR-02: wrap the post-commit worker lookup + notification in try/catch.
     // The decision is already committed; a transient read failure must not propagate
     // back to the handler (D-40 best-effort semantics for post-commit side effects).

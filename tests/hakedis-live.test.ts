@@ -435,6 +435,37 @@ describeIfDb('Phase 12 submission-driven hakkediş', () => {
     expect(lines.rows[0].cumulative_value).toBe('5000.00');
   });
 
+  // ── Task 2 / D-117 bot-path static-import edge ───────────────────────────
+  // Per Plan 12-03 Task 2: shape (b) helper-direct testing is used above for
+  // contract tests; this assertion documents the dynamic-import edge from
+  // bot-audit.ts handleAuditDecision into @/actions/hakedis. Read the file
+  // bytes — covers Pitfall 5 (no logOfficeActivity) and the CR-02 try/catch
+  // wrap surface in a single deterministic assertion that does not require
+  // booting the grammY runtime.
+  it('bot-audit.ts handleAuditDecision contains the D-117 recomputeHakedisLine post-commit hook (static edge)', async () => {
+    const fs = await import('node:fs');
+    const path = await import('node:path');
+    const filePath = path.resolve(__dirname, '..', 'src', 'lib', 'bot-audit.ts');
+    const source = fs.readFileSync(filePath, 'utf8');
+
+    // Helper is referenced (the call inside the hook)
+    expect(source).toContain('recomputeHakedisLine');
+    // Hook is dynamic-imported from @/actions/hakedis
+    expect(source).toContain("await import('@/actions/hakedis')");
+    // Hook lives inside the approve branch — after editAllSiblingMessages
+    const idxApprove   = source.indexOf("await editAllSiblingMessages(submissionId, MESSAGES.auditApprovedOutcome");
+    const idxRecompute = source.indexOf('recomputeHakedisLine', idxApprove >= 0 ? idxApprove : 0);
+    const idxWorker    = source.indexOf('workerRows = await db', idxRecompute >= 0 ? idxRecompute : 0);
+    expect(idxApprove).toBeGreaterThanOrEqual(0);
+    expect(idxRecompute).toBeGreaterThan(idxApprove);
+    expect(idxWorker).toBeGreaterThan(idxRecompute);
+    // Pitfall 5: no logOfficeActivity call anywhere in the bot path
+    expect(source.includes('logOfficeActivity')).toBe(false);
+    // CR-02: hook is wrapped in a try/catch that surfaces hakErr — proves the
+    // recompute failure is best-effort (auditor flow continues on transient DB error)
+    expect(source).toContain('catch (hakErr)');
+  });
+
   // ── D-120 / LivePeriodPoller mount gate ──────────────────────────────────
   // Pure-function contract: vitest environment='node', no @testing-library/react.
   // Replaced in Plan 04 Task 1 with:
