@@ -28,6 +28,7 @@ import { auth } from '@/lib/auth';
 import { getPeriodDetail } from '@/actions/hakedis';
 import { getProjects } from '@/actions/projects';
 import { HakedisStatusBadge } from '@/components/admin/HakedisStatusBadge';
+import { LineSubmissionsPanel } from '@/components/admin/LineSubmissionsPanel';
 import { LivePeriodPoller } from '@/components/admin/LivePeriodPoller';
 import { PeriodDetailControls } from '@/components/admin/PeriodDetailControls';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -221,13 +222,20 @@ export default async function PeriodDetailPage({ params }: Props) {
                 <TableHead scope="col" className="w-[140px] text-right tabular-nums">
                   {t('detail.lines_col_period_value')}
                 </TableHead>
+                {/* SDH-02 traceability column — chevron-expand affordance per row.
+                    aria-only label keeps the visual footprint minimal pending Phase 13 brand pass. */}
+                <TableHead scope="col" className="w-[180px]">
+                  <span className="sr-only">
+                    {t('detail.lines_col_period_value')}
+                  </span>
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {lines.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={7}
+                    colSpan={8}
                     className="text-center py-10 text-muted-foreground text-sm"
                   >
                     {t('detail.lines_empty')}
@@ -267,6 +275,16 @@ export default async function PeriodDetailPage({ params }: Props) {
                       >
                         {formatMoney(line.periodValue, currency, locale)}
                       </TableCell>
+                      {/* SDH-02 traceability column: inline-expand-row panel.
+                          Lazy-fetches getLineSubmissions(periodLineId) on first click;
+                          the parent's LivePeriodPoller-driven router.refresh() resets state naturally. */}
+                      <TableCell className="text-sm w-[180px]">
+                        <LineSubmissionsPanel
+                          periodLineId={line.id}
+                          periodQty={line.periodQty}
+                          unitSnapshot={line.unitSnapshot}
+                        />
+                      </TableCell>
                     </TableRow>
                   );
                 })
@@ -275,7 +293,8 @@ export default async function PeriodDetailPage({ params }: Props) {
             {lines.length > 0 && (
               <TableFooter>
                 <TableRow className="font-semibold border-t-2">
-                  <TableCell colSpan={6} className="text-right text-sm">
+                  {/* Label span 7 columns → Gross value cell at column 7 (period_value) → traceability column 8 empty. */}
+                  <TableCell colSpan={7} className="text-right text-sm">
                     {t('detail.gross_total')}
                   </TableCell>
                   <TableCell
