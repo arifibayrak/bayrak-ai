@@ -1,10 +1,11 @@
 ---
 phase: 11
 slug: exports
-status: draft
+status: approved
 shadcn_initialized: true
 preset: b2fA
 created: 2026-05-28
+reviewed_at: 2026-05-28
 ---
 
 # Phase 11 — UI Design Contract: Exports
