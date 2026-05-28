@@ -38,7 +38,7 @@ Turn raw submission/audit data into an admin-grade operations console: role-base
 - [x] **Phase 7: Data Foundation & Canonical Record** - Add `unit_price` + currency to BOQ items, create activity-log and hakkediş schema tables, define the CanonicalSubmission type, build the typed aggregation query layer, and wire activity logging into existing Server Actions (completed 2026-05-26)
 - [x] **Phase 8: Admin Shell & Information Architecture** - Build the `(admin)` route group with persistent sidebar nav (Overview · Projects · People · Analytics · Hakkediş · Exports), cross-project Overview command-center page, and all TR/EN i18n strings for new surfaces (completed 2026-05-26)
 - [x] **Phase 9: Performance Analytics & Scorecards** - Worker/auditor/office-engineer scorecards, global date-range and project/person filters, trend charts, drill-down submission detail page, per-employee profile pages, leaderboard, and SLA alerts (completed 2026-05-27)
-- [ ] **Phase 10: Hakkediş Billing** - Hakkediş period CRUD, yeşil-defter computation (cumulative−previous period delta), configurable KDV/tevkifat/stopaj/teminat deductions, payment status tracking, and finalization lock
+- [x] **Phase 10: Hakkediş Billing** - Hakkediş period CRUD, yeşil-defter computation (cumulative−previous period delta), configurable KDV/tevkifat/stopaj/teminat deductions, payment status tracking, and finalization lock (completed 2026-05-28)
 - [ ] **Phase 11: Exports** - Multi-sheet bilingual Excel exports (submission ledger, BOQ/hakkediş yeşil defter, performance summaries), PDF hakkediş certificate with Turkish font rendering, and authenticated route handlers with Exports trigger UI
 
 ## Phase Details
@@ -368,7 +368,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 2 + Wave 3)*
 
-- [ ] 10-04-PLAN.md — Period detail page (yeşil-defter line table + D-90 deduction summary, Net Ödeme focal point) + state-gated controls + Finalize/Delete confirmation dialogs + immutability banner + unpriced warning
+- [x] 10-04-PLAN.md — Period detail page (yeşil-defter line table + D-90 deduction summary, Net Ödeme focal point) + state-gated controls + Finalize/Delete confirmation dialogs + immutability banner + unpriced warning
 
 **UI hint**: yes
 
@@ -404,5 +404,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 7. Data Foundation & Canonical Record | 5/5 | Complete   | 2026-05-26 |
 | 8. Admin Shell & Information Architecture | 6/6 | Complete   | 2026-05-26 |
 | 9. Performance Analytics & Scorecards | 6/6 | Complete   | 2026-05-27 |
-| 10. Hakkediş Billing | 3/4 | In Progress|  |
+| 10. Hakkediş Billing | 4/4 | Complete   | 2026-05-28 |
 | 11. Exports | 0/TBD | Not started | - |
