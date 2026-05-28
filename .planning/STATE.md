@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Submission-Driven Hakkediş & UX Brand Pass
 status: executing
-stopped_at: Completed 11-01b-PLAN.md
-last_updated: "2026-05-28T21:07:34.099Z"
+stopped_at: Completed 12-03-PLAN.md
+last_updated: "2026-05-28T21:26:20.738Z"
 last_activity: 2026-05-28
 progress:
   total_phases: 6
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-05-25)
 ## Current Position
 
 Phase: 12 (submission-driven-hakkedi) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-05-28
 
@@ -102,6 +102,7 @@ Last activity: 2026-05-28
 | Phase 11 P11-06 | 0 | 2 tasks | 1 files |
 | Phase 12 P01 | 5 | 3 tasks | 7 files |
 | Phase 12 P02 | 3 minutes | 2 tasks | 2 files |
+| Phase 12 P12-03 | 13 minutes | 2 tasks tasks | 3 files files |
 
 ## Accumulated Context
 
@@ -203,6 +204,12 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 12-01]: tests/hakedis-live.test.ts contract scaffold ships with 9 it.todo entries whose names are byte-identical to 12-VALIDATION.md verify-command -t filters — downstream Plans 12-03 + 12-04 bind deterministically by name
 - [Phase ?]: [Phase 12-01]: seedDraftPeriod fixture uses HAKEDIS_LIVE_FIXTURE_IDS in 0c00 UUID range to avoid collision with HAKEDIS_FIXTURE_IDS (0e00) in tests/fixtures/exports.ts — both fixtures coexist in the same test session
 - [Phase ?]: Phase 12-02: 0009 applied to dev (neondb) + test (neondb_test) via npx tsx src/db/migrate.ts (D-49); file untouched post-apply (Phase 9-03 hash invariant)
+- [Phase ?]: [Phase 12-03]: D-117 helper extraction — recomputeHakedisLine single body, two callers (recomputePeriodLines manual + handleAuditDecision bot post-commit hook); zero math drift
+- [Phase ?]: [Phase 12-03]: Open Question 1 RESOLVED — hakedis_line_submissions uses delta-only NOT EXISTS clause; join table represents period_qty contributors, not cumulative
+- [Phase ?]: [Phase 12-03]: Open Question 4 RESOLVED — UPSERT via ON CONFLICT ON CONSTRAINT hakedis_period_lines_period_boq_unique; DELETE-then-INSERT would CASCADE-orphan join rows
+- [Phase ?]: [Phase 12-03]: Pitfall 5 honored — grep -c logOfficeActivity src/lib/bot-audit.ts = 0; bot path has no Auth.js session and never logs through after()
+- [Phase ?]: [Phase 12-03]: Static-edge test pattern — fs.readFileSync of src/lib/bot-audit.ts asserts hook ordering + try/catch(hakErr) wrap + Pitfall 5 file-byte absence; deterministic, <100ms, catches any future drift
+- [Phase ?]: [Phase 12-03]: Plan 12-03 Task 1 closed with 1 it.todo (LivePeriodPoller mount gate) per acceptance allowance; Plan 12-04 must reduce to 0 — component contract returns null on enabled===false, callable as a function in vitest node env
 
 ### Open Questions / Conflicts (surface before relevant phases)
 
@@ -246,6 +253,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-28T21:07:18.866Z
-Stopped at: Completed 11-01b-PLAN.md
+Last session: 2026-05-28T21:26:20.733Z
+Stopped at: Completed 12-03-PLAN.md
 Resume file: None
