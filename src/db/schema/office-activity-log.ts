@@ -20,6 +20,7 @@ export const OFFICE_ACTION_TYPES = [
   'person_unassigned',
   'hakedis_period_created',
   'hakedis_period_finalized',
+  'hakedis_period_deleted',
   'hakedis_exported',
 ] as const;
 

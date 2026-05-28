@@ -1,4 +1,5 @@
 import { pgTable, uuid, text, numeric, timestamp, index } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 import { tenants } from './tenants';
 import { hakedisPeriods } from './hakedis-periods';
 import { boqItems } from './boq-items';
@@ -28,23 +29,15 @@ export const hakedisPeriodLines = pgTable('hakedis_period_lines', {
   // DB CHECK: cumulative_qty_approved >= previous_cumulative_qty (0004 migration)
   cumulativeQtyApproved: numeric('cumulative_qty_approved', { precision: 12, scale: 3 }).notNull(),
   previousCumulativeQty: numeric('previous_cumulative_qty', { precision: 12, scale: 3 }).notNull().default('0'),
-  // periodQty = cumulativeQtyApproved - previousCumulativeQty (enforced in computePeriodLines())
-  // DB CHECK (WR-05): period_qty >= 0 — guards against negative period quantities /
-  // negative period_value (added in 0006_v2_period_qty_check.sql).
-  //
-  // WR-03 (DEFERRED to Phase 10): the DB CHECK only enforces period_qty >= 0, NOT
-  // the arithmetic identity period_qty = cumulative_qty_approved - previous_cumulative_qty.
-  // A future computePeriodLines() bug could write any non-negative value here while
-  // keeping the cumulative columns consistent, producing a hakkediş payment line
-  // whose quantity does not match the approved work for the period — a financial
-  // integrity defect in a legally-significant certificate. Phase 10 (which
-  // introduces computePeriodLines() and the first rows in this table) MUST enforce
-  // this identity. Preferred mechanism: convert period_qty to a
-  //   GENERATED ALWAYS AS (cumulative_qty_approved - previous_cumulative_qty) STORED
-  // column so the database guarantees it; the alternative is an equality CHECK
-  // constraint. No migration is added now — the table is empty until Phase 10, so
-  // either change is safe to make at that time without data migration.
-  periodQty:             numeric('period_qty', { precision: 12, scale: 3 }).notNull(),
+  // D-104 (Phase 10 — WR-03 DONE): period_qty is now a GENERATED ALWAYS AS STORED column.
+  // The database enforces: period_qty = cumulative_qty_approved - previous_cumulative_qty.
+  // INSERT statements MUST NOT supply period_qty — Postgres computes it automatically.
+  // Supplying period_qty in an INSERT throws: "column period_qty can only be updated to DEFAULT".
+  // The 0006_v2_period_qty_check.sql CHECK (period_qty >= 0) was auto-dropped when the
+  // column was dropped in migration 0008_v2_hakedis_deductions.sql; the retained
+  // cumulative_check (cumulative >= previous from 0004) mathematically guarantees period_qty >= 0.
+  periodQty:             numeric('period_qty', { precision: 12, scale: 3 })
+                           .generatedAlwaysAs(sql`cumulative_qty_approved - previous_cumulative_qty`),
 
   // ── Computed value columns — stored for post-finalization immutability ──────
   // All multiplication happens in Postgres (money-math rule: never multiply numeric strings in JS).
