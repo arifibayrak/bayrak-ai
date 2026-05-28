@@ -394,7 +394,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 11-02-PLAN.md — EXP-01: GET /api/exports/submissions binary handler + buildSubmissionLedger() in src/lib/excel.ts (auth-first per D-114, limit:100_000 per Pitfall 3, numFmt per D-116, D-112 filename, D-109 activity log, sanitizeExcelCell wraps user-content cells — T-11-02-FORMULA mitigate)
+- [x] 11-02-PLAN.md — EXP-01: GET /api/exports/submissions binary handler + buildSubmissionLedger() in src/lib/excel.ts (auth-first per D-114, limit:100_000 per Pitfall 3, numFmt per D-116, D-112 filename, D-109 activity log, sanitizeExcelCell wraps user-content cells — T-11-02-FORMULA mitigate)
 
 **Wave 3** *(blocked on Wave 2 — both edit src/lib/excel.ts)*
 
@@ -427,4 +427,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 8. Admin Shell & Information Architecture | 6/6 | Complete   | 2026-05-26 |
 | 9. Performance Analytics & Scorecards | 6/6 | Complete   | 2026-05-27 |
 | 10. Hakkediş Billing | 4/4 | Complete    | 2026-05-28 |
-| 11. Exports | 2/7 | In Progress|  |
+| 11. Exports | 3/7 | In Progress|  |

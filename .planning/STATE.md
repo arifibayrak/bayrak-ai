@@ -4,13 +4,13 @@ milestone: v2.0
 milestone_name: Operations Intelligence & Hakkediş
 status: executing
 stopped_at: Completed 11-01b-PLAN.md
-last_updated: "2026-05-28T15:28:06.390Z"
+last_updated: "2026-05-28T15:39:32.484Z"
 last_activity: 2026-05-28
 progress:
   total_phases: 11
   completed_phases: 9
   total_plans: 56
-  completed_plans: 51
+  completed_plans: 52
   percent: 82
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-05-25)
 ## Current Position
 
 Phase: 11 (exports) — EXECUTING
-Plan: 3 of 7
+Plan: 4 of 7
 Status: Ready to execute
 Last activity: 2026-05-28
 
@@ -104,6 +104,7 @@ Phase 11 [          ] 0%
 | Phase 10 P03 | 9 minutes | 2 tasks | 5 files |
 | Phase 11-exports P01a | 2 minutes | 2 tasks tasks | 8 files files |
 | Phase 11 P01b | 596 | 3 tasks | 10 files |
+| Phase 11 P02 | 8 minutes | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -185,6 +186,9 @@ Recent decisions affecting current work:
 - [Phase ?]: Plan 11-01b: D-111 bilingual joined labels stored byte-identical across en.json and tr.json (locale-neutral pattern)
 - [Phase ?]: Plan 11-01b: tests/exports.test.ts ships 16 it.todo (vs minimum 12); EXP-02 precision + EXP-04 binary assertions split for granular vitest -t targeting
 - [Phase ?]: Plan 11-01b: seedFinalizedHakedisFixture stub throws on call; Plan 11-04 Task 1 owns the real implementation
+- [Phase 11]: Plan 11-02: buildSubmissionLedger() pattern established — Postgres decimal strings flow direct into ExcelJS cells with numFmt at column level; no parseFloat anywhere in the helper (D-116). Plans 11-03 and 11-04 mirror this pattern.
+- [Phase 11]: Plan 11-02: EXP-01 route handler pattern — auth() first statement, NextResponse.json 401 on null (NOT redirect — binary endpoint), runtime='nodejs', dynamic='force-dynamic', logOfficeActivity AFTER response construction. Same skeleton applies to EXP-02/03/04.
+- [Phase 11]: Plan 11-02: ExcelJS XLSX format does NOT persist column keys — tests that read workbooks back must look up cells by 1-based numeric index, not by sheet.columns[].key string.
 
 ### Open Questions / Conflicts (surface before relevant phases)
 
@@ -228,6 +232,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-28T15:28:06.385Z
+Last session: 2026-05-28T15:39:00.602Z
 Stopped at: Completed 11-01b-PLAN.md
 Resume file: None
