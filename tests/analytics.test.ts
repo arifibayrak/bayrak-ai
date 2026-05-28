@@ -2056,3 +2056,137 @@ describe('PERF-05: leaderboard sort', () => {
     expect(sorted[0].personId).not.toBe('a2');
   });
 });
+
+// ── Plan 11-01b: getAllFinishedPeriods() exposes non-draft periods tenant-wide ─
+
+describeIfDb('getAllFinishedPeriods() exposes non-draft periods tenant-wide', () => {
+  let db: Awaited<ReturnType<typeof getTestDb>>;
+
+  const tenantId = '00000000-0000-0000-0000-000000000001';
+  const otherTenantId = '00000000-0000-0000-0000-000000000099';
+  const projectId = '00000000-0000-0000-0000-b11000000001';
+  const userId = '00000000-0000-0000-0000-b11000000099';
+
+  beforeEach(async () => {
+    db = await getTestDb();
+    await truncateAllTables(db);
+    await db.execute(sql.raw(`INSERT INTO tenants (id, name) VALUES ('${tenantId}', 'T1') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO projects (id, tenant_id, name) VALUES ('${projectId}', '${tenantId}', 'Periods Project') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO users (id, email) VALUES ('${userId}', 'engineer@example.com') ON CONFLICT DO NOTHING`));
+  });
+
+  afterEach(async () => {
+    await truncateAllTables(db);
+  });
+
+  it('returns empty array when no periods exist in tenant', async () => {
+    const { getAllFinishedPeriods } = await import('@/actions/analytics');
+    const result = await getAllFinishedPeriods();
+    expect(Array.isArray(result)).toBe(true);
+    expect(result).toEqual([]);
+  });
+
+  it('returns a finalized period but EXCLUDES a draft period in the same tenant', async () => {
+    const finalizedId = '00000000-0000-0000-0000-b11010000001';
+    const draftId     = '00000000-0000-0000-0000-b11010000002';
+    await db.execute(sql.raw(`
+      INSERT INTO hakedis_periods (id, tenant_id, project_id, period_number, period_end_date, currency_code, status, kdv_rate, retention_rate, tevkifat_fraction, stopaj_enabled, stopaj_rate, avans_kesintisi_rate, created_by_user_id, finalized_at)
+      VALUES ('${finalizedId}', '${tenantId}', '${projectId}', 'HK-2026-01', '2026-04-30', 'TRY', 'finalized', '0.2000', '0.0500', '0.4000', false, '0.0200', '0.0000', '${userId}', NOW())
+      ON CONFLICT DO NOTHING
+    `));
+    await db.execute(sql.raw(`
+      INSERT INTO hakedis_periods (id, tenant_id, project_id, period_number, period_end_date, currency_code, status, kdv_rate, retention_rate, tevkifat_fraction, stopaj_enabled, stopaj_rate, avans_kesintisi_rate, created_by_user_id, finalized_at)
+      VALUES ('${draftId}', '${tenantId}', '${projectId}', 'HK-2026-02', '2026-05-31', 'TRY', 'draft', '0.2000', '0.0500', '0.4000', false, '0.0200', '0.0000', '${userId}', NULL)
+      ON CONFLICT DO NOTHING
+    `));
+
+    const { getAllFinishedPeriods } = await import('@/actions/analytics');
+    const result = await getAllFinishedPeriods();
+    const ids = result.map(r => r.id);
+    expect(ids).toContain(finalizedId);
+    expect(ids).not.toContain(draftId);
+    // Must carry projectName from the JOIN
+    const row = result.find(r => r.id === finalizedId);
+    expect(row?.projectName).toBe('Periods Project');
+    expect(row?.projectId).toBe(projectId);
+  });
+
+  it('cross-tenant period is NOT returned even when status is finalized', async () => {
+    const otherProjectId = '00000000-0000-0000-0000-b11020000001';
+    const otherPeriodId  = '00000000-0000-0000-0000-b11020000002';
+    await db.execute(sql.raw(`INSERT INTO tenants (id, name) VALUES ('${otherTenantId}', 'OtherTenant') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO projects (id, tenant_id, name) VALUES ('${otherProjectId}', '${otherTenantId}', 'OtherProject') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`
+      INSERT INTO hakedis_periods (id, tenant_id, project_id, period_number, period_end_date, currency_code, status, kdv_rate, retention_rate, tevkifat_fraction, stopaj_enabled, stopaj_rate, avans_kesintisi_rate, created_by_user_id, finalized_at)
+      VALUES ('${otherPeriodId}', '${otherTenantId}', '${otherProjectId}', 'HK-2026-X', '2026-04-30', 'TRY', 'finalized', '0.2000', '0.0500', '0.4000', false, '0.0200', '0.0000', '${userId}', NOW())
+      ON CONFLICT DO NOTHING
+    `));
+
+    const { getAllFinishedPeriods } = await import('@/actions/analytics');
+    const result = await getAllFinishedPeriods();
+    const ids = result.map(r => r.id);
+    expect(ids).not.toContain(otherPeriodId);
+  });
+});
+
+// ── Plan 11-01b: getPortfolioPeople({role:'worker'}).locationComplianceRate ───
+
+describeIfDb('getPortfolioPeople({role:"worker"}).locationComplianceRate', () => {
+  let db: Awaited<ReturnType<typeof getTestDb>>;
+
+  const tenantId  = '00000000-0000-0000-0000-000000000001';
+  const projectId = '00000000-0000-0000-0000-b11100000001';
+  const boqId     = '00000000-0000-0000-0000-b11100000002';
+
+  beforeEach(async () => {
+    db = await getTestDb();
+    await truncateAllTables(db);
+    await db.execute(sql.raw(`INSERT INTO tenants (id, name) VALUES ('${tenantId}', 'T1') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO projects (id, tenant_id, name) VALUES ('${projectId}', '${tenantId}', 'LCR Project') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO boq_items (id, tenant_id, project_id, material, unit, planned_qty, approved_qty, sort_order, unit_price, currency_code) VALUES ('${boqId}', '${tenantId}', '${projectId}', 'Pipe', 'm', 1000, 0, 1, '100.0000', 'TRY') ON CONFLICT DO NOTHING`));
+  });
+
+  afterEach(async () => {
+    await truncateAllTables(db);
+  });
+
+  it('worker with zero approved submissions → locationComplianceRate === null', async () => {
+    const personId = '00000000-0000-0000-0000-b11110000001';
+    await db.execute(sql.raw(`INSERT INTO people (id, tenant_id, telegram_user_id, display_name) VALUES ('${personId}', '${tenantId}', 555011, 'NoApprovedWorker') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO assignments (id, tenant_id, person_id, project_id, role_on_project) VALUES ('00000000-0000-0000-0000-b11110000a01', '${tenantId}', '${personId}', '${projectId}', 'worker') ON CONFLICT DO NOTHING`));
+
+    const { getPortfolioPeople } = await import('@/actions/analytics');
+    const workers = await getPortfolioPeople({ role: 'worker' });
+    const row = workers.find(w => w.personId === personId);
+    expect(row).toBeDefined();
+    expect(row!.locationComplianceRate).toBeNull();
+  });
+
+  it('worker with 4 approved (3 location-matched) → locationComplianceRate ≈ 0.75', async () => {
+    const personId = '00000000-0000-0000-0000-b11120000001';
+    await db.execute(sql.raw(`INSERT INTO people (id, tenant_id, telegram_user_id, display_name) VALUES ('${personId}', '${tenantId}', 555012, 'LCRWorker') ON CONFLICT DO NOTHING`));
+    await db.execute(sql.raw(`INSERT INTO assignments (id, tenant_id, person_id, project_id, role_on_project) VALUES ('00000000-0000-0000-0000-b11120000a01', '${tenantId}', '${personId}', '${projectId}', 'worker') ON CONFLICT DO NOTHING`));
+
+    // 3 approved with location_match='near', 1 approved with location_match='far'
+    for (let i = 1; i <= 3; i++) {
+      const idx = String(i).padStart(2, '0');
+      await db.execute(sql.raw(`
+        INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at, location_match)
+        VALUES ('00000000-0000-0000-0000-b111200000${idx}', '00000000-f000-0000-0000-b111200000${idx}', '${tenantId}', '${projectId}', '${personId}', '${boqId}', 'approved', '5.000', 'https://example.com/p.jpg', NOW(), 'near')
+        ON CONFLICT DO NOTHING
+      `));
+    }
+    await db.execute(sql.raw(`
+      INSERT INTO submissions (id, flow_id, tenant_id, project_id, person_id, boq_item_id, status, quantity, photo_url, submitted_at, location_match)
+      VALUES ('00000000-0000-0000-0000-b11120000004', '00000000-f000-0000-0000-b11120000004', '${tenantId}', '${projectId}', '${personId}', '${boqId}', 'approved', '5.000', 'https://example.com/p.jpg', NOW(), 'far')
+      ON CONFLICT DO NOTHING
+    `));
+
+    const { getPortfolioPeople } = await import('@/actions/analytics');
+    const workers = await getPortfolioPeople({ role: 'worker' });
+    const row = workers.find(w => w.personId === personId);
+    expect(row).toBeDefined();
+    expect(row!.locationComplianceRate).not.toBeNull();
+    expect(row!.locationComplianceRate).toBeCloseTo(0.75, 2);
+  });
+});
