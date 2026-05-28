@@ -1140,9 +1140,13 @@ describeIfDb('EXP-04 hakedis PDF route — DB integration', () => {
     const arrayBuf = await res.arrayBuffer();
     const buf = Buffer.from(arrayBuf);
 
-    // Use pdf-parse (Plan 11-01a devDep) to extract text from the PDF binary
-    // pdf-parse default export is a function: (buffer) => Promise<{text, ...}>
-    const pdfParse = (await import('pdf-parse')).default;
+    // Use pdf-parse (Plan 11-01a devDep) to extract text from the PDF binary.
+    // IMPORTANT: import the lib path directly, not the package root. The package
+    // root index.js auto-runs a debug block when module.parent is null, which
+    // throws ENOENT under vitest because module.parent is always null in the
+    // test loader. Importing the lib path bypasses that debug block entirely.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-require-imports
+    const pdfParse = require('pdf-parse/lib/pdf-parse.js') as (buf: Buffer) => Promise<{ text: string }>;
     const parsed = await pdfParse(buf);
     expect(parsed.text).toContain('İstanbul'); // fixture project name
     expect(parsed.text).toContain('Hakkediş'); // literal Turkish 'ş' must render

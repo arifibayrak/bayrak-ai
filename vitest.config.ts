@@ -1,7 +1,13 @@
 import { defineConfig } from "vitest/config";
+import react from "@vitejs/plugin-react";
 import path from "path";
 
 export default defineConfig({
+  // @vitejs/plugin-react handles JSX in .tsx files imported by the test loader.
+  // Required since Plan 11-04 introduced @react-pdf/renderer JSX components in
+  // src/lib/pdf/hakedis-pdf.tsx — without this plugin, vitest's default rolldown
+  // parser fails with "Failed to parse source ... jsx to preserve".
+  plugins: [react()],
   test: {
     globals: true,
     environment: "node",

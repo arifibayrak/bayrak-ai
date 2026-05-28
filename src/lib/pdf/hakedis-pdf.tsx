@@ -21,7 +21,7 @@
  * rendered server-side to a binary buffer via renderToBuffer.
  */
 
-import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
+import { Document, Page, Text, View, StyleSheet, renderToBuffer } from '@react-pdf/renderer';
 import type { PeriodHeader, PeriodLine, PeriodDeductions } from '@/actions/hakedis';
 
 const styles = StyleSheet.create({
@@ -138,4 +138,15 @@ export function HakedisPdf({ data }: { data: HakedisPdfData }) {
       </Page>
     </Document>
   );
+}
+
+/**
+ * renderHakedisPdf — convenience wrapper that constructs the HakedisPdf React
+ * element and pipes it through renderToBuffer. Keeps the route handler file
+ * pure-TypeScript (route.ts, not route.tsx) so vitest/rolldown doesn't need
+ * to parse JSX inside an api/.../[periodId] dynamic route path — which
+ * triggered a rolldown JSX-parse failure on .tsx route files (#2026-05-28).
+ */
+export async function renderHakedisPdf(data: HakedisPdfData): Promise<Buffer> {
+  return renderToBuffer(<HakedisPdf data={data} />);
 }
