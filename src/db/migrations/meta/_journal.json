@@ -57,6 +57,13 @@
       "when": 1779891756000,
       "tag": "0007_v2_tenant_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1779930900000,
+      "tag": "0008_v2_hakedis_deductions",
+      "breakpoints": true
     }
   ]
 }

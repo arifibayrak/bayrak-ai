@@ -232,7 +232,7 @@ describeIfDb('COST-01: currency_code DEFAULT TRY on boq_items (Phase 7)', () => 
 });
 
 // requires 0004 migration (Plan 02)
-describeIfDb('Money-Math Test 5: hakedis_period_lines CHECK constraint (Phase 7)', () => {
+describeIfDb('Money-Math Test 5: hakedis_period_lines GENERATED period_qty + cumulative CHECK (Phase 10 / D-104)', () => {
   let db: Awaited<ReturnType<typeof getTestDb>>;
 
   beforeEach(async () => {
@@ -273,6 +273,8 @@ describeIfDb('Money-Math Test 5: hakedis_period_lines CHECK constraint (Phase 7)
     }).returning();
 
     // cumulative_qty_approved (50) < previous_cumulative_qty (100) — must be rejected
+    // by the cumulative_check (0004 migration). Note: periodQty is now GENERATED ALWAYS AS
+    // STORED (D-104, migration 0008) — it must NOT be supplied in the INSERT.
     await expect(
       db.insert(hakedisPeriodLines).values({
         tenantId,
@@ -284,7 +286,6 @@ describeIfDb('Money-Math Test 5: hakedis_period_lines CHECK constraint (Phase 7)
         unitPriceSnapshot: '1250.0000',
         cumulativeQtyApproved: '50.000',
         previousCumulativeQty: '100.000',
-        periodQty: '-50.000',
         periodValue: '-62500.00',
         cumulativeValue: '62500.00',
       })
@@ -320,6 +321,8 @@ describeIfDb('Money-Math Test 5: hakedis_period_lines CHECK constraint (Phase 7)
     }).returning();
 
     // cumulative == previous → should be allowed (boundary case)
+    // periodQty is GENERATED ALWAYS AS STORED (D-104) — must NOT be supplied.
+    // Postgres auto-computes: 100.000 - 100.000 = 0.000
     const [line] = await db.insert(hakedisPeriodLines).values({
       tenantId,
       periodId: period.id,
@@ -330,12 +333,13 @@ describeIfDb('Money-Math Test 5: hakedis_period_lines CHECK constraint (Phase 7)
       unitPriceSnapshot: '1250.0000',
       cumulativeQtyApproved: '100.000',
       previousCumulativeQty: '100.000',
-      periodQty: '0.000',
       periodValue: '0.00',
       cumulativeValue: '125000.00',
     }).returning();
 
     expect(line.cumulativeQtyApproved).toBe('100.000');
+    // GENERATED column: period_qty = cumulative - previous = 100.000 - 100.000 = 0.000
+    expect(line.periodQty).toBe('0.000');
   });
 
   it('allows INSERT when cumulative_qty_approved > previous_cumulative_qty (normal case)', async () => {
@@ -367,6 +371,8 @@ describeIfDb('Money-Math Test 5: hakedis_period_lines CHECK constraint (Phase 7)
     }).returning();
 
     // cumulative (200) > previous (100) — normal case
+    // periodQty is GENERATED ALWAYS AS STORED (D-104) — must NOT be supplied.
+    // Postgres auto-computes: 200.000 - 100.000 = 100.000
     const [line] = await db.insert(hakedisPeriodLines).values({
       tenantId,
       periodId: period.id,
@@ -377,12 +383,13 @@ describeIfDb('Money-Math Test 5: hakedis_period_lines CHECK constraint (Phase 7)
       unitPriceSnapshot: '1250.0000',
       cumulativeQtyApproved: '200.000',
       previousCumulativeQty: '100.000',
-      periodQty: '100.000',
       periodValue: '125000.00',
       cumulativeValue: '250000.00',
     }).returning();
 
     expect(line.cumulativeQtyApproved).toBe('200.000');
+    // GENERATED column: period_qty = cumulative - previous = 200.000 - 100.000 = 100.000
+    expect(line.periodQty).toBe('100.000');
   });
 });
 
