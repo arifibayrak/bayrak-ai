@@ -385,7 +385,29 @@ Plans:
   4. Office engineer can download a finalized hakkediş period as a PDF document where Turkish characters (ğ ş ı ö ü ç) render correctly using an embedded TTF font; the PDF includes cover information (project, period dates, contractor), line-item table, and payment summary
   5. Requesting any export endpoint without a valid session returns HTTP 401; the export route handlers do not inherit layout-level auth and carry their own explicit `auth()` guard
 
-**Plans**: TBD
+**Plans**: 7 plans (across 5 waves; old Plan 11-01 split into 11-01a + 11-01b during revision)
+Plans:
+**Wave 1**
+
+- [ ] 11-01a-PLAN.md — Package install + schema/OE-scorecard map + 4 oe_scorecard i18n action keys: install @react-pdf/renderer + dejavu-fonts-ttf + pdf-parse (blocking-human legitimacy checkpoint first), copy DejaVu TTFs to public/fonts/, extend OFFICE_ACTION_TYPES with 4 new types (D-109), hoist OE-Scorecard actionTypeToKey() map extension here (so Wave 2 activity-log rows render specific labels immediately), add the 4 action_*_exported keys to messages/{en,tr}.json
+- [ ] 11-01b-PLAN.md — *(depends on 11-01a)* Shared helpers + exports.* i18n namespace + test scaffold: create toSlug() (D-112), add sanitizeExcelCell() (WARNING 5 / CVE-2014-3524 mitigation consumed by Plans 02/03/04), add getAllFinishedPeriods() (status!='draft' tenant-wide), extend PortfolioWorker with locationComplianceRate (WARNING 4 fix — D-110 column was previously left blank), add dashboard.admin.exports.* namespace (21 keys) + hakedis.detail.{export_excel,download_pdf}, scaffold tests/exports.test.ts with 12 it.todo entries
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 11-02-PLAN.md — EXP-01: GET /api/exports/submissions binary handler + buildSubmissionLedger() in src/lib/excel.ts (auth-first per D-114, limit:100_000 per Pitfall 3, numFmt per D-116, D-112 filename, D-109 activity log, sanitizeExcelCell wraps user-content cells — T-11-02-FORMULA mitigate)
+
+**Wave 3** *(blocked on Wave 2 — both edit src/lib/excel.ts)*
+
+- [ ] 11-03-PLAN.md — EXP-03: GET /api/exports/performance binary handler + buildPerformanceSummary() two-sheet workbook (Workers + Auditors, NO OE per D-110, D-110 layout one-row-per-worker with JSON-stringified multi-currency map per RESEARCH Open Question 3 RESOLVED, locationComplianceRate populated per WARNING 4 fix, sanitizeExcelCell on displayName per T-11-03-FORMULA, D-109 logging)
+
+**Wave 4** *(blocked on Wave 3 — both edit src/lib/excel.ts)*
+
+- [ ] 11-04-PLAN.md — EXP-02 + EXP-04: GET /api/exports/hakedis/[periodId] (three sheets per D-115) + GET /api/exports/hakedis/[periodId]/pdf (DejaVu Sans embedded per D-106, registerFonts try/catch for T-11-04-FONT-MISSING per WARNING 6 fix, snapshot-only per D-107, Pitfall 5 draft guard, sanitizeExcelCell on materialSnapshot/unitSnapshot per T-11-04-FORMULA, D-109 logging) + HakedisPdf React component
+
+**Wave 5** *(blocked on Wave 4)*
+
+- [ ] 11-05-PLAN.md — Replace Phase 8 Exports stub at src/app/dashboard/(admin)/exports/page.tsx with the hub UI: 3 trigger surfaces per D-108 + UI-SPEC Surface 1 (Submission Ledger card, Performance Summary card, Hakkediş Files period picker), force-dynamic, auth-redirect, FilterBar in Suspense (dead getPortfolioPeople import removed per WARNING 3 fix)
+- [ ] 11-06-PLAN.md — Extend PeriodDetailControls.tsx with Excel + PDF outline buttons gated on status!=='draft' (D-108 primary trigger) + end-of-phase UAT (OE Scorecard actionTypeToKey() extension was hoisted to Plan 11-01a Task 2 during revision; UAT verifies labels render correctly)
 **UI hint**: yes
 
 ## Progress

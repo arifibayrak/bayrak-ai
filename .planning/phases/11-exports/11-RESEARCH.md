@@ -709,22 +709,25 @@ This is a greenfield phase (new route handlers + new page). No rename/refactor i
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Does calling existing server actions (`getCanonicalSubmissions`, `getPeriodDetail`) from a route handler work in practice?**
    - What we know: Auth.js v5's `auth()` uses `next/headers` and works in both server actions and route handlers. The existing `boq-template/route.ts` calls `auth()` directly (not via a server action). The Phase 11 pattern could either call the action directly or inline the query.
    - What's unclear: Whether `'use server'` marked functions can be imported into route handlers without the Next.js transform causing issues.
    - Recommendation: Implement route handlers by calling the server action functions directly (they are async functions — the `'use server'` directive is a build-time hint, not a runtime restriction for same-process calls). If issues arise, inline the DB query directly in the route handler helper.
+   - **RESOLVED:** `'use server'` actions work directly when imported by route handlers — they are plain async functions at runtime; the directive is a build-time marker for the RSC payload boundary, not a runtime restriction for same-process calls. Plan 11-02 Wave 2 ships a test that imports `getCanonicalSubmissions` from `@/actions/analytics` and invokes the EXP-01 route handler end-to-end under `describeIfDb` — green = confirmation. If that test fails, inline the SQL into the route handler per the original fallback.
 
 2. **D-112 filename RFC 5987 — is ASCII-safe slug sufficient?**
    - What we know: Projects have Turkish names (`projects.name`). D-112 requires `projectSlug` in filenames. RFC 5987 `filename*=UTF-8''...` would handle UTF-8 filenames but adds implementation complexity.
    - What's unclear: Whether browsers correctly handle ASCII filenames derived from Turkish names in the project context.
    - Recommendation: Use ASCII slug derivation (Turkish char normalization → ASCII). D-112 filenames are for office engineers who manage multiple projects — an ASCII slug is sufficient for file-system sorting and identification. No RFC 5987 needed.
+   - **RESOLVED:** ASCII-slugify Turkish characters via the `toSlug()` helper shipped in Plan 11-01b (`İ/I → i`, `Ş/ş → s`, `Ğ/ğ → g`, `Ü/ü → u`, `Ö/ö → o`, `Ç/ç → c`, then lowercase, then `[^a-z0-9]+ → '-'`, then trim). All four route handlers feed `projectName` through `toSlug()` before composing `Content-Disposition: attachment; filename="..."`. No RFC 5987 `filename*=UTF-8''...` encoding needed; office-engineer filename ergonomics + cross-OS filesystem sorting are satisfied by ASCII output.
 
 3. **Performance tab: multi-currency value contribution layout**
    - What we know: `PortfolioWorker.valueContributedByCurrency` can have multiple currency entries. D-110 says "value contribution by currency" as a column.
    - What's unclear: Whether to emit one row per worker-currency combination, or to concatenate all currency values into a single cell.
    - Recommendation: Emit one row per worker per currency (simpler for Excel consumption). Workers with no value contribution get one row with empty value columns. This mirrors how the portal renders currency-grouped data.
+   - **RESOLVED:** One row per worker; currency code in a separate column (`Para Birimi / Currency`). When a worker has multiple currencies in `valueContributedByCurrency`, emit the `valueContributedByCurrency` map as a JSON-stringified value in a single cell of the `Değer Katkısı / Value Contribution` column on that single row (planner discretion in Plan 11-03; ExcelJS string cell — display layer only, no parseFloat). Workers with zero currencies emit one row with blank currency + value cells so they still appear in counts. This supersedes the "one row per worker-currency pair" recommendation above to honour the user's D-110 layout direction (one row per worker).
 
 ---
 
