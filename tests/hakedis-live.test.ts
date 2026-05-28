@@ -468,11 +468,21 @@ describeIfDb('Phase 12 submission-driven hakkediş', () => {
 
   // ── D-120 / LivePeriodPoller mount gate ──────────────────────────────────
   // Pure-function contract: vitest environment='node', no @testing-library/react.
-  // Replaced in Plan 04 Task 1 with:
-  //   expect(LivePeriodPoller({ enabled: false })).toBeNull();
-  // Stays as it.todo here because the component file does not exist yet (Plan 04
-  // ships src/components/admin/LivePeriodPoller.tsx). Acceptance criterion allows
-  // exactly 1 it.todo at Plan 12-03 close; Plan 12-04 must reduce this to 0.
-  it.todo('LivePeriodPoller mount gate: component renders nothing and returns no DOM when enabled=false');
+  // The REVISED contract (per checker Blocker 2): enabled === false returns null
+  // synchronously BEFORE any hook call. We can therefore invoke the component as
+  // a plain function and assert the synchronous return value — no renderer needed.
+  //
+  // This catches future drift where someone:
+  //   (a) flips the contract back to "always render sr-only span"
+  //   (b) reorders hooks above the early-null branch (would crash on null props)
+  //   (c) removes the enabled prop entirely
+  it('LivePeriodPoller mount gate: returns null when enabled === false (pure-import contract)', async () => {
+    const { LivePeriodPoller } = await import('@/components/admin/LivePeriodPoller');
+    expect(typeof LivePeriodPoller).toBe('function');
+    // The revised contract: null when disabled. Calling the function-component
+    // directly returns whatever its first synchronous return produces; the
+    // early-null branch runs before any hook, so this works renderer-free.
+    expect(LivePeriodPoller({ enabled: false })).toBeNull();
+  });
 
 });
