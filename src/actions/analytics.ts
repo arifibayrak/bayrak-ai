@@ -30,6 +30,7 @@ import { db } from '@/db';
 import { auth } from '@/lib/auth';
 import { getDefaultTenantId } from '@/lib/tenant';
 import type { CanonicalSubmission } from '@/lib/types';
+import type { PeriodListRow } from '@/actions/hakedis';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -1039,6 +1040,13 @@ export type PortfolioWorker = {
   submissionsPending: number;
   /** Approved EV grouped by ISO-4217 currency — never cross-currency summed */
   valueContributedByCurrency: Record<string, string>;
+  /**
+   * D-110 / WARNING 4 fix: approved-near / total-approved fraction (0..1).
+   * Null when the worker has zero approved submissions (NULLIF guard).
+   * Matches PersonMetrics.locationComplianceRate definition (lines 50-58, ~819).
+   * Consumed by Plan 11-03 performance summary Workers tab.
+   */
+  locationComplianceRate: number | null;
 };
 
 /**
@@ -1125,7 +1133,12 @@ export async function getPortfolioPeople(options: {
           p.display_name,
           COUNT(s.id) FILTER (WHERE s.status = 'approved' ${dateCondition} ${projectFilter})   AS submissions_approved,
           COUNT(s.id) FILTER (WHERE s.status = 'rejected' ${dateCondition} ${projectFilter})   AS submissions_rejected,
-          COUNT(s.id) FILTER (WHERE s.status = 'pending_audit' ${dateCondition} ${projectFilter}) AS submissions_pending
+          COUNT(s.id) FILTER (WHERE s.status = 'pending_audit' ${dateCondition} ${projectFilter}) AS submissions_pending,
+          -- D-110 / WARNING 4 fix: locationComplianceRate matches PersonMetrics.locationComplianceRate
+          -- definition (approved-near / total-approved); null when zero approved (NULLIF guard).
+          COUNT(s.id) FILTER (WHERE s.status = 'approved' AND s.location_match = 'near' ${dateCondition} ${projectFilter})::float
+            / NULLIF(COUNT(s.id) FILTER (WHERE s.status = 'approved' ${dateCondition} ${projectFilter}), 0)
+                                                                          AS location_compliance_rate
         FROM people p
         JOIN assignments a
           ON a.person_id    = p.id
@@ -1177,6 +1190,10 @@ export async function getPortfolioPeople(options: {
       submissionsRejected: Number(r.submissions_rejected ?? 0),
       submissionsPending: Number(r.submissions_pending ?? 0),
       valueContributedByCurrency: valueMap.get(String(r.person_id)) ?? {},
+      // D-110 / WARNING 4 fix: null when zero approved (NULLIF returns NULL → null in JS)
+      locationComplianceRate: r.location_compliance_rate != null
+        ? Number(r.location_compliance_rate)
+        : null,
     }));
   } else {
     // ── Auditors bulk query ────────────────────────────────────────────────
@@ -1350,5 +1367,85 @@ export async function getAuditorDecisions(options: {
     auditLatencyHours: r.audit_latency_hours != null
       ? Number(r.audit_latency_hours)
       : null,
+  }));
+}
+
+// ── getAllFinishedPeriods (Plan 11-01b) ──────────────────────────────────────
+
+/**
+ * PeriodPickerRow — extends PeriodListRow with the project name + id from a JOIN.
+ * Consumed by the Exports hub period picker (Plan 11-05) where periods from
+ * multiple projects appear in a single table and need their project labelled.
+ */
+export type PeriodPickerRow = PeriodListRow & {
+  projectName: string;
+  projectId: string;
+};
+
+/**
+ * getAllFinishedPeriods — list every non-draft hakkediş period across all projects
+ * in the current tenant, joined with the project name, ordered by period_end_date DESC.
+ *
+ * Plan 11-01b. Consumed by Plan 11-05 (Exports hub period picker, D-108).
+ *
+ * - Tenant-scoped (T-11-01b-IDOR: hp.tenant_id = ${tenantId} in WHERE).
+ * - Filters status != 'draft' (D-107 immutability — only finalized/submitted/paid
+ *   are eligible for PDF/Excel export).
+ * - netByDisplay subquery copied verbatim from getPeriodsByProject (lines 423-440)
+ *   — D-90 deduction chain stays in Postgres numeric, never re-derived in JS.
+ *
+ * Returns empty array when no non-draft periods exist (never null).
+ * Throws 'Unauthorized' on no session (matches existing analytics auth-first pattern).
+ */
+export async function getAllFinishedPeriods(): Promise<PeriodPickerRow[]> {
+  const session = await auth();
+  if (!session) throw new Error('Unauthorized');
+  const tenantId = getDefaultTenantId();
+
+  const result = await db.execute(sql`
+    SELECT
+      hp.id,
+      hp.period_number,
+      hp.period_end_date,
+      hp.currency_code,
+      hp.status,
+      hp.project_id,
+      p.name AS project_name,
+      -- net_by_display subquery copied verbatim from getPeriodsByProject (hakedis.ts lines 423-440):
+      -- full D-90 deduction chain in Postgres numeric, never re-derived in JS.
+      (
+        SELECT
+          SUM(hpl.period_value::numeric)
+            + (SUM(hpl.period_value::numeric) * COALESCE(hp2.kdv_rate::numeric, 0)
+               - SUM(hpl.period_value::numeric) * COALESCE(hp2.kdv_rate::numeric, 0)
+                 * COALESCE(hp2.tevkifat_fraction::numeric, 0))
+            - CASE WHEN hp2.stopaj_enabled
+                THEN SUM(hpl.period_value::numeric) * COALESCE(hp2.stopaj_rate::numeric, 0)
+                ELSE 0
+              END
+            - SUM(hpl.period_value::numeric) * COALESCE(hp2.retention_rate::numeric, 0)
+            - SUM(hpl.period_value::numeric) * COALESCE(hp2.avans_kesintisi_rate::numeric, 0)
+        FROM hakedis_period_lines hpl
+        JOIN hakedis_periods hp2 ON hp2.id = hpl.period_id
+        WHERE hpl.period_id = hp.id
+          AND hpl.tenant_id = ${tenantId}
+        GROUP BY hp2.id
+      ) AS net_by_display
+    FROM hakedis_periods hp
+    JOIN projects p ON p.id = hp.project_id
+    WHERE hp.tenant_id = ${tenantId}
+      AND hp.status != 'draft'
+    ORDER BY hp.period_end_date DESC
+  `);
+
+  return result.rows.map((row): PeriodPickerRow => ({
+    id: String(row.id),
+    periodNumber: String(row.period_number),
+    periodEndDate: String(row.period_end_date),
+    currencyCode: String(row.currency_code),
+    status: String(row.status),
+    netByDisplay: row.net_by_display != null ? String(row.net_by_display) : null,
+    projectId: String(row.project_id),
+    projectName: String(row.project_name),
   }));
 }
