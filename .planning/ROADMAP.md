@@ -390,7 +390,7 @@ Plans:
 **Wave 1**
 
 - [x] 11-01a-PLAN.md — Package install + schema/OE-scorecard map + 4 oe_scorecard i18n action keys: install @react-pdf/renderer + dejavu-fonts-ttf + pdf-parse (blocking-human legitimacy checkpoint first), copy DejaVu TTFs to public/fonts/, extend OFFICE_ACTION_TYPES with 4 new types (D-109), hoist OE-Scorecard actionTypeToKey() map extension here (so Wave 2 activity-log rows render specific labels immediately), add the 4 action_*_exported keys to messages/{en,tr}.json
-- [ ] 11-01b-PLAN.md — *(depends on 11-01a)* Shared helpers + exports.* i18n namespace + test scaffold: create toSlug() (D-112), add sanitizeExcelCell() (WARNING 5 / CVE-2014-3524 mitigation consumed by Plans 02/03/04), add getAllFinishedPeriods() (status!='draft' tenant-wide), extend PortfolioWorker with locationComplianceRate (WARNING 4 fix — D-110 column was previously left blank), add dashboard.admin.exports.* namespace (21 keys) + hakedis.detail.{export_excel,download_pdf}, scaffold tests/exports.test.ts with 12 it.todo entries
+- [x] 11-01b-PLAN.md — *(depends on 11-01a)* Shared helpers + exports.* i18n namespace + test scaffold: create toSlug() (D-112), add sanitizeExcelCell() (WARNING 5 / CVE-2014-3524 mitigation consumed by Plans 02/03/04), add getAllFinishedPeriods() (status!='draft' tenant-wide), extend PortfolioWorker with locationComplianceRate (WARNING 4 fix — D-110 column was previously left blank), add dashboard.admin.exports.* namespace (21 keys) + hakedis.detail.{export_excel,download_pdf}, scaffold tests/exports.test.ts with 12 it.todo entries
 
 **Wave 2** *(blocked on Wave 1)*
 
@@ -427,4 +427,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 8. Admin Shell & Information Architecture | 6/6 | Complete   | 2026-05-26 |
 | 9. Performance Analytics & Scorecards | 6/6 | Complete   | 2026-05-27 |
 | 10. Hakkediş Billing | 4/4 | Complete    | 2026-05-28 |
-| 11. Exports | 1/7 | In Progress|  |
+| 11. Exports | 2/7 | In Progress|  |

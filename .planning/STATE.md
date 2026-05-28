@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Operations Intelligence & Hakkediş
 status: executing
-stopped_at: Completed Phase 11 Plan 11-01a (setup half-A)
-last_updated: "2026-05-28T15:10:32.777Z"
+stopped_at: Completed 11-01b-PLAN.md
+last_updated: "2026-05-28T15:28:06.390Z"
 last_activity: 2026-05-28
 progress:
   total_phases: 11
   completed_phases: 9
   total_plans: 56
-  completed_plans: 50
+  completed_plans: 51
   percent: 82
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-05-25)
 ## Current Position
 
 Phase: 11 (exports) — EXECUTING
-Plan: 2 of 7
+Plan: 3 of 7
 Status: Ready to execute
 Last activity: 2026-05-28
 
@@ -103,6 +103,7 @@ Phase 11 [          ] 0%
 | Phase 10-hakkedi-billing P02 | 90 | 2 tasks | 2 files |
 | Phase 10 P03 | 9 minutes | 2 tasks | 5 files |
 | Phase 11-exports P01a | 2 minutes | 2 tasks tasks | 8 files files |
+| Phase 11 P01b | 596 | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -179,6 +180,11 @@ Recent decisions affecting current work:
 - [Phase ?]: Phase 09 Plan 06
 - [Phase ?]: [Phase 11-01a]: @react-pdf/renderer 4.5.1 + dejavu-fonts-ttf 2.37.3 + pdf-parse 1.1.1 installed; DejaVu Sans TTFs (757K + 706K) copied to public/fonts/; next.config.ts unchanged (Next.js 15 auto-externalizes @react-pdf/renderer per Research A1)
 - [Phase ?]: [Phase 11-01a]: OFFICE_ACTION_TYPES extended with 4 export action types (D-109) as TypeScript-only as-const tuple change — no migration (text column, not pg enum); OE scorecard actionTypeToKey() map + i18n action_*_exported keys (EN+TR) hoisted into Wave 1 to prevent transient 'action_unknown' window in Wave 2
+- [Phase ?]: Plan 11-01b: getAllFinishedPeriods + PeriodPickerRow placed in src/actions/analytics.ts (planner-recommended placement)
+- [Phase ?]: Plan 11-01b: PortfolioWorker.locationComplianceRate via inline aggregation (4th COUNT FILTER + NULLIF in countsResult), NOT PersonMetrics join — inherits dateRange+projectFilter for free
+- [Phase ?]: Plan 11-01b: D-111 bilingual joined labels stored byte-identical across en.json and tr.json (locale-neutral pattern)
+- [Phase ?]: Plan 11-01b: tests/exports.test.ts ships 16 it.todo (vs minimum 12); EXP-02 precision + EXP-04 binary assertions split for granular vitest -t targeting
+- [Phase ?]: Plan 11-01b: seedFinalizedHakedisFixture stub throws on call; Plan 11-04 Task 1 owns the real implementation
 
 ### Open Questions / Conflicts (surface before relevant phases)
 
@@ -222,6 +228,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-28T15:10:23.618Z
-Stopped at: Completed Phase 11 Plan 11-01a (setup half-A)
+Last session: 2026-05-28T15:28:06.385Z
+Stopped at: Completed 11-01b-PLAN.md
 Resume file: None
