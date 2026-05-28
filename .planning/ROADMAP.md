@@ -406,7 +406,7 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4)*
 
-- [ ] 11-05-PLAN.md — Replace Phase 8 Exports stub at src/app/dashboard/(admin)/exports/page.tsx with the hub UI: 3 trigger surfaces per D-108 + UI-SPEC Surface 1 (Submission Ledger card, Performance Summary card, Hakkediş Files period picker), force-dynamic, auth-redirect, FilterBar in Suspense (dead getPortfolioPeople import removed per WARNING 3 fix)
+- [x] 11-05-PLAN.md — Replace Phase 8 Exports stub at src/app/dashboard/(admin)/exports/page.tsx with the hub UI: 3 trigger surfaces per D-108 + UI-SPEC Surface 1 (Submission Ledger card, Performance Summary card, Hakkediş Files period picker), force-dynamic, auth-redirect, FilterBar in Suspense (dead getPortfolioPeople import removed per WARNING 3 fix)
 - [ ] 11-06-PLAN.md — Extend PeriodDetailControls.tsx with Excel + PDF outline buttons gated on status!=='draft' (D-108 primary trigger) + end-of-phase UAT (OE Scorecard actionTypeToKey() extension was hoisted to Plan 11-01a Task 2 during revision; UAT verifies labels render correctly)
 **UI hint**: yes
 
@@ -427,4 +427,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 8. Admin Shell & Information Architecture | 6/6 | Complete   | 2026-05-26 |
 | 9. Performance Analytics & Scorecards | 6/6 | Complete   | 2026-05-27 |
 | 10. Hakkediş Billing | 4/4 | Complete    | 2026-05-28 |
-| 11. Exports | 5/7 | In Progress|  |
+| 11. Exports | 6/7 | In Progress|  |

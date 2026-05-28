@@ -4,13 +4,13 @@ milestone: v2.0
 milestone_name: Operations Intelligence & Hakkediş
 status: executing
 stopped_at: Completed 11-01b-PLAN.md
-last_updated: "2026-05-28T16:16:52.109Z"
+last_updated: "2026-05-28T16:27:09.535Z"
 last_activity: 2026-05-28
 progress:
   total_phases: 11
   completed_phases: 9
   total_plans: 56
-  completed_plans: 54
+  completed_plans: 55
   percent: 82
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-05-25)
 ## Current Position
 
 Phase: 11 (exports) — EXECUTING
-Plan: 6 of 7
+Plan: 7 of 7
 Status: Ready to execute
 Last activity: 2026-05-28
 
@@ -107,6 +107,7 @@ Phase 11 [          ] 0%
 | Phase 11 P02 | 8 minutes | 2 tasks | 3 files |
 | Phase 11 P11-03 | 378 | 2 tasks | 4 files |
 | Phase 11 P11-04 | 18 minutes | 4 tasks | 11 files |
+| Phase 11 P11-05 | 25 minutes | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -198,6 +199,9 @@ Recent decisions affecting current work:
 - [Phase ?]: Plan 11-04: renderHakedisPdf helper keeps route.ts pure-TS (sidesteps vitest/rolldown JSX-parse failure under [periodId] paths)
 - [Phase ?]: Plan 11-04: @vitejs/plugin-react required in vitest.config.ts so test loader can parse JSX in src/lib/pdf/hakedis-pdf.tsx
 - [Phase ?]: Plan 11-04: pdf-parse imported via lib/pdf-parse.js (package root index.js auto-runs debug block under vitest where module.parent is null)
+- [Phase 11]: Plan 11-05: D-108 hub side delivered — /dashboard/exports replaces Phase 8 stub with 3 trigger surfaces (Submission Ledger + Performance Summary + Hakkediş Files picker); zero generation logic duplicated; FilterBar threads from/to/project via URLSearchParams
+- [Phase 11]: Plan 11-05: server component with auth() first statement + redirect on null (D-114 page-level pattern, mirrors hakedis/page.tsx); export const dynamic = 'force-dynamic' (v2.0 financial lock)
+- [Phase 11]: Plan 11-05: Task 2 visual+TR/EN UAT APPROVED by user — hub renders in both locales, both top-button Excel downloads work, PDF Turkish glyphs (ğ ş ı ö ü ç) render correctly; VALIDATION.md Manual-Only Verifications row 1 SATISFIED
 
 ### Open Questions / Conflicts (surface before relevant phases)
 
@@ -241,6 +245,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-28T16:16:34.327Z
+Last session: 2026-05-28T16:27:09.530Z
 Stopped at: Completed 11-01b-PLAN.md
 Resume file: None
