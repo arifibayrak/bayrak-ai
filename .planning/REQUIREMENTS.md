@@ -114,7 +114,23 @@ Current milestone. Admin-grade performance + cost analytics, Turkish hakkediş b
 - [x] **UX-05**: Every metric drills down to the underlying filtered records, and a structured submission detail view shows the full canonical record (photo, location, decision trail)
 - [x] **I18N-03**: All new v2.0 dashboard surfaces are localized TR/EN
 
-## Future Requirements (post-v2.0)
+## v3.0 Requirements — Submission-Driven Hakkediş & UX Brand Pass
+
+Defined: 2026-05-28. Each maps to roadmap Phases 12–13.
+
+### Submission-Driven Hakkediş
+
+- [ ] **SDH-01**: Each approved Telegram work-application submission contributes to the in-progress hakkediş period in real time (no rollup wait); the office sees billing artefacts grow with each approval
+- [ ] **SDH-02**: Office engineer can trace each hakkediş line-item quantity back to the source approved submission(s) that contributed to it (submission ↔ hakkediş line traceability)
+- [ ] **SDH-03**: Existing period-finalization flow continues to work — submission-driven contribution is additive and never breaks the cumulative yeşil-defter model, the deduction chain, or the immutable-snapshot guarantee from v2.0
+
+### UX & Brand Pass
+
+- [ ] **BRAND-01**: A bayrak.ai brand reference (logos, color palette, typography, layout primitives) is checked into the repo or linked from a single source of truth, readable by both humans and downstream planners
+- [ ] **BRAND-02**: Every existing dashboard surface (overview, project pages, people, analytics, hakkediş, exports, period detail) is re-skinned to follow the brand reference; default shadcn/tailwind treatments replaced with bayrak.ai-branded equivalents
+- [ ] **BRAND-03**: New shared brand component primitives (logo, brand button variants, brand heading, brand empty-state) exist so future phases inherit the brand language by default instead of reaching for unbranded shadcn defaults
+
+## Future Requirements (post-v3.0)
 
 Deferred. Tracked but not in the current roadmap.
 

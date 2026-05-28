@@ -41,6 +41,20 @@ Turn raw submission/audit data into an admin-grade operations console: role-base
 - [x] **Phase 10: Hakkediş Billing** - Hakkediş period CRUD, yeşil-defter computation (cumulative−previous period delta), configurable KDV/tevkifat/stopaj/teminat deductions, payment status tracking, and finalization lock (completed 2026-05-28)
 - [x] **Phase 11: Exports** - Multi-sheet bilingual Excel exports (submission ledger, BOQ/hakkediş yeşil defter, performance summaries), PDF hakkediş certificate with Turkish font rendering, and authenticated route handlers with Exports trigger UI (completed 2026-05-28)
 
+---
+
+## Milestone v3.0 — Submission-Driven Hakkediş & UX Brand Pass
+
+Close two outstanding gaps surfaced at the end of v2.0: (1) connect the worker-submission loop directly to the hakkediş artefact so the office sees billing grow with each approved submission, not only at period rollup; (2) bring every dashboard surface in line with the bayrak.ai brand so the product looks as deliberate as it works.
+
+**Locked decisions carried into all v3.0 phases:**
+- Submission-driven hakkediş is **additive** to the existing period-finalization flow — must never break the v2.0 yeşil-defter cumulative model, the configurable deduction chain, or the immutable-snapshot guarantee
+- Brand pass is **restyling-only** on shipped surfaces — no functional regression to v1/v2 capabilities; new shared brand primitives so future phases inherit the brand language by default
+- Approved Telegram submissions are the only trigger for submission-driven hakkediş contribution — manual entries / Excel imports stay routed through the existing period flow
+
+- [ ] **Phase 12: Submission-Driven Hakkediş** - Each approved Telegram work-application submission contributes to the in-progress hakkediş period in real time with full traceability back to the source submission(s), without breaking the existing v2.0 period-rollup model
+- [ ] **Phase 13: UX & Brand Pass** - Check in the bayrak.ai brand reference, build shared brand component primitives, re-skin every existing dashboard surface so the product looks as deliberate as it works
+
 ## Phase Details
 
 ### Phase 1: Foundation
@@ -410,10 +424,40 @@ Plans:
 - [x] 11-06-PLAN.md — Extend PeriodDetailControls.tsx with Excel + PDF outline buttons gated on status!=='draft' (D-108 primary trigger) + end-of-phase UAT (OE Scorecard actionTypeToKey() extension was hoisted to Plan 11-01a Task 2 during revision; UAT verifies labels render correctly)
 **UI hint**: yes
 
+### Phase 12: Submission-Driven Hakkediş
+
+**Goal**: Each approved Telegram work-application submission contributes immediately to the in-progress hakkediş period — the office sees billing artefacts grow with each approval, and every hakkediş line-item quantity is traceable back to the source submission(s) — without breaking the v2.0 yeşil-defter cumulative model, the configurable deduction chain, or the immutable-snapshot guarantee
+**Depends on**: Phase 10 (Hakkediş Billing) + Phase 3 (Audit Loop — approval path is the trigger)
+**Requirements**: SDH-01, SDH-02, SDH-03
+**Success Criteria** (what must be TRUE):
+
+  1. When an auditor approves a work-application submission via Telegram, the office sees the in-progress hakkediş period for the matching project + BOQ line item update within seconds — without waiting for period finalization
+  2. Office engineer can open a hakkediş line and see the list of approved submissions that contributed to its quantity (submission ↔ hakkediş traceability), including the worker, approval timestamp, and source quantity
+  3. Existing period-finalization flow continues to work unchanged on a fresh period — finalize still produces the same immutable snapshot, the cumulative `period qty = cumulative − previous` math holds, and the deduction chain (KDV / tevkifat / stopaj / teminat) is unaffected
+  4. A finalized period rejects further submission-driven contribution — approvals that land after finalization flow into the next draft period (or surface as "no draft period exists" if none is open), never mutating the finalized snapshot
+
+**Plans**: TBD (sized during /gsd:plan-phase 12)
+**UI hint**: yes
+
+### Phase 13: UX & Brand Pass
+
+**Goal**: Every existing dashboard surface follows the bayrak.ai brand — the brand reference is checked into the repo, shared brand component primitives exist so future phases inherit the brand language by default, and the product looks as deliberate as it works
+**Depends on**: Phase 12 (so the brand pass covers Phase 12's new traceability UI as well)
+**Requirements**: BRAND-01, BRAND-02, BRAND-03
+**Success Criteria** (what must be TRUE):
+
+  1. The bayrak.ai brand reference (logos, color palette, typography, layout primitives) is checked into the repo or linked from a single source of truth, readable by both humans and downstream planners
+  2. Shared brand component primitives (logo, brand button variants, brand heading, brand empty-state, brand card) exist in `src/components/brand/` (or equivalent) and are documented well enough that future phases reach for them instead of raw shadcn defaults
+  3. Every existing dashboard surface (overview, project pages, people, analytics, hakkediş, exports, period detail) is re-skinned using the brand primitives — no functional regression vs v2.0
+  4. A side-by-side before/after audit confirms each restyled surface against the brand reference; user accepts each surface visually
+
+**Plans**: TBD (sized during /gsd:plan-phase 13 — likely after brand assets land)
+**UI hint**: yes
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12 → 13
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -428,3 +472,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 9. Performance Analytics & Scorecards | 6/6 | Complete   | 2026-05-27 |
 | 10. Hakkediş Billing | 4/4 | Complete    | 2026-05-28 |
 | 11. Exports | 7/7 | Complete    | 2026-05-28 |
+| 12. Submission-Driven Hakkediş | 0/TBD | Not started | - |
+| 13. UX & Brand Pass | 0/TBD | Not started | - |

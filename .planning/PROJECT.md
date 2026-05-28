@@ -8,28 +8,23 @@ A single-tenant B2B operational platform for linear-infrastructure subcontractor
 
 Every unit of field work flows through one trustworthy loop — **worker submits → auditor approves on-site → central project data (BOQ + map) updates automatically** — so the office always sees real, verified, geolocated progress without chasing anyone on WhatsApp.
 
-## Current Milestone: v2.0 Operations Intelligence & Hakkediş
+## Current Milestone: v3.0 Submission-Driven Hakkediş & UX Brand Pass
 
-**Goal:** Turn raw submission/audit data into an admin-grade operations console — role-based performance scorecards, earned-value cost analytics, and hakkediş documents — delivered through a restructured, drill-down dashboard with standardized records and Excel/PDF export.
+**Goal:** Close two outstanding gaps surfaced at the end of v2.0 — (1) connect the worker-submission loop directly to the hakkediş artefact so the office sees billing grow with each approved submission, not only at period rollup; (2) bring every dashboard surface in line with the bayrak.ai brand so the product looks as deliberate as it works.
 
 **Target features:**
 
 *Data & functionality:*
-- Role-based performance scorecards (worker / auditor / office-engineer), cross-project
-- Office-engineer activity log (new table) to make office work measurable
-- Earned-value cost analytics — add `unit_price` to BOQ; contracted vs earned value, % complete by value, per-worker value contribution, rework value
-- Hakkediş / billing — progress-payment periods, invoiceable line items, payment status (KDV / retention per Turkish convention)
-- Standardized canonical record shape + bilingual TR/EN Excel exports (+ optional PDF hakkediş certificate)
+- Submission-driven hakkediş — each approved Telegram work-application submission contributes to the in-progress hakkediş period in real time; every hakkediş line item is traceable to the source submission(s)
 
-*Experience & information architecture:*
-- Admin command-center overview — cross-project home with portfolio KPIs, alerts, recent activity
-- Drill-down + structured record/detail views (every metric → underlying records; full submission detail page)
-- Employee profile pages — per-person performance, activity timeline, value contribution
-- Global filters (date-range / project / person / status) + data-viz trend charts (throughput, burn-rate, value-complete)
-- Performance & SLA alerts — slow audits, rejection / location-warning spikes, stalled progress
-- Navigation / IA restructure — admin shell (Overview · Projects · People · Analytics · Hakkediş · Exports)
+*Experience & brand:*
+- Dashboard UX / brand pass — every existing surface (overview, project pages, people, analytics, hakkediş, exports, period detail) re-skinned to follow the bayrak.ai brand (logos, color palette, typography, layout structure); brand reference checked into the repo so future surfaces inherit the same language
 
-**Deferred:** Phase 6 (AI Vision Assist) carries over from v1.0 — not part of this milestone.
+**Deferred:** Phase 6 (AI Vision Assist) still carries over from v1.0 — not part of this milestone.
+
+## Previous Milestone: v2.0 Operations Intelligence & Hakkediş — Complete (2026-05-28)
+
+Shipped: role-based performance scorecards (worker / auditor / office-engineer), canonical submission record + drill-down detail page, admin shell with `(admin)` route group + global filters, performance/SLA alerts + leaderboard, hakkediş period CRUD + yeşil-defter computation + Turkish deduction chain + finalization lock, and bilingual TR/EN Excel + Turkish-glyph PDF exports — all auth-guarded. See Validated requirements below.
 
 ## Requirements
 
@@ -129,4 +124,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-28 — Phase 11 (Exports) complete; v2.0 milestone reached its final phase. Two user follow-ups deferred to next milestone: (1) dashboard-wide UX/brand pass to bring the surface in line with bayrak.ai brand; (2) hakkediş creation from individual approved work-application messages.*
+*Last updated: 2026-05-28 — v3.0 milestone opened (Submission-Driven Hakkediş & UX Brand Pass) following Phase 11 close.*
