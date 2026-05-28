@@ -398,7 +398,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 — both edit src/lib/excel.ts)*
 
-- [ ] 11-03-PLAN.md — EXP-03: GET /api/exports/performance binary handler + buildPerformanceSummary() two-sheet workbook (Workers + Auditors, NO OE per D-110, D-110 layout one-row-per-worker with JSON-stringified multi-currency map per RESEARCH Open Question 3 RESOLVED, locationComplianceRate populated per WARNING 4 fix, sanitizeExcelCell on displayName per T-11-03-FORMULA, D-109 logging)
+- [x] 11-03-PLAN.md — EXP-03: GET /api/exports/performance binary handler + buildPerformanceSummary() two-sheet workbook (Workers + Auditors, NO OE per D-110, D-110 layout one-row-per-worker with JSON-stringified multi-currency map per RESEARCH Open Question 3 RESOLVED, locationComplianceRate populated per WARNING 4 fix, sanitizeExcelCell on displayName per T-11-03-FORMULA, D-109 logging)
 
 **Wave 4** *(blocked on Wave 3 — both edit src/lib/excel.ts)*
 
@@ -427,4 +427,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 8. Admin Shell & Information Architecture | 6/6 | Complete   | 2026-05-26 |
 | 9. Performance Analytics & Scorecards | 6/6 | Complete   | 2026-05-27 |
 | 10. Hakkediş Billing | 4/4 | Complete    | 2026-05-28 |
-| 11. Exports | 3/7 | In Progress|  |
+| 11. Exports | 4/7 | In Progress|  |

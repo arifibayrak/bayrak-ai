@@ -102,7 +102,7 @@ Current milestone. Admin-grade performance + cost analytics, Turkish hakkediş b
 
 - [x] **EXP-01**: Admin can export a submissions ledger to Excel using the canonical record shape, respecting active filters
 - [ ] **EXP-02**: Admin can export BOQ / hakkediş progress to Excel in bilingual TR/EN yeşil-defter format
-- [ ] **EXP-03**: Admin can export worker and auditor performance summaries to Excel
+- [x] **EXP-03**: Admin can export worker and auditor performance summaries to Excel
 - [ ] **EXP-04**: Office engineer can export a finalized hakkediş certificate as a PDF with correct Turkish character rendering
 
 ### Experience & Information Architecture
@@ -217,7 +217,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | HAK-05 | Phase 10 | Complete |
 | EXP-01 | Phase 11 | Complete |
 | EXP-02 | Phase 11 | Pending |
-| EXP-03 | Phase 11 | Pending |
+| EXP-03 | Phase 11 | Complete |
 | EXP-04 | Phase 11 | Pending |
 
 **Coverage:**

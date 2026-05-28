@@ -4,13 +4,13 @@ milestone: v2.0
 milestone_name: Operations Intelligence & Hakkediş
 status: executing
 stopped_at: Completed 11-01b-PLAN.md
-last_updated: "2026-05-28T15:39:32.484Z"
+last_updated: "2026-05-28T15:51:38.307Z"
 last_activity: 2026-05-28
 progress:
   total_phases: 11
   completed_phases: 9
   total_plans: 56
-  completed_plans: 52
+  completed_plans: 53
   percent: 82
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-05-25)
 ## Current Position
 
 Phase: 11 (exports) — EXECUTING
-Plan: 4 of 7
+Plan: 5 of 7
 Status: Ready to execute
 Last activity: 2026-05-28
 
@@ -105,6 +105,7 @@ Phase 11 [          ] 0%
 | Phase 11-exports P01a | 2 minutes | 2 tasks tasks | 8 files files |
 | Phase 11 P01b | 596 | 3 tasks | 10 files |
 | Phase 11 P02 | 8 minutes | 2 tasks | 3 files |
+| Phase 11 P11-03 | 378 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -189,6 +190,9 @@ Recent decisions affecting current work:
 - [Phase 11]: Plan 11-02: buildSubmissionLedger() pattern established — Postgres decimal strings flow direct into ExcelJS cells with numFmt at column level; no parseFloat anywhere in the helper (D-116). Plans 11-03 and 11-04 mirror this pattern.
 - [Phase 11]: Plan 11-02: EXP-01 route handler pattern — auth() first statement, NextResponse.json 401 on null (NOT redirect — binary endpoint), runtime='nodejs', dynamic='force-dynamic', logOfficeActivity AFTER response construction. Same skeleton applies to EXP-02/03/04.
 - [Phase 11]: Plan 11-02: ExcelJS XLSX format does NOT persist column keys — tests that read workbooks back must look up cells by 1-based numeric index, not by sheet.columns[].key string.
+- [Phase 11]: Plan 11-03: D-110 sheet name separator changed from ' / ' to ' - ' (Rule 1) — Excel forbids '/' in sheet names; column HEADERS still use ' / ' for D-111 compliance
+- [Phase 11]: Plan 11-03: D-110 multi-currency layout = one row per worker with JSON.stringify map in Değer Katkısı cell (RESEARCH Open Question 3 RESOLVED — supersedes original Pitfall 8)
+- [Phase 11]: Plan 11-03: buildPerformanceSummary mirrors Plan 11-02 binary-route skeleton verbatim — proves the pattern generalises across exports (auth-first, Promise.all data fetch, after()-fire-and-forget log, NextResponse Uint8Array body)
 
 ### Open Questions / Conflicts (surface before relevant phases)
 
@@ -232,6 +236,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-28T15:39:00.602Z
+Last session: 2026-05-28T15:51:07.978Z
 Stopped at: Completed 11-01b-PLAN.md
 Resume file: None
