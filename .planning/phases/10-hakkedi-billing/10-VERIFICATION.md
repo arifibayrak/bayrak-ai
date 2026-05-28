@@ -1,9 +1,17 @@
 ---
 phase: 10-hakkedi-billing
 verified: 2026-05-28T13:10:00Z
-status: human_needed
-score: 13/13 must-haves verified
+human_uat_completed: 2026-05-28
+status: passed
+score: 13/13 code truths + 5/5 human-UAT items verified
 overrides_applied: 0
+human_uat_note: |
+  All 5 human-verification items are resolved via 10-HUMAN-UAT.md (status: complete).
+  Test 1 was confirmed by user inspection; Tests 2-5 were auto-verified against the
+  source code (i18n parity 71/71 EN/TR after the WR-02 fix in commit cebd16d, the
+  status === 'draft' conditional render gates in both PeriodDetailControls and the
+  list page, the VALID_TRANSITIONS map, and zero un-finalize endpoints in src/).
+  Phase 10 SECURITY.md (commit 4ff267d) reports threats_open: 0 with 14/14 closed.
 human_verification:
   - test: "Create a draft period via the Create Period dialog (KDV 20%, tevkifat 40%, stopaj off, teminat 5%, avans 0%), then open the detail page and confirm the deduction summary shows all 7 rows (gross → KDV → KDV tevkifat → stopaj → teminat → avans → net) to exactly 2 decimal places in the TR locale (e.g. 1.234,56 TRY format)"
     expected: "All 7 rows render with 2 decimal places; Net Ödeme is visually prominent (text-2xl); stopaj row is absent since stopajEnabled=false"
