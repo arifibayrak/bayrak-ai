@@ -897,13 +897,306 @@ describeIfDb('D-109 activity log — performance_summary_exported', () => {
   });
 });
 
-describe('EXP-04 hakedis PDF', () => {
-  it.todo('returns 401 without session');
-  it.todo('returns 422 for draft period');
-  it.todo('PDF binary contains embedded DejaVu Sans font name');
-  it.todo('PDF binary contains Turkish glyphs from period number');
+// ════════════════════════════════════════════════════════════════════════════
+// EXP-02 hakedis Excel — route handler tests (Plan 11-04 Task 4)
+// ════════════════════════════════════════════════════════════════════════════
+
+describe('EXP-02 hakedis Excel route', () => {
+  beforeEach(() => {
+    setMockSession({ user: { id: 'test-user-id', email: 'test@example.com' } });
+  });
+
+  it('returns 401 without session', async () => {
+    setMockSession(null);
+    const route = await import('@/app/api/exports/hakedis/[periodId]/route');
+    const res = await route.GET(
+      new Request('http://localhost/api/exports/hakedis/00000000-0000-0000-0000-0000000e0009'),
+      { params: Promise.resolve({ periodId: '00000000-0000-0000-0000-0000000e0009' }) },
+    );
+    expect(res.status).toBe(401);
+    const body = await res.json();
+    expect(body).toEqual({ error: 'Unauthorized' });
+  });
 });
 
-describe('D-111 bilingual headers', () => {
-  it.todo('every TR/EN header cell in every workbook contains a " / " separator');
+describeIfDb('EXP-02 hakedis Excel route — DB integration', () => {
+  let db: Awaited<ReturnType<typeof getTestDb>>;
+
+  beforeEach(async () => {
+    setMockSession({ user: { id: 'test-user-id', email: 'test@example.com' } });
+    db = await getTestDb();
+    await truncateAllTables(db);
+  });
+
+  afterEach(async () => {
+    await truncateAllTables(db);
+  });
+
+  it('returns 422 for draft period (Pitfall 5 — defense-in-depth)', async () => {
+    const { periodId } = await seedFinalizedHakedisFixture(db);
+    const { sql } = await import('drizzle-orm');
+    // Flip to draft to exercise the server guard
+    await db.execute(sql.raw(`UPDATE hakedis_periods SET status = 'draft' WHERE id = '${periodId}'`));
+
+    const route = await import('@/app/api/exports/hakedis/[periodId]/route');
+    const res = await route.GET(
+      new Request(`http://localhost/api/exports/hakedis/${periodId}`),
+      { params: Promise.resolve({ periodId }) },
+    );
+    expect(res.status).toBe(422);
+    const body = await res.json();
+    expect(body).toEqual({ error: 'Period is not finalized' });
+  });
+
+  it('Hesap Özeti cells match getPeriodDetail().deductions (no precision loss)', async () => {
+    const { periodId } = await seedFinalizedHakedisFixture(db);
+
+    const { getPeriodDetail } = await import('@/actions/hakedis');
+    const detail = await getPeriodDetail(periodId);
+    expect(detail.deductions).not.toBeNull();
+    const expected = detail.deductions!;
+
+    const route = await import('@/app/api/exports/hakedis/[periodId]/route');
+    const res = await route.GET(
+      new Request(`http://localhost/api/exports/hakedis/${periodId}`),
+      { params: Promise.resolve({ periodId }) },
+    );
+    expect(res.status).toBe(200);
+
+    const arrayBuf = await res.arrayBuffer();
+    const wb = new ExcelJS.Workbook();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await wb.xlsx.load(arrayBuf as any);
+    const hesapOzeti = wb.worksheets[2];
+    expect(hesapOzeti.name).toBe('Hesap Özeti');
+
+    // Rows 2..8 = gross, kdv, tevkifat, stopaj, teminat, avans, net
+    const labels: (keyof typeof expected)[] = [
+      'gross', 'kdv', 'tevkifat', 'stopaj', 'teminat', 'avans', 'net',
+    ];
+    for (let i = 0; i < labels.length; i++) {
+      const cell = hesapOzeti.getRow(i + 2).getCell(2);
+      // numeric equality — column-level numFmt drives display, not precision
+      expect(Number(cell.value)).toBeCloseTo(Number(expected[labels[i]]), 2);
+    }
+  });
+
+  it('D-111: every header in all 3 sheets contains " / " bilingual separator', async () => {
+    const { periodId } = await seedFinalizedHakedisFixture(db);
+
+    const route = await import('@/app/api/exports/hakedis/[periodId]/route');
+    const res = await route.GET(
+      new Request(`http://localhost/api/exports/hakedis/${periodId}`),
+      { params: Promise.resolve({ periodId }) },
+    );
+    expect(res.status).toBe(200);
+
+    const arrayBuf = await res.arrayBuffer();
+    const wb = new ExcelJS.Workbook();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await wb.xlsx.load(arrayBuf as any);
+    expect(wb.worksheets.length).toBe(3);
+
+    for (const sheet of wb.worksheets) {
+      const headerValues = sheet.getRow(1).values as unknown[];
+      const headers = headerValues.filter((v) => typeof v === 'string') as string[];
+      expect(headers.length).toBeGreaterThan(0);
+      for (const h of headers) {
+        expect(h).toContain(' / ');
+      }
+    }
+  });
+
+  it('D-112: filename hakkedis-{periodNumber}-{projectSlug}.xlsx', async () => {
+    const { periodId, periodNumber } = await seedFinalizedHakedisFixture(db);
+
+    const route = await import('@/app/api/exports/hakedis/[periodId]/route');
+    const res = await route.GET(
+      new Request(`http://localhost/api/exports/hakedis/${periodId}`),
+      { params: Promise.resolve({ periodId }) },
+    );
+    expect(res.status).toBe(200);
+    const disposition = res.headers.get('content-disposition');
+    expect(disposition).toBeTruthy();
+    // Fixture project name 'İstanbul Doğalgaz' → slug 'istanbul-dogalgaz'
+    expect(disposition).toContain(`hakkedis-${periodNumber}-istanbul-dogalgaz.xlsx`);
+  });
+});
+
+describeIfDb('D-109 activity log — hakedis_excel_exported', () => {
+  let db: Awaited<ReturnType<typeof getTestDb>>;
+
+  beforeEach(async () => {
+    setMockSession({ user: { id: 'test-user-id', email: 'test@example.com' } });
+    db = await getTestDb();
+    await truncateAllTables(db);
+  });
+
+  afterEach(async () => {
+    await truncateAllTables(db);
+  });
+
+  it('each successful hakedis excel export writes exactly one row of action_type hakedis_excel_exported', async () => {
+    const { periodId } = await seedFinalizedHakedisFixture(db);
+
+    const route = await import('@/app/api/exports/hakedis/[periodId]/route');
+    const res = await route.GET(
+      new Request(`http://localhost/api/exports/hakedis/${periodId}`),
+      { params: Promise.resolve({ periodId }) },
+    );
+    expect(res.status).toBe(200);
+    await res.arrayBuffer();
+    await new Promise((r) => setTimeout(r, 200));
+
+    const { sql } = await import('drizzle-orm');
+    const rows = await db.execute(
+      sql.raw(
+        `SELECT action_type FROM office_activity_log WHERE action_type = 'hakedis_excel_exported'`,
+      ),
+    );
+    expect(rows.rows).toHaveLength(1);
+    expect(rows.rows[0].action_type).toBe('hakedis_excel_exported');
+  });
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// EXP-04 hakedis PDF — route handler tests (Plan 11-04 Task 4)
+// ════════════════════════════════════════════════════════════════════════════
+
+describe('EXP-04 hakedis PDF route', () => {
+  beforeEach(() => {
+    setMockSession({ user: { id: 'test-user-id', email: 'test@example.com' } });
+  });
+
+  it('returns 401 without session', async () => {
+    setMockSession(null);
+    const route = await import('@/app/api/exports/hakedis/[periodId]/pdf/route');
+    const res = await route.GET(
+      new Request('http://localhost/api/exports/hakedis/00000000-0000-0000-0000-0000000e0009/pdf'),
+      { params: Promise.resolve({ periodId: '00000000-0000-0000-0000-0000000e0009' }) },
+    );
+    expect(res.status).toBe(401);
+    const body = await res.json();
+    expect(body).toEqual({ error: 'Unauthorized' });
+  });
+});
+
+describeIfDb('EXP-04 hakedis PDF route — DB integration', () => {
+  let db: Awaited<ReturnType<typeof getTestDb>>;
+
+  beforeEach(async () => {
+    setMockSession({ user: { id: 'test-user-id', email: 'test@example.com' } });
+    db = await getTestDb();
+    await truncateAllTables(db);
+  });
+
+  afterEach(async () => {
+    await truncateAllTables(db);
+  });
+
+  it('returns 422 for draft period (Pitfall 5 — defense-in-depth)', async () => {
+    const { periodId } = await seedFinalizedHakedisFixture(db);
+    const { sql } = await import('drizzle-orm');
+    await db.execute(sql.raw(`UPDATE hakedis_periods SET status = 'draft' WHERE id = '${periodId}'`));
+
+    const route = await import('@/app/api/exports/hakedis/[periodId]/pdf/route');
+    const res = await route.GET(
+      new Request(`http://localhost/api/exports/hakedis/${periodId}/pdf`),
+      { params: Promise.resolve({ periodId }) },
+    );
+    expect(res.status).toBe(422);
+    const body = await res.json();
+    expect(body).toEqual({ error: 'Period is not finalized' });
+  });
+
+  it('PDF binary contains the DejaVu font name (D-106 embedded-font gate)', async () => {
+    const { periodId } = await seedFinalizedHakedisFixture(db);
+
+    const route = await import('@/app/api/exports/hakedis/[periodId]/pdf/route');
+    const res = await route.GET(
+      new Request(`http://localhost/api/exports/hakedis/${periodId}/pdf`),
+      { params: Promise.resolve({ periodId }) },
+    );
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toBe('application/pdf');
+
+    const arrayBuf = await res.arrayBuffer();
+    const buf = Buffer.from(arrayBuf);
+    // PDF stores the embedded-font name in its font dictionary as plain ASCII —
+    // search the binary for the literal substring 'DejaVu'.
+    expect(buf.includes(Buffer.from('DejaVu'))).toBe(true);
+  });
+
+  it('PDF binary contains Turkish text (project name + hakkediş literal)', async () => {
+    const { periodId } = await seedFinalizedHakedisFixture(db);
+
+    const route = await import('@/app/api/exports/hakedis/[periodId]/pdf/route');
+    const res = await route.GET(
+      new Request(`http://localhost/api/exports/hakedis/${periodId}/pdf`),
+      { params: Promise.resolve({ periodId }) },
+    );
+    expect(res.status).toBe(200);
+
+    const arrayBuf = await res.arrayBuffer();
+    const buf = Buffer.from(arrayBuf);
+
+    // Use pdf-parse (Plan 11-01a devDep) to extract text from the PDF binary
+    // pdf-parse default export is a function: (buffer) => Promise<{text, ...}>
+    const pdfParse = (await import('pdf-parse')).default;
+    const parsed = await pdfParse(buf);
+    expect(parsed.text).toContain('İstanbul'); // fixture project name
+    expect(parsed.text).toContain('Hakkediş'); // literal Turkish 'ş' must render
+  });
+
+  it('D-112 PDF filename hakkedis-{periodNumber}-{projectSlug}-{YYYYMMDD}.pdf', async () => {
+    const { periodId, periodNumber } = await seedFinalizedHakedisFixture(db);
+
+    const route = await import('@/app/api/exports/hakedis/[periodId]/pdf/route');
+    const res = await route.GET(
+      new Request(`http://localhost/api/exports/hakedis/${periodId}/pdf`),
+      { params: Promise.resolve({ periodId }) },
+    );
+    expect(res.status).toBe(200);
+    const disposition = res.headers.get('content-disposition');
+    expect(disposition).toBeTruthy();
+    // D-112: YYYYMMDD is generation date (not period end)
+    const re = new RegExp(`hakkedis-${periodNumber}-istanbul-dogalgaz-\\d{8}\\.pdf`);
+    expect(disposition).toMatch(re);
+  });
+});
+
+describeIfDb('D-109 activity log — hakedis_pdf_exported', () => {
+  let db: Awaited<ReturnType<typeof getTestDb>>;
+
+  beforeEach(async () => {
+    setMockSession({ user: { id: 'test-user-id', email: 'test@example.com' } });
+    db = await getTestDb();
+    await truncateAllTables(db);
+  });
+
+  afterEach(async () => {
+    await truncateAllTables(db);
+  });
+
+  it('each successful hakedis PDF export writes exactly one row of action_type hakedis_pdf_exported', async () => {
+    const { periodId } = await seedFinalizedHakedisFixture(db);
+
+    const route = await import('@/app/api/exports/hakedis/[periodId]/pdf/route');
+    const res = await route.GET(
+      new Request(`http://localhost/api/exports/hakedis/${periodId}/pdf`),
+      { params: Promise.resolve({ periodId }) },
+    );
+    expect(res.status).toBe(200);
+    await res.arrayBuffer();
+    await new Promise((r) => setTimeout(r, 200));
+
+    const { sql } = await import('drizzle-orm');
+    const rows = await db.execute(
+      sql.raw(
+        `SELECT action_type FROM office_activity_log WHERE action_type = 'hakedis_pdf_exported'`,
+      ),
+    );
+    expect(rows.rows).toHaveLength(1);
+    expect(rows.rows[0].action_type).toBe('hakedis_pdf_exported');
+  });
 });
