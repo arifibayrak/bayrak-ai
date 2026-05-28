@@ -243,17 +243,17 @@ describeIfDb('EXP-01 tenant scope', () => {
   it('scopes by tenant_id (no cross-tenant rows)', async () => {
     const { sql } = await import('drizzle-orm');
     const tenantA = '00000000-0000-0000-0000-000000000001'; // default tenant the session resolves to
-    const tenantB = '00000000-0000-0000-0000-00000000000B';
-    const projectA = '00000000-0000-0000-0000-0000000000A1';
-    const projectB = '00000000-0000-0000-0000-0000000000B1';
-    const boqA = '00000000-0000-0000-0000-0000000000A2';
-    const boqB = '00000000-0000-0000-0000-0000000000B2';
-    const personA = '00000000-0000-0000-0000-0000000000A3';
-    const personB = '00000000-0000-0000-0000-0000000000B3';
-    const subA = '00000000-0000-0000-0000-0000000000A4';
-    const subB = '00000000-0000-0000-0000-0000000000B4';
-    const flowA = '00000000-f000-0000-0000-0000000000A4';
-    const flowB = '00000000-f000-0000-0000-0000000000B4';
+    const tenantB = '00000000-0000-0000-0000-00000000000b';
+    const projectA = '00000000-0000-0000-0000-0000000000a1';
+    const projectB = '00000000-0000-0000-0000-0000000000b1';
+    const boqA = '00000000-0000-0000-0000-0000000000a2';
+    const boqB = '00000000-0000-0000-0000-0000000000b2';
+    const personA = '00000000-0000-0000-0000-0000000000a3';
+    const personB = '00000000-0000-0000-0000-0000000000b3';
+    const subA = '00000000-0000-0000-0000-0000000000a4';
+    const subB = '00000000-0000-0000-0000-0000000000b4';
+    const flowA = '00000000-f000-0000-0000-0000000000a4';
+    const flowB = '00000000-f000-0000-0000-0000000000b4';
 
     await db.execute(sql.raw(`INSERT INTO tenants (id, name) VALUES ('${tenantB}', 'TenantB') ON CONFLICT DO NOTHING`));
     await db.execute(sql.raw(`INSERT INTO projects (id, tenant_id, name) VALUES ('${projectA}', '${tenantA}', 'ProjectA') ON CONFLICT DO NOTHING`));
