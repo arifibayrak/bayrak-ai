@@ -1,9 +1,9 @@
 ---
 phase: 12
 slug: submission-driven-hakkedi
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: complete
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-05-28
 revised: 2026-05-28
 ---
@@ -44,15 +44,15 @@ revised: 2026-05-28
 
 | Requirement | Behavior | Test Type | Automated Command | File Exists | Status |
 |---|---|---|---|---|---|
-| SDH-01 | Approval triggers `recomputeHakedisLine` for matching `(projectId, boqItemId, currencyCode)` | integration (describeIfDb) | `npx vitest run tests/hakedis-live.test.ts -t "D-117"` | ❌ W0 | ⬜ pending |
-| SDH-01 | D-118: no draft period → recompute is a no-op (no error, no write) | integration | `… -t "D-118 no-open-period"` | ❌ W0 | ⬜ pending |
-| SDH-01 | D-120 polling: `LivePeriodPoller` returns `null` when `enabled === false` (pure-import contract; vitest node env, no DOM) | unit (component-as-function) | `… -t "LivePeriodPoller mount gate"` | ❌ W0 | ⬜ pending |
-| SDH-02 | `hakedis_line_submissions` row inserted on contribution (D-119) | integration | `… -t "D-119 join row"` | ❌ W0 | ⬜ pending |
-| SDH-02 | `getLineSubmissions` returns expected shape (worker, decided_at, qty_contributed) | integration | `… -t "getLineSubmissions"` | ❌ W0 | ⬜ pending |
-| SDH-03 | Finalize-during-approve race serialises correctly (Pitfall 4 mitigation) | integration | `… -t "finalize race"` | ❌ W0 | ⬜ pending |
-| SDH-03 | Manual `recomputePeriodLines` produces identical output before/after Phase 12 | integration | `npx vitest run tests/hakedis.test.ts` | ✅ (must stay green) | ⬜ pending |
-| SDH-03 | Phase 11 exports byte-identical for same finalized period before/after Phase 12 | integration | `npx vitest run tests/exports.test.ts` | ✅ (must stay green) | ⬜ pending |
-| Pitfall 5 mitigation | Bot path never calls `logOfficeActivity` (no FK fail on `actorUserId`) | integration | `… -t "no office_activity_log write from bot"` | ❌ W0 | ⬜ pending |
+| SDH-01 | Approval triggers `recomputeHakedisLine` for matching `(projectId, boqItemId, currencyCode)` | integration (describeIfDb) | `npx vitest run tests/hakedis-live.test.ts -t "D-117"` | ✅ | ✅ green |
+| SDH-01 | D-118: no draft period → recompute is a no-op (no error, no write) | integration | `… -t "D-118 no-open-period"` | ✅ | ✅ green |
+| SDH-01 | D-120 polling: `LivePeriodPoller` returns `null` when `enabled === false` (pure-import contract; vitest node env, no DOM) | unit (component-as-function) | `… -t "LivePeriodPoller mount gate"` | ✅ | ✅ green |
+| SDH-02 | `hakedis_line_submissions` row inserted on contribution (D-119) | integration | `… -t "D-119 join row"` | ✅ | ✅ green |
+| SDH-02 | `getLineSubmissions` returns expected shape (worker, decided_at, qty_contributed) | integration | `… -t "getLineSubmissions"` | ✅ | ✅ green |
+| SDH-03 | Finalize-during-approve race serialises correctly (Pitfall 4 mitigation) | integration | `… -t "finalize race"` | ✅ | ✅ green |
+| SDH-03 | Manual `recomputePeriodLines` produces identical output before/after Phase 12 | integration | `npx vitest run tests/hakedis.test.ts` | ✅ (stays green) | ✅ green |
+| SDH-03 | Phase 11 exports byte-identical for same finalized period before/after Phase 12 | integration | `npx vitest run tests/exports.test.ts` | ✅ (stays green) | ✅ green |
+| Pitfall 5 mitigation | Bot path never calls `logOfficeActivity` (no FK fail on `actorUserId`) | integration | `… -t "no office_activity_log write from bot"` | ✅ | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -96,11 +96,14 @@ Plan 03 Task 1 leaves this as `it.todo` until Plan 04 ships the component file; 
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 10s (quick) / 60s (wave)
-- [ ] `nyquist_compliant: true` set in frontmatter (after planner+plan-checker pass)
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 10s (quick) / 60s (wave)
+- [x] `nyquist_compliant: true` set in frontmatter (after planner+plan-checker pass)
+- [x] Manual UAT row 1 (30s polling) — PASSED 2026-05-28 (user "uat-approved")
+- [x] Manual UAT row 2 (traceability UI bilingual) — PASSED 2026-05-28 (user "uat-approved")
+- [x] Manual UAT row 3 (finalized snapshot byte-identical post late approval) — PASSED 2026-05-28 (user "uat-approved")
 
-**Approval:** pending (planner to update on completion)
+**Approval:** APPROVED 2026-05-28 (Phase 12 closeout, plan 12-04 Task 3 UAT signed off by user)

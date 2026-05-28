@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Submission-Driven Hakkediş & UX Brand Pass
-status: executing
-stopped_at: Completed 12-03-PLAN.md
-last_updated: "2026-05-28T21:26:20.738Z"
+status: verifying
+stopped_at: "Completed 12-04-PLAN.md (Phase 12 complete; nyquist_compliant: true)"
+last_updated: "2026-05-28T21:44:52.952Z"
 last_activity: 2026-05-28
 progress:
   total_phases: 6
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-05-25)
 
 Phase: 12 (submission-driven-hakkedi) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-05-28
 
 ## Performance Metrics
@@ -103,6 +103,7 @@ Last activity: 2026-05-28
 | Phase 12 P01 | 5 | 3 tasks | 7 files |
 | Phase 12 P02 | 3 minutes | 2 tasks | 2 files |
 | Phase 12 P12-03 | 13 minutes | 2 tasks tasks | 3 files files |
+| Phase 12-submission-driven-hakkedi P04 | 12min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -210,6 +211,9 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 12-03]: Pitfall 5 honored — grep -c logOfficeActivity src/lib/bot-audit.ts = 0; bot path has no Auth.js session and never logs through after()
 - [Phase ?]: [Phase 12-03]: Static-edge test pattern — fs.readFileSync of src/lib/bot-audit.ts asserts hook ordering + try/catch(hakErr) wrap + Pitfall 5 file-byte absence; deterministic, <100ms, catches any future drift
 - [Phase ?]: [Phase 12-03]: Plan 12-03 Task 1 closed with 1 it.todo (LivePeriodPoller mount gate) per acceptance allowance; Plan 12-04 must reduce to 0 — component contract returns null on enabled===false, callable as a function in vitest node env
+- [Phase ?]: [Phase 12-04]: LivePeriodPoller revised null-on-disabled contract — pure-function callable in vitest node env; Test 9 asserts expect(LivePeriodPoller({enabled:false})).toBeNull(); 0 it.todo remaining in tests/hakedis-live.test.ts
+- [Phase ?]: [Phase 12-04]: Two-step page edit pattern — Task 2a additive poller mount (tsc-only verify) + Task 2b LineSubmissionsPanel column + 3 colspan updates (tsc + full vitest + npx next build verify). Bisectable footprint for [periodId]/page.tsx structural change.
+- [Phase ?]: [Phase 12 closeout]: nyquist_compliant: true set in 12-VALIDATION.md after Manual UAT 3/3 PASSED (SDH-01 live polling, SDH-02 bilingual traceability, SDH-03 byte-identical Phase 11 exports under late approval).
 
 ### Open Questions / Conflicts (surface before relevant phases)
 
@@ -253,6 +257,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-28T21:26:20.733Z
-Stopped at: Completed 12-03-PLAN.md
+Last session: 2026-05-28T21:44:52.947Z
+Stopped at: Completed 12-04-PLAN.md (Phase 12 complete; nyquist_compliant: true)
 Resume file: None

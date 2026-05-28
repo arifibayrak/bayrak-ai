@@ -52,7 +52,7 @@ Close two outstanding gaps surfaced at the end of v2.0: (1) connect the worker-s
 - Brand pass is **restyling-only** on shipped surfaces — no functional regression to v1/v2 capabilities; new shared brand primitives so future phases inherit the brand language by default
 - Approved Telegram submissions are the only trigger for submission-driven hakkediş contribution — manual entries / Excel imports stay routed through the existing period flow
 
-- [ ] **Phase 12: Submission-Driven Hakkediş** - Each approved Telegram work-application submission contributes to the in-progress hakkediş period in real time with full traceability back to the source submission(s), without breaking the existing v2.0 period-rollup model
+- [x] **Phase 12: Submission-Driven Hakkediş** - Each approved Telegram work-application submission contributes to the in-progress hakkediş period in real time with full traceability back to the source submission(s), without breaking the existing v2.0 period-rollup model (completed 2026-05-28)
 - [ ] **Phase 13: UX & Brand Pass** - Check in the bayrak.ai brand reference, build shared brand component primitives, re-skin every existing dashboard surface so the product looks as deliberate as it works
 
 ## Phase Details
@@ -452,7 +452,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 12-04-PLAN.md — LivePeriodPoller (D-120 30s) + LineSubmissionsPanel (SDH-02 expand-row) + page wire + end-of-phase blocking-human UAT
+- [x] 12-04-PLAN.md — LivePeriodPoller (D-120 30s) + LineSubmissionsPanel (SDH-02 expand-row) + page wire + end-of-phase blocking-human UAT
 
 **UI hint**: yes
 
@@ -489,5 +489,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 9. Performance Analytics & Scorecards | 6/6 | Complete   | 2026-05-27 |
 | 10. Hakkediş Billing | 4/4 | Complete    | 2026-05-28 |
 | 11. Exports | 7/7 | Complete    | 2026-05-28 |
-| 12. Submission-Driven Hakkediş | 3/4 | In Progress|  |
+| 12. Submission-Driven Hakkediş | 4/4 | Complete   | 2026-05-28 |
 | 13. UX & Brand Pass | 0/TBD | Not started | - |
