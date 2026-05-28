@@ -23,6 +23,7 @@ import { getTranslations } from 'next-intl/server';
 import { getLocale } from 'next-intl/server';
 import { ChevronLeft, Lock, TriangleAlert } from 'lucide-react';
 import Decimal from 'decimal.js';
+import { formatMoney } from '@/lib/format-money';
 import { auth } from '@/lib/auth';
 import { getPeriodDetail } from '@/actions/hakedis';
 import { getProjects } from '@/actions/projects';
@@ -46,32 +47,12 @@ interface Props {
   params: Promise<{ periodId: string }>;
 }
 
-// ── Money display helper (UI-SPEC Money Display Rules) ────────────────────────
-
-/**
- * Format a Postgres numeric string to a display string using decimal.js.
- * NEVER parseFloat — T-10-04-FLOAT.
- * Null/undefined → "—" (em dash).
- */
-function formatMoney(
-  value: string | null | undefined,
-  currency: string,
-  locale: string,
-): string {
-  if (value == null) return '—';
-  try {
-    const formatted = new Decimal(value)
-      .toFixed(2);
-    const localeTag = locale === 'tr' ? 'tr-TR' : 'en-US';
-    const localeStr = Number(formatted).toLocaleString(localeTag, {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
-    return `${localeStr} ${currency}`;
-  } catch {
-    return '—';
-  }
-}
+// ── Money display helper ──────────────────────────────────────────────────────
+//
+// The money formatter lives in `src/lib/format-money.ts` (imported above). It
+// uses decimal.js for rounding + BigInt + Intl.NumberFormat for locale
+// grouping, so the value never re-enters the JS-float domain on the display
+// path (T-10-04-FLOAT / 10-REVIEW WR-01).
 
 // ── Date formatting ────────────────────────────────────────────────────────────
 

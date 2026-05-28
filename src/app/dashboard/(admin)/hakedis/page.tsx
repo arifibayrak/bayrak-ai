@@ -1,7 +1,8 @@
 import { Suspense } from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, getLocale } from 'next-intl/server';
+import { formatMoneyAmount } from '@/lib/format-money';
 import { FileX } from 'lucide-react';
 import {
   Table,
@@ -55,6 +56,7 @@ export default async function HakedisPage({ searchParams }: Props) {
   if (!session) redirect('/auth/signin');
 
   const t = await getTranslations('dashboard.admin.hakedis');
+  const locale = await getLocale();
 
   const { project: projectParam } = await searchParams;
 
@@ -168,17 +170,14 @@ export default async function HakedisPage({ searchParams }: Props) {
                   />
                 </TableCell>
 
-                {/* Net Ödeme — tabular-nums, right-aligned; "—" when null */}
+                {/* Net Ödeme — tabular-nums, right-aligned; "—" when null.
+                    Money math (CR-01): precision-safe via formatMoneyAmount
+                    (decimal.js round → BigInt locale grouping; no JS float). */}
                 <TableCell
                   className="text-right tabular-nums text-sm"
-                  aria-label={`${t('col_net_payment')}: ${period.netByDisplay ?? '—'} ${period.currencyCode}`}
+                  aria-label={`${t('col_net_payment')}: ${formatMoneyAmount(period.netByDisplay, locale)} ${period.currencyCode}`}
                 >
-                  {period.netByDisplay != null
-                    ? Number(period.netByDisplay).toLocaleString(undefined, {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })
-                    : '—'}
+                  {formatMoneyAmount(period.netByDisplay, locale)}
                 </TableCell>
 
                 {/* Actions: "Aç / Open Period" always + "Sil" only for draft */}

@@ -62,7 +62,12 @@ function todayISODate(): string {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-// Generate a suggested period label (client-side: HK-{YYYY}-01)
+// Placeholder hint for the period-label input — pure visual hint, never sent
+// as the submitted value. When the user leaves the input blank, the server
+// auto-numbers via COUNT(*)+1 (createPeriodSchema's periodNumber is .optional()).
+// The previous client fallback always returned `HK-{year}-01`, which bypassed
+// the server's auto-numbering and produced duplicate labels for sequential
+// creates (10-REVIEW WR-04).
 function suggestPeriodLabel(): string {
   const year = new Date().getFullYear();
   return `HK-${year}-01`;
@@ -127,13 +132,16 @@ export function HakedisCreateDialog({ projectId }: HakedisCreateDialogProps) {
       setError(t('form.err_missing_end_date'));
       return;
     }
-    const label = periodLabel.trim() || suggestPeriodLabel();
+    // WR-04: only send a periodNumber when the user typed one. A blank input
+    // means "auto-number on the server" — sending the client placeholder
+    // would force every period to "HK-{year}-01" and clash on the next create.
+    const label = periodLabel.trim();
 
     setSubmitting(true);
     try {
       const result = await createPeriod({
         projectId,
-        periodNumber: label,
+        periodNumber: label || undefined,
         periodStartDate: startDate || undefined,
         periodEndDate: endDate,
         currencyCode: currency,

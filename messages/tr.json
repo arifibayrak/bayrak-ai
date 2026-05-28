@@ -238,6 +238,7 @@
         "action_hakedis_finalized": "Hakkediş sonuçlandırdı",
         "action_hakedis_period_created": "Hakkediş dönemi oluşturdu",
         "action_hakedis_period_finalized": "Hakkediş dönemini sonuçlandırdı",
+        "action_hakedis_period_deleted": "Hakkediş dönemini sildi",
         "action_route_uploaded": "Rota yükledi",
         "action_boq_item_created": "BOQ kalemi oluşturdu",
         "action_unknown": "Yönetim eylemi",

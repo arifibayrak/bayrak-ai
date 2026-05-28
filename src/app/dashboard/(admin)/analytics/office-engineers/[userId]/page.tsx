@@ -63,6 +63,7 @@ function actionTypeToKey(actionType: string): string {
     hakedis_finalized: 'action_hakedis_finalized',
     hakedis_period_created: 'action_hakedis_period_created',
     hakedis_period_finalized: 'action_hakedis_period_finalized',
+    hakedis_period_deleted: 'action_hakedis_period_deleted',
     route_uploaded: 'action_route_uploaded',
     boq_item_created: 'action_boq_item_created',
   };

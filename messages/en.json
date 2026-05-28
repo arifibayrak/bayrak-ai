@@ -238,6 +238,7 @@
         "action_hakedis_finalized": "Finalized hakkediş",
         "action_hakedis_period_created": "Created hakkediş period",
         "action_hakedis_period_finalized": "Finalized hakkediş period",
+        "action_hakedis_period_deleted": "Deleted hakkediş period",
         "action_route_uploaded": "Uploaded route",
         "action_boq_item_created": "Created BOQ item",
         "action_unknown": "Administrative action",
