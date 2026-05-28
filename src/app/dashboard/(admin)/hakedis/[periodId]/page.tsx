@@ -28,6 +28,7 @@ import { auth } from '@/lib/auth';
 import { getPeriodDetail } from '@/actions/hakedis';
 import { getProjects } from '@/actions/projects';
 import { HakedisStatusBadge } from '@/components/admin/HakedisStatusBadge';
+import { LivePeriodPoller } from '@/components/admin/LivePeriodPoller';
 import { PeriodDetailControls } from '@/components/admin/PeriodDetailControls';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -152,6 +153,13 @@ export default async function PeriodDetailPage({ params }: Props) {
           />
         </div>
       </div>
+
+      {/* ── D-120: 30-second polling on draft periods only (SDH-01 live update) ──
+          Headless client component: sr-only role=status span + setInterval(router.refresh, 30s).
+          UI-side guard mounts only when status === 'draft'; the helper itself also re-checks
+          status='draft' (Pitfall 4 / defense-in-depth). The component's null-on-disabled
+          contract means an accidental enabled={false} renders zero DOM. */}
+      {status === 'draft' && <LivePeriodPoller enabled={true} />}
 
       {/* ── 3b: Finalized immutability banner (non-draft only) ── */}
       {status !== 'draft' && (
