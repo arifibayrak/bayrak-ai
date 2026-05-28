@@ -33,13 +33,13 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { FilterBar } from '@/components/admin/FilterBar';
 import { LeaderboardSortSelect } from '@/components/admin/LeaderboardSortSelect';
+import { getPortfolioPeople } from '@/actions/analytics';
 import {
-  getPortfolioPeople,
   getWorkerSortFn,
   getAuditorSortFn,
   addWorkerRanks,
   addAuditorRanks,
-} from '@/actions/analytics';
+} from '@/lib/leaderboard-sort';
 import { getProjects } from '@/actions/projects';
 import { getTenantSettings } from '@/actions/settings';
 

@@ -13,6 +13,7 @@
  */
 
 import { eq, and, sql } from 'drizzle-orm';
+import { ALLOWED_CURRENCIES, type AllowedCurrency } from '@/lib/currencies';
 import Decimal from 'decimal.js';
 import { revalidatePath } from 'next/cache';
 import { db } from '@/db';
@@ -54,8 +55,10 @@ function normalizePositiveQty(value: string | number): string | null {
 // dropdown is NOT a sufficient guard — every write path must validate against
 // this list before touching the DB. Exported so other server code (and tests)
 // can share the canonical set.
-export const ALLOWED_CURRENCIES = ['TRY', 'USD', 'EUR'] as const;
-export type AllowedCurrency = (typeof ALLOWED_CURRENCIES)[number];
+// Canonical currency list + type live in `src/lib/currencies.ts` (this file
+// carries `'use server'`, which forbids non-async exports — including const
+// arrays). Imported here for in-file use; other callers import from
+// `@/lib/currencies` directly.
 
 // ── Manual CRUD ───────────────────────────────────────────────────────────────
 

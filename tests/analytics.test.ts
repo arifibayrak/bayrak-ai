@@ -2004,10 +2004,10 @@ describe('PERF-05: leaderboard sort', () => {
   it('workers default-sort by submissionsApproved DESC (PERF-05)', async () => {
     // getWorkerSortFn is defined in Plan 09-05 — RED until then (import will fail or return undefined)
     // If Plan 09-05 has not shipped yet, this will throw a TypeError/import error — expected RED state
-    const { getWorkerSortFn } = await import('@/actions/analytics') as Record<string, unknown> as { getWorkerSortFn?: (sortBy?: string) => (a: typeof workers[0], b: typeof workers[0]) => number };
+    const { getWorkerSortFn } = await import('@/lib/leaderboard-sort') as Record<string, unknown> as { getWorkerSortFn?: (sortBy?: string) => (a: typeof workers[0], b: typeof workers[0]) => number };
     if (typeof getWorkerSortFn !== 'function') {
       // Not yet implemented — fail with clear message (RED scaffold)
-      throw new Error('getWorkerSortFn is not yet exported from @/actions/analytics (RED — implement in Plan 09-05)');
+      throw new Error('getWorkerSortFn is not yet exported from @/lib/leaderboard-sort (RED — implement in Plan 09-05)');
     }
     const sorted = [...workers].sort(getWorkerSortFn());
     // Bob (20) > Alice (10) = Carol (10); Alice < Carol alphabetically
@@ -2018,9 +2018,9 @@ describe('PERF-05: leaderboard sort', () => {
 
   it('auditors default-sort by avgDecisionLatencyHours ASC (faster = better) (PERF-05)', async () => {
     // getAuditorSortFn is defined in Plan 09-05 — RED until then
-    const { getAuditorSortFn } = await import('@/actions/analytics') as Record<string, unknown> as { getAuditorSortFn?: (sortBy?: string) => (a: typeof auditors[0], b: typeof auditors[0]) => number };
+    const { getAuditorSortFn } = await import('@/lib/leaderboard-sort') as Record<string, unknown> as { getAuditorSortFn?: (sortBy?: string) => (a: typeof auditors[0], b: typeof auditors[0]) => number };
     if (typeof getAuditorSortFn !== 'function') {
-      throw new Error('getAuditorSortFn is not yet exported from @/actions/analytics (RED — implement in Plan 09-05)');
+      throw new Error('getAuditorSortFn is not yet exported from @/lib/leaderboard-sort (RED — implement in Plan 09-05)');
     }
     const sorted = [...auditors].sort(getAuditorSortFn());
     // Eve (24h) = Frank (24h) < Dave (72h); Eve < Frank alphabetically
@@ -2030,9 +2030,9 @@ describe('PERF-05: leaderboard sort', () => {
   });
 
   it('worker tie broken by displayName alphabetically (PERF-05)', async () => {
-    const { getWorkerSortFn } = await import('@/actions/analytics') as Record<string, unknown> as { getWorkerSortFn?: (sortBy?: string) => (a: typeof workers[0], b: typeof workers[0]) => number };
+    const { getWorkerSortFn } = await import('@/lib/leaderboard-sort') as Record<string, unknown> as { getWorkerSortFn?: (sortBy?: string) => (a: typeof workers[0], b: typeof workers[0]) => number };
     if (typeof getWorkerSortFn !== 'function') {
-      throw new Error('getWorkerSortFn is not yet exported from @/actions/analytics (RED — implement in Plan 09-05)');
+      throw new Error('getWorkerSortFn is not yet exported from @/lib/leaderboard-sort (RED — implement in Plan 09-05)');
     }
     // Alice and Carol both have 10 approved — Alice comes first alphabetically
     const tiedWorkers = workers.filter(w => w.personId !== 'w2'); // remove Bob
@@ -2043,9 +2043,9 @@ describe('PERF-05: leaderboard sort', () => {
 
   // CR-01 (09-REVIEW): sla_breach sort must use slaBreachRateDecided, not avgDecisionLatencyHours
   it('auditors sla_breach-sort by slaBreachRateDecided DESC, null-last (CR-01)', async () => {
-    const { getAuditorSortFn } = await import('@/actions/analytics') as Record<string, unknown> as { getAuditorSortFn?: (sortBy?: string) => (a: typeof auditors[0], b: typeof auditors[0]) => number };
+    const { getAuditorSortFn } = await import('@/lib/leaderboard-sort') as Record<string, unknown> as { getAuditorSortFn?: (sortBy?: string) => (a: typeof auditors[0], b: typeof auditors[0]) => number };
     if (typeof getAuditorSortFn !== 'function') {
-      throw new Error('getAuditorSortFn is not yet exported from @/actions/analytics');
+      throw new Error('getAuditorSortFn is not yet exported from @/lib/leaderboard-sort');
     }
     const sorted = [...auditors].sort(getAuditorSortFn('sla_breach'));
     // Dave (0.4) > Eve (0.1) > Frank (null, sorts last with sentinel -1)

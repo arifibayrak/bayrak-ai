@@ -28,7 +28,7 @@ import { db } from '@/db';
 import { auth } from '@/lib/auth';
 import { getDefaultTenantId } from '@/lib/tenant';
 import { logOfficeActivity } from '@/lib/log-office-activity';
-import { ALLOWED_CURRENCIES } from '@/actions/boq';
+import { ALLOWED_CURRENCIES } from '@/lib/currencies';
 import type { HakedisStatus } from '@/db/schema/hakedis-periods';
 
 // ── Validation schemas ────────────────────────────────────────────────────────
