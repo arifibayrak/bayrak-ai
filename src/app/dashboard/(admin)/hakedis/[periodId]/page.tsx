@@ -32,16 +32,7 @@ import { LineSubmissionsPanel } from '@/components/admin/LineSubmissionsPanel';
 import { LivePeriodPoller } from '@/components/admin/LivePeriodPoller';
 import { PeriodDetailControls } from '@/components/admin/PeriodDetailControls';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableFooter,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { BrandCard, BrandHeading, BrandTable } from '@/components/brand';
 
 export const dynamic = 'force-dynamic';
 
@@ -125,7 +116,7 @@ export default async function PeriodDetailPage({ params }: Props) {
   const avansPct = toPercent(period.avansKesintisiRate);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* ── Back link ── */}
       <Link
         href={`/dashboard/hakedis?project=${period.projectId}`}
@@ -139,7 +130,7 @@ export default async function PeriodDetailPage({ params }: Props) {
       <div className="flex items-start justify-between">
         <div className="space-y-1">
           <div className="flex items-center gap-3">
-            <h1 className="text-xl font-semibold">{period.periodNumber}</h1>
+            <BrandHeading as="h1" size="h1">{period.periodNumber}</BrandHeading>
             <HakedisStatusBadge status={status} />
           </div>
           <p className="text-sm text-muted-foreground">
@@ -193,137 +184,137 @@ export default async function PeriodDetailPage({ params }: Props) {
       )}
 
       {/* ── 3e: Yeşil Defter Line-Item Table (HAK-02) ── */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base font-semibold">
+      <BrandCard>
+        <BrandCard.Header>
+          <h2 className="text-base font-semibold">
             {t('detail.lines_heading')}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="px-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead scope="col">{t('detail.lines_col_material')}</TableHead>
-                <TableHead scope="col" className="w-[80px]">
+          </h2>
+        </BrandCard.Header>
+        <BrandCard.Body className="p-0">
+          <BrandTable.Root>
+            <BrandTable.Header>
+              <BrandTable.Row>
+                <BrandTable.Head scope="col">{t('detail.lines_col_material')}</BrandTable.Head>
+                <BrandTable.Head scope="col" className="w-[80px]">
                   {t('detail.lines_col_unit')}
-                </TableHead>
-                <TableHead scope="col" className="w-[120px] text-right tabular-nums">
+                </BrandTable.Head>
+                <BrandTable.Head scope="col" className="w-[120px] text-right tabular-nums">
                   {t('detail.lines_col_unit_price')}
-                </TableHead>
-                <TableHead scope="col" className="w-[120px] text-right tabular-nums">
+                </BrandTable.Head>
+                <BrandTable.Head scope="col" className="w-[120px] text-right tabular-nums">
                   {t('detail.lines_col_prev_cumulative')}
-                </TableHead>
-                <TableHead scope="col" className="w-[120px] text-right tabular-nums">
+                </BrandTable.Head>
+                <BrandTable.Head scope="col" className="w-[120px] text-right tabular-nums">
                   {t('detail.lines_col_cumulative')}
-                </TableHead>
-                <TableHead scope="col" className="w-[120px] text-right tabular-nums">
+                </BrandTable.Head>
+                <BrandTable.Head scope="col" className="w-[120px] text-right tabular-nums">
                   {t('detail.lines_col_period_qty')}
-                </TableHead>
-                <TableHead scope="col" className="w-[140px] text-right tabular-nums">
+                </BrandTable.Head>
+                <BrandTable.Head scope="col" className="w-[140px] text-right tabular-nums">
                   {t('detail.lines_col_period_value')}
-                </TableHead>
+                </BrandTable.Head>
                 {/* SDH-02 traceability column — chevron-expand affordance per row.
-                    aria-only label keeps the visual footprint minimal pending Phase 13 brand pass. */}
-                <TableHead scope="col" className="w-[180px]">
+                    aria-only label keeps the visual footprint minimal. */}
+                <BrandTable.Head scope="col" className="w-[180px]">
                   <span className="sr-only">
                     {t('detail.lines_col_period_value')}
                   </span>
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+                </BrandTable.Head>
+              </BrandTable.Row>
+            </BrandTable.Header>
+            <BrandTable.Body>
               {lines.length === 0 ? (
-                <TableRow>
-                  <TableCell
+                <BrandTable.Row>
+                  <BrandTable.Cell
                     colSpan={8}
                     className="text-center py-10 text-muted-foreground text-sm"
                   >
                     {t('detail.lines_empty')}
-                  </TableCell>
-                </TableRow>
+                  </BrandTable.Cell>
+                </BrandTable.Row>
               ) : (
                 lines.map((line) => {
                   const periodQtyNum = Number(line.periodQty);
                   const hasWork = periodQtyNum > 0;
                   return (
-                    <TableRow
+                    <BrandTable.Row
                       key={line.id}
                       className={hasWork ? undefined : 'text-muted-foreground'}
                     >
-                      <TableCell className="text-sm">{line.materialSnapshot}</TableCell>
-                      <TableCell className="text-sm w-[80px]">{line.unitSnapshot}</TableCell>
-                      <TableCell
+                      <BrandTable.Cell className="text-sm">{line.materialSnapshot}</BrandTable.Cell>
+                      <BrandTable.Cell className="text-sm w-[80px]">{line.unitSnapshot}</BrandTable.Cell>
+                      <BrandTable.Cell
                         className="text-right tabular-nums text-sm w-[120px]"
                         aria-label={`${t('detail.lines_col_unit_price')}: ${line.unitPriceSnapshot} ${line.currencyCodeSnapshot}`}
                       >
                         {line.unitPriceSnapshot} {line.currencyCodeSnapshot}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums text-sm w-[120px]">
+                      </BrandTable.Cell>
+                      <BrandTable.Cell className="text-right tabular-nums text-sm w-[120px]">
                         {line.previousCumulativeQty}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums text-sm w-[120px]">
+                      </BrandTable.Cell>
+                      <BrandTable.Cell className="text-right tabular-nums text-sm w-[120px]">
                         {line.cumulativeQtyApproved}
-                      </TableCell>
-                      <TableCell
+                      </BrandTable.Cell>
+                      <BrandTable.Cell
                         className={`text-right tabular-nums text-sm w-[120px]${hasWork ? ' font-bold' : ''}`}
                       >
                         {line.periodQty}
-                      </TableCell>
-                      <TableCell
+                      </BrandTable.Cell>
+                      <BrandTable.Cell
                         className="text-right tabular-nums font-semibold text-sm w-[140px]"
                         aria-label={`${t('detail.lines_col_period_value')}: ${formatMoney(line.periodValue, currency, locale)}`}
                       >
                         {formatMoney(line.periodValue, currency, locale)}
-                      </TableCell>
+                      </BrandTable.Cell>
                       {/* SDH-02 traceability column: inline-expand-row panel.
                           Lazy-fetches getLineSubmissions(periodLineId) on first click;
                           the parent's LivePeriodPoller-driven router.refresh() resets state naturally. */}
-                      <TableCell className="text-sm w-[180px]">
+                      <BrandTable.Cell className="text-sm w-[180px]">
                         <LineSubmissionsPanel
                           periodLineId={line.id}
                           periodQty={line.periodQty}
                           unitSnapshot={line.unitSnapshot}
                         />
-                      </TableCell>
-                    </TableRow>
+                      </BrandTable.Cell>
+                    </BrandTable.Row>
                   );
                 })
               )}
-            </TableBody>
+            </BrandTable.Body>
             {lines.length > 0 && (
-              <TableFooter>
-                <TableRow className="font-semibold border-t-2">
+              <BrandTable.Footer>
+                <BrandTable.Row className="font-semibold border-t-2">
                   {/* Label span 7 columns → Gross value cell at column 7 (period_value) → traceability column 8 empty. */}
-                  <TableCell colSpan={7} className="text-right text-sm">
+                  <BrandTable.Cell colSpan={7} className="text-right text-sm">
                     {t('detail.gross_total')}
-                  </TableCell>
-                  <TableCell
+                  </BrandTable.Cell>
+                  <BrandTable.Cell
                     className="text-right tabular-nums text-sm"
                     aria-label={`${t('detail.gross_total')}: ${formatMoney(deductions?.gross ?? null, currency, locale)}`}
                   >
                     {formatMoney(deductions?.gross ?? null, currency, locale)}
-                  </TableCell>
-                </TableRow>
-              </TableFooter>
+                  </BrandTable.Cell>
+                </BrandTable.Row>
+              </BrandTable.Footer>
             )}
-          </Table>
-        </CardContent>
-      </Card>
+          </BrandTable.Root>
+        </BrandCard.Body>
+      </BrandCard>
 
       {/* ── 3f: Deduction Summary Card (HAK-03) ── */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base font-semibold">
+      <BrandCard>
+        <BrandCard.Header>
+          <h2 className="text-base font-semibold">
             {t('detail.summary_heading')}
-          </CardTitle>
-          <CardDescription className="text-sm text-muted-foreground">
+          </h2>
+          <p className="text-sm text-muted-foreground">
             {t('detail.summary_period', {
               periodNumber: period.periodNumber,
               endDate: formattedEndDate,
             })}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+          </p>
+        </BrandCard.Header>
+        <BrandCard.Body>
           <div className="space-y-0">
             {/* Row 1: Gross */}
             <div className="flex justify-between py-3 border-b">
@@ -424,8 +415,8 @@ export default async function PeriodDetailPage({ params }: Props) {
               </span>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </BrandCard.Body>
+      </BrandCard>
     </div>
   );
 }

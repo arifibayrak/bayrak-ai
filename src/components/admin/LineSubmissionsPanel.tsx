@@ -31,15 +31,7 @@
 import { useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import { ChevronDown, ChevronRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { BrandButton, BrandTable } from '@/components/brand';
 import { getLineSubmissions, type LineSubmission } from '@/actions/hakedis';
 
 interface LineSubmissionsPanelProps {
@@ -107,7 +99,7 @@ export function LineSubmissionsPanel({
 
   return (
     <div className="space-y-2">
-      <Button
+      <BrandButton
         type="button"
         variant="ghost"
         size="sm"
@@ -118,7 +110,7 @@ export function LineSubmissionsPanel({
       >
         <Icon className="h-4 w-4 mr-1" aria-hidden="true" />
         <span className="text-xs">{t('heading')}</span>
-      </Button>
+      </BrandButton>
 
       {expanded && (
         <div className="rounded-md border bg-muted/30 p-2">
@@ -129,38 +121,38 @@ export function LineSubmissionsPanel({
               {t('empty')}
             </p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead scope="col" className="text-xs">
+            <BrandTable.Root>
+              <BrandTable.Header>
+                <BrandTable.Row>
+                  <BrandTable.Head scope="col" className="text-xs">
                     {t('col_worker')}
-                  </TableHead>
-                  <TableHead scope="col" className="text-xs">
+                  </BrandTable.Head>
+                  <BrandTable.Head scope="col" className="text-xs">
                     {t('col_decided_at')}
-                  </TableHead>
-                  <TableHead scope="col" className="text-xs text-right tabular-nums">
+                  </BrandTable.Head>
+                  <BrandTable.Head scope="col" className="text-xs text-right tabular-nums">
                     {t('col_qty')}
-                  </TableHead>
-                  <TableHead scope="col" className="text-xs">
+                  </BrandTable.Head>
+                  <BrandTable.Head scope="col" className="text-xs">
                     {t('col_notes')}
-                  </TableHead>
-                  <TableHead scope="col" className="text-xs">
+                  </BrandTable.Head>
+                  <BrandTable.Head scope="col" className="text-xs">
                     {t('col_photo')}
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+                  </BrandTable.Head>
+                </BrandTable.Row>
+              </BrandTable.Header>
+              <BrandTable.Body>
                 {rows.map((row) => (
-                  <TableRow key={row.submissionId}>
-                    <TableCell className="text-xs">{row.workerName}</TableCell>
-                    <TableCell className="text-xs tabular-nums">
+                  <BrandTable.Row key={row.submissionId}>
+                    <BrandTable.Cell className="text-xs">{row.workerName}</BrandTable.Cell>
+                    <BrandTable.Cell className="text-xs tabular-nums">
                       {formatDateTimeTR(row.decidedAt)}
-                    </TableCell>
-                    <TableCell className="text-xs text-right tabular-nums">
+                    </BrandTable.Cell>
+                    <BrandTable.Cell className="text-xs text-right tabular-nums">
                       {row.qtyContributed} {unitSnapshot}
-                    </TableCell>
-                    <TableCell className="text-xs">{row.notes ?? '—'}</TableCell>
-                    <TableCell className="text-xs">
+                    </BrandTable.Cell>
+                    <BrandTable.Cell className="text-xs">{row.notes ?? '—'}</BrandTable.Cell>
+                    <BrandTable.Cell className="text-xs">
                       <a
                         href={row.photoUrl}
                         target="_blank"
@@ -170,11 +162,11 @@ export function LineSubmissionsPanel({
                       >
                         {t('photo_view')}
                       </a>
-                    </TableCell>
-                  </TableRow>
+                    </BrandTable.Cell>
+                  </BrandTable.Row>
                 ))}
-              </TableBody>
-            </Table>
+              </BrandTable.Body>
+            </BrandTable.Root>
           )}
         </div>
       )}

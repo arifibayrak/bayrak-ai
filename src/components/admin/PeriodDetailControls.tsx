@@ -25,7 +25,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { RefreshCw, FileSpreadsheet, FileText } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { BrandButton } from '@/components/brand';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { recomputePeriodLines, updatePaymentStatus } from '@/actions/hakedis';
 import { FinalizeDialog } from '@/components/admin/FinalizeDialog';
@@ -90,7 +90,7 @@ export function PeriodDetailControls({
         {status === 'draft' && (
           <>
             {/* Recompute: updates lines with latest approved submissions */}
-            <Button
+            <BrandButton
               variant="outline"
               size="sm"
               onClick={handleRecompute}
@@ -98,7 +98,7 @@ export function PeriodDetailControls({
             >
               <RefreshCw className="h-4 w-4 mr-1" aria-hidden="true" />
               {t('detail.recompute')}
-            </Button>
+            </BrandButton>
 
             {/* Finalize: opens confirmation dialog (FinalizeDialog renders its own trigger) */}
             <FinalizeDialog periodId={periodId} />
@@ -110,26 +110,26 @@ export function PeriodDetailControls({
 
         {status === 'finalized' && (
           /* Tahakkuk Et / Mark Submitted */
-          <Button
+          <BrandButton
             variant="outline"
             size="sm"
             onClick={() => handleAdvanceStatus('submitted')}
             disabled={advancing}
           >
             {t('detail.mark_submitted')}
-          </Button>
+          </BrandButton>
         )}
 
         {status === 'submitted' && (
           /* Ödendi / Mark Paid */
-          <Button
+          <BrandButton
             variant="outline"
             size="sm"
             onClick={() => handleAdvanceStatus('paid')}
             disabled={advancing}
           >
             {t('detail.mark_paid')}
-          </Button>
+          </BrandButton>
         )}
 
         {/* paid: no controls — this block intentionally empty (state-gated removal D-96) */}
@@ -146,20 +146,20 @@ export function PeriodDetailControls({
               download
               aria-label={t('detail.export_excel')}
             >
-              <Button variant="outline" size="sm">
+              <BrandButton variant="outline" size="sm">
                 <FileSpreadsheet className="h-4 w-4 mr-1" aria-hidden="true" />
                 {t('detail.export_excel')}
-              </Button>
+              </BrandButton>
             </a>
             <a
               href={`/api/exports/hakedis/${periodId}/pdf`}
               download
               aria-label={t('detail.download_pdf')}
             >
-              <Button variant="outline" size="sm">
+              <BrandButton variant="outline" size="sm">
                 <FileText className="h-4 w-4 mr-1" aria-hidden="true" />
                 {t('detail.download_pdf')}
-              </Button>
+              </BrandButton>
             </a>
           </>
         )}

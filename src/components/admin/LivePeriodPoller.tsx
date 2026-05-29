@@ -33,6 +33,8 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { Radio } from 'lucide-react';
+import { BrandBadge } from '@/components/brand';
 
 interface LivePeriodPollerProps {
   /** Mount-gate — when false, the component renders nothing and starts no timer. */
@@ -72,9 +74,22 @@ function LivePeriodPollerEnabled({
     return () => clearInterval(id);
   }, [intervalMs, router]);
 
+  // Phase 13 Plan 13-02 W2 deliverable (D-127 W2 + RESEARCH §Item 5):
+  // The frozen sr-only role="status" aria-live="polite" span remains the
+  // canonical accessibility announcement surface — it is the SINGLE source of
+  // screen-reader output for the polling lifecycle. A visible BrandBadge sibling
+  // is added below as a sighted-user affordance ONLY (aria-hidden="true"), so
+  // assistive tech still receives identical output (the sr-only span). The two
+  // elements render together as siblings inside an inline-flex wrapper.
   return (
-    <span className="sr-only" role="status" aria-live="polite">
-      {t('polling_indicator')}
+    <span className="inline-flex items-center gap-2">
+      <span className="sr-only" role="status" aria-live="polite">
+        {t('polling_indicator')}
+      </span>
+      <BrandBadge variant="info" aria-hidden="true">
+        <Radio className="size-3" aria-hidden="true" />
+        <span className="ml-1">{t('polling_visible_label')}</span>
+      </BrandBadge>
     </span>
   );
 }
