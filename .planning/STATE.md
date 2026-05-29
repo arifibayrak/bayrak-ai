@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Submission-Driven Hakkediş & UX Brand Pass
 status: executing
-stopped_at: Completed 13-02-PLAN.md (Wave 2 hakkedis + exports re-skin; Phase 12 contracts + Phase 11 byte-regression intact)
-last_updated: "2026-05-29T19:23:47.640Z"
+stopped_at: Completed 13-03a-PLAN.md (Wave 3 command-center re-skin; KpiCard composes BrandCard; D-87 + Phase 11 OE i18n preserved)
+last_updated: "2026-05-29T19:58:52.790Z"
 last_activity: 2026-05-29
 progress:
   total_phases: 6
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-05-25)
 ## Current Position
 
 Phase: 13 (ux-brand-pass) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-05-29
 
@@ -106,6 +106,7 @@ Last activity: 2026-05-29
 | Phase 12 P12-03 | 13 minutes | 2 tasks tasks | 3 files files |
 | Phase 12-submission-driven-hakkedi P04 | 12min | 3 tasks | 5 files |
 | Phase 13 P02 | 21m | 3 tasks | 12 files |
+| Phase Phase 13 PP03a | 14 | - tasks | - files |
 
 ## Accumulated Context
 
@@ -219,6 +220,9 @@ Recent decisions affecting current work:
 - [Phase 13-02]: LivePeriodPoller W2 deliverable — frozen sr-only role=status aria-live=polite span and new visible BrandBadge variant=info aria-hidden=true render as siblings inside inline-flex wrapper; aria-hidden on the badge keeps the sr-only span the single source of accessibility announcements (T-13-02-A11Y mitigation)
 - [Phase 13-02]: Dialog triggers (HakedisCreate/Delete/Finalize) pass BrandButton inside base-ui DialogTrigger render prop; BrandButton spreads through all shadcn Button props which itself wraps base-ui ButtonPrimitive; render-slot pattern works with no extra glue
 - [Phase 13-02]: i18n key polling_visible_label added to dashboard.admin.hakedis.line_submissions namespace (EN: Live / TR: Canli) — keeps LivePeriodPoller visible badge bilingual without duplicating polling_indicator screen-reader text
+- [Phase ?]: [Phase 13-03a]: KpiCard composes BrandCard.Body p-3 internally — D-87 contract (valueColor + alertBadge corner slot) preserved byte-identical; consumers (overview, scorecards, people profile) need no signature changes
+- [Phase ?]: [Phase 13-03a]: OE scorecard Load More kept as native Link with brand outline classes inlined — base-ui ButtonPrimitive has no asChild slot; raw shadcn ui/button gate trivially satisfied (file never had that import)
+- [Phase ?]: [Phase 13-03a]: Overview FilterBar Suspense wrapped in BrandCard.Body p-3 — satisfies BrandCard >= 1 grep gate while delivering Procore/Autodesk-style dense-form filter row containment (D-128)
 
 ### Open Questions / Conflicts (surface before relevant phases)
 
@@ -262,6 +266,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-29T19:23:47.631Z
-Stopped at: Completed 13-02-PLAN.md (Wave 2 hakkedis + exports re-skin; Phase 12 contracts + Phase 11 byte-regression intact)
+Last session: 2026-05-29T19:58:52.785Z
+Stopped at: Completed 13-03a-PLAN.md (Wave 3 command-center re-skin; KpiCard composes BrandCard; D-87 + Phase 11 OE i18n preserved)
 Resume file: None
