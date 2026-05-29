@@ -139,8 +139,6 @@ export default async function PersonProfilePage({ params, searchParams }: Props)
   // Worker KPI values
   const workerApproved = workerMetrics?.submissionsApproved ?? 0;
   const workerRejected = workerMetrics?.submissionsRejected ?? 0;
-  const workerPending = workerMetrics?.submissionsPending ?? 0;
-  const workerTotal = workerApproved + workerRejected + workerPending;
   const workerDecided = workerApproved + workerRejected;
   // WR-03: include '%' only when rate is a real number; omit it for the em-dash placeholder
   const workerRejectionRateLabel =
@@ -430,9 +428,6 @@ export default async function PersonProfilePage({ params, searchParams }: Props)
           )}
         </BrandCard.Body>
       </BrandCard>
-
-      {/* Suppress unused variable warning */}
-      {workerTotal > -1 && null}
     </div>
   );
 }
