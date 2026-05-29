@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { BrandCard, BrandHeading } from '@/components/brand';
 import { BoqTab } from '@/components/dashboard/BoqTab';
 import { RouteTab } from '@/components/dashboard/RouteTab';
 import { PeopleTab } from '@/components/dashboard/PeopleTab';
@@ -57,7 +58,9 @@ export default async function ProjectDetailPage({ params, searchParams }: Props)
       </nav>
 
       {/* Page heading */}
-      <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-5">{project.name}</h1>
+      <BrandHeading as="h1" size="h1" className="mb-5">
+        {project.name}
+      </BrandHeading>
 
       {/* Refresh on window focus / visibility regain so map + BOQ % update (DASH-05 / D-55) */}
       <RefreshOnFocus />
@@ -90,24 +93,40 @@ export default async function ProjectDetailPage({ params, searchParams }: Props)
         </div>
 
         <TabsContent value="boq" className="pt-12">
-          <BoqTab projectId={id} />
+          <BrandCard>
+            <BrandCard.Body>
+              <BoqTab projectId={id} />
+            </BrandCard.Body>
+          </BrandCard>
         </TabsContent>
 
         <TabsContent value="rota" className="pt-12">
-          <RouteTab projectId={id} />
+          <BrandCard>
+            <BrandCard.Body>
+              <RouteTab projectId={id} />
+            </BrandCard.Body>
+          </BrandCard>
         </TabsContent>
 
         <TabsContent value="kayitlar" className="pt-12">
-          <KayitlarTab projectId={id} searchParams={{ status, page }} />
+          <BrandCard>
+            <BrandCard.Body>
+              <KayitlarTab projectId={id} searchParams={{ status, page }} />
+            </BrandCard.Body>
+          </BrandCard>
         </TabsContent>
 
         <TabsContent value="personel" className="pt-12">
-          <PeopleTab
-            projectId={id}
-            pendingPeople={pendingPeople}
-            activePeople={activePeople}
-            projects={projects}
-          />
+          <BrandCard>
+            <BrandCard.Body>
+              <PeopleTab
+                projectId={id}
+                pendingPeople={pendingPeople}
+                activePeople={activePeople}
+                projects={projects}
+              />
+            </BrandCard.Body>
+          </BrandCard>
         </TabsContent>
       </Tabs>
     </div>

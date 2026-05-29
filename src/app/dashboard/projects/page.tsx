@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { FolderOpenIcon } from 'lucide-react';
 import { getTranslations } from 'next-intl/server';
-import { Button } from '@/components/ui/button';
+import { BrandButton, BrandCard, BrandHeading } from '@/components/brand';
 import { ProjectCard } from '@/components/dashboard/ProjectCard';
 import { getProjects } from '@/actions/projects';
 
@@ -14,20 +14,22 @@ export default async function ProjectsPage() {
       {/* Page heading + CTA */}
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-1">
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{t('title')}</h1>
+          <BrandHeading as="h1" size="h1">{t('title')}</BrandHeading>
           <p className="text-sm text-muted-foreground">{t('subtitle')}</p>
         </div>
-        <Button render={<Link href="/dashboard/projects/new" />}>
+        <BrandButton variant="primary" size="md" render={<Link href="/dashboard/projects/new" />}>
           {t('create_project')}
-        </Button>
+        </BrandButton>
       </div>
 
       {/* Project list / empty state */}
       {projects.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-24 gap-4 text-muted-foreground">
-          <FolderOpenIcon className="size-12" />
-          <p className="text-sm">{t('empty_state')}</p>
-        </div>
+        <BrandCard>
+          <BrandCard.Body className="flex flex-col items-center justify-center py-24 gap-4 text-muted-foreground">
+            <FolderOpenIcon className="size-12" />
+            <p className="text-sm">{t('empty_state')}</p>
+          </BrandCard.Body>
+        </BrandCard>
       ) : (
         <div className="space-y-3">
           {projects.map((project) => (

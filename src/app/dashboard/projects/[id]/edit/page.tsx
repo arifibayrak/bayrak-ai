@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
+import { BrandCard, BrandHeading } from '@/components/brand';
 import { ProjectForm } from '@/components/dashboard/ProjectForm';
 import { getProject } from '@/actions/projects';
 
@@ -16,13 +17,19 @@ export default async function EditProjectPage({ params }: Props) {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold">{t('edit')}: {project.name}</h1>
-      <ProjectForm
-        mode="edit"
-        projectId={project.id}
-        defaultName={project.name}
-        defaultDescription={project.description ?? ''}
-      />
+      <BrandHeading as="h1" size="h2">
+        {t('edit')}: {project.name}
+      </BrandHeading>
+      <BrandCard>
+        <BrandCard.Body>
+          <ProjectForm
+            mode="edit"
+            projectId={project.id}
+            defaultName={project.name}
+            defaultDescription={project.description ?? ''}
+          />
+        </BrandCard.Body>
+      </BrandCard>
     </div>
   );
 }
