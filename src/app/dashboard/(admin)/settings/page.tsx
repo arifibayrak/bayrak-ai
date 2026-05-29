@@ -17,7 +17,7 @@ import { redirect } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { getTenantSettings } from '@/actions/settings';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { BrandCard, BrandHeading } from '@/components/brand';
 import { ThresholdSettingsForm } from '@/components/admin/ThresholdSettingsForm';
 
 export const dynamic = 'force-dynamic';
@@ -39,23 +39,23 @@ export default async function SettingsPage() {
     <div className="space-y-8">
       {/* Page heading */}
       <div className="space-y-1">
-        <h1 className="text-xl font-semibold">{t('heading')}</h1>
+        <BrandHeading as="h1" size="h1">{t('heading')}</BrandHeading>
         <p className="text-sm text-muted-foreground">{t('subtitle')}</p>
       </div>
 
       {/* Threshold form card */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('form_section_title')}</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <BrandCard>
+        <BrandCard.Header>
+          <BrandHeading as="h2" size="h3">{t('form_section_title')}</BrandHeading>
+        </BrandCard.Header>
+        <BrandCard.Body>
           <ThresholdSettingsForm
             defaultAuditSlaHours={settings.auditSlaHours}
             defaultRejectionRatePercent={defaultRejectionRatePercent}
             defaultStalledDays={settings.stalledDays}
           />
-        </CardContent>
-      </Card>
+        </BrandCard.Body>
+      </BrandCard>
     </div>
   );
 }

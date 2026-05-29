@@ -35,6 +35,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from '@/components/ui/chart';
+import { BrandCard } from '@/components/brand';
 import type { TrendPoint } from '@/actions/analytics';
 
 // ── Chart config maps (color tokens wired to --chart-* CSS variables) ──────────
@@ -297,41 +298,47 @@ export function TrendChartsClient({ data, currencyCode }: TrendChartsClientProps
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
       {/* 1. Throughput chart */}
-      <div className="space-y-2">
-        <h3 className="text-sm font-semibold text-muted-foreground">
-          {t('chart_throughput')}
-        </h3>
-        <ThroughputChart
-          data={countDataByBucket}
-          noDataLabel={noDataLabel}
-          title={t('chart_throughput')}
-        />
-      </div>
+      <BrandCard>
+        <BrandCard.Body className="space-y-2 p-3">
+          <h3 className="text-sm font-semibold text-muted-foreground">
+            {t('chart_throughput')}
+          </h3>
+          <ThroughputChart
+            data={countDataByBucket}
+            noDataLabel={noDataLabel}
+            title={t('chart_throughput')}
+          />
+        </BrandCard.Body>
+      </BrandCard>
 
       {/* 2. Earned Value chart */}
-      <div className="space-y-2">
-        <h3 className="text-sm font-semibold text-muted-foreground">
-          {t('chart_earned_value')}
-        </h3>
-        <EarnedValueChart
-          data={evData}
-          currencyCode={currencyCode}
-          noDataLabel={noDataLabel}
-          title={t('chart_earned_value')}
-        />
-      </div>
+      <BrandCard>
+        <BrandCard.Body className="space-y-2 p-3">
+          <h3 className="text-sm font-semibold text-muted-foreground">
+            {t('chart_earned_value')}
+          </h3>
+          <EarnedValueChart
+            data={evData}
+            currencyCode={currencyCode}
+            noDataLabel={noDataLabel}
+            title={t('chart_earned_value')}
+          />
+        </BrandCard.Body>
+      </BrandCard>
 
       {/* 3. Rejection Rate chart */}
-      <div className="space-y-2">
-        <h3 className="text-sm font-semibold text-muted-foreground">
-          {t('chart_rejection_rate')}
-        </h3>
-        <RejectionRateChart
-          data={rejectionRateData}
-          noDataLabel={noDataLabel}
-          title={t('chart_rejection_rate')}
-        />
-      </div>
+      <BrandCard>
+        <BrandCard.Body className="space-y-2 p-3">
+          <h3 className="text-sm font-semibold text-muted-foreground">
+            {t('chart_rejection_rate')}
+          </h3>
+          <RejectionRateChart
+            data={rejectionRateData}
+            noDataLabel={noDataLabel}
+            title={t('chart_rejection_rate')}
+          />
+        </BrandCard.Body>
+      </BrandCard>
     </div>
   );
 }

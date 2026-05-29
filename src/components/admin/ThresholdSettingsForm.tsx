@@ -17,7 +17,7 @@
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { CheckCircle2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { BrandButton, BrandCard } from '@/components/brand';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -111,7 +111,9 @@ export function ThresholdSettingsForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="space-y-6 max-w-xl">
+    <BrandCard>
+      <BrandCard.Body>
+        <form onSubmit={handleSubmit} noValidate className="space-y-6 max-w-xl">
       {/* Row 1: Audit SLA Threshold */}
       <div className="space-y-1.5">
         <Label htmlFor="audit-sla">{t('audit_sla_label')}</Label>
@@ -208,10 +210,12 @@ export function ThresholdSettingsForm({
           <AlertDescription>{t('saved_success')}</AlertDescription>
         </Alert>
       ) : (
-        <Button type="submit" disabled={submitting}>
+        <BrandButton type="submit" variant="primary" disabled={submitting}>
           {submitting ? t('saving') : t('save_cta')}
-        </Button>
+        </BrandButton>
       )}
-    </form>
+        </form>
+      </BrandCard.Body>
+    </BrandCard>
   );
 }

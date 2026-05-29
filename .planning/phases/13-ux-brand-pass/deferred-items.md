@@ -29,3 +29,25 @@
 3. Possibly migrate to a local Postgres + pg_pool for vitest CI determinism
 
 **Not fixed in this plan** per executor scope boundary (pre-existing failures in files unrelated to current task changes).
+
+---
+
+## Plan 13-03b Wave 3 Task 2 (re-encountered same flake class)
+
+**Found during:** Plan 13-03b Task 2 — full vitest run after ThresholdSettingsForm + TrendChartsClient + settings/page.tsx restyle.
+
+**Symptoms identical to Plan 13-01:**
+- `tests/people.test.ts` — 2 of 9 tests failed with "Test timed out in 5000ms"
+  - `D-03: same person can be worker on P1 and auditor on P2 — two assignment rows` (6436ms)
+  - `removeAssignment deletes the assignment row` (5785ms)
+
+**Isolation re-run:** `rtk proxy npx vitest run tests/people.test.ts` → 9/9 PASS (11.82s total).
+
+**Scope analysis:** Plan 13-03b Task 2 touched only:
+- `src/components/admin/ThresholdSettingsForm.tsx` (Button → BrandButton + BrandCard wrapper)
+- `src/components/admin/TrendChartsClient.tsx` (3 BrandCard wrappers around chart containers; chart-N color tokens already in place pre-Phase 13)
+- `src/app/dashboard/(admin)/settings/page.tsx` (Card → BrandCard + BrandHeading)
+
+None of those files are imported by `tests/people.test.ts` — same flake class as Plan 13-01.
+
+**Disposition:** Deferred — not a Plan 13-03b regression. Same root cause as Plan 13-01: Neon serverless cold-start under vitest fileParallelism=false but with cross-suite connection contention. Future stability pass per Plan 13-01 deferred note.
