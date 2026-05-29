@@ -12,7 +12,12 @@ export default defineConfig({
     globals: true,
     environment: "node",
     setupFiles: ["./tests/setup.ts"],
-    include: ["tests/**/*.test.ts", "src/**/*.test.ts"],
+    include: [
+      "tests/**/*.test.ts",
+      "tests/**/*.test.tsx",
+      "src/**/*.test.ts",
+      "src/**/*.test.tsx",
+    ],
     passWithNoTests: true,
     // DB integration tests share a single Neon database; parallel file execution
     // causes TRUNCATE TABLE in one file to race with inserts in another, producing
