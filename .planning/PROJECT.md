@@ -8,21 +8,35 @@ A single-tenant B2B operational platform for linear-infrastructure subcontractor
 
 Every unit of field work flows through one trustworthy loop — **worker submits → auditor approves on-site → central project data (BOQ + map) updates automatically** — so the office always sees real, verified, geolocated progress without chasing anyone on WhatsApp.
 
-## Current Milestone: v3.0 Submission-Driven Hakkediş & UX Brand Pass
+## Current Milestone: v4.0 Document-Driven Route Import, Chainage As-Built Tracking & AI Vision Assist
 
-**Goal:** Close two outstanding gaps surfaced at the end of v2.0 — (1) connect the worker-submission loop directly to the hakkediş artefact so the office sees billing grow with each approved submission, not only at period rollup; (2) bring every dashboard surface in line with the bayrak.ai brand so the product looks as deliberate as it works.
+**Goal:** Turn the imported pipeline drawing into a living chainage-based as-built record — the office can see, for any kilometer of the route, what work happened, who did it, and who audited it — and finally ship the deferred AI vision assist so the auditor gets decision support at the point of approval.
 
 **Target features:**
 
-*Data & functionality:*
-- Submission-driven hakkediş — each approved Telegram work-application submission contributes to the in-progress hakkediş period in real time; every hakkediş line item is traceable to the source submission(s)
+*Route import (foundation):*
+- Import the project route from CAD — engineer exports DXF (covers DWG), uploads it, selects the source projected CRS (e.g. Turkey TUREF/TM30 or UTM), and the route is parsed and reprojected to WGS84 into the existing PostGIS pipeline
+- View the source drawing/document alongside the map as a reference
 
-*Experience & brand:*
-- Dashboard UX / brand pass — every existing surface (overview, project pages, people, analytics, hakkediş, exports, period detail) re-skinned to follow the bayrak.ai brand (logos, color palette, typography, layout structure); brand reference checked into the repo so future surfaces inherit the same language
+*Chainage as-built tracking (headline):*
+- Linear referencing along the route: chainage derived from cumulative length from route start (km 0 = start), with an override to calibrate against a known station/reference point
+- Per-kilometer / per-segment progress view: for any segment of the route, what work was submitted there, who the worker was, and who audited it — built on the existing snapped-point + segment-fraction spatial data
+- Per-segment approved work feeds BOQ progress / route completion % by chainage
+- The per-km as-built breakdown is exportable (Excel/PDF) consistent with existing reports
 
-**Deferred:** Phase 6 (AI Vision Assist) still carries over from v1.0 — not part of this milestone.
+*AI vision assist (deferred from v1.0):*
+- Async Claude vision flags photo/location anomalies and auto-classifies submitted work to support the auditor's decision, behind an eval harness with acceptance criteria before any flag is shown (AI-01..AI-05)
 
-## Previous Milestone: v2.0 Operations Intelligence & Hakkediş — Complete (2026-05-28)
+*Housekeeping:*
+- Reconcile REQUIREMENTS/PROJECT bookkeeping: move already-built v1 core-loop capabilities from Active to Validated so the tracker reflects reality
+
+**BOQ note:** Bill-of-Quantities ingestion stays on the existing Excel importer — extracting BOQ from drawings is explicitly out of scope (saha ADR-0002).
+
+## Previous Milestone: v3.0 Submission-Driven Hakkediş & UX Brand Pass — Complete (2026-05-29)
+
+Shipped: each approved Telegram submission now grows the in-progress draft hakkediş period in real time with full line-item→submission traceability (Phase 12), and every dashboard surface was re-skinned to the bayrak.ai brand language with 7 shared brand primitives + a checked-in BRAND.md (Phase 13). Phase 6 (AI Vision Assist) carried over once more and is now scheduled for v4.0.
+
+## Earlier Milestone: v2.0 Operations Intelligence & Hakkediş — Complete (2026-05-28)
 
 Shipped: role-based performance scorecards (worker / auditor / office-engineer), canonical submission record + drill-down detail page, admin shell with `(admin)` route group + global filters, performance/SLA alerts + leaderboard, hakkediş period CRUD + yeşil-defter computation + Turkish deduction chain + finalization lock, and bilingual TR/EN Excel + Turkish-glyph PDF exports — all auth-guarded. See Validated requirements below.
 
@@ -126,4 +140,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-29 — Phase 13 (UX & Brand Pass) complete; v3.0 milestone reached its final phase. Both v3.0 follow-ups (submission-driven hakkediş + UX brand pass) shipped.*
+*Last updated: 2026-05-29 — v4.0 milestone opened: document-driven route import, chainage-based as-built tracking, and the deferred AI vision assist. v3.0 demoted to Previous Milestone (complete).*
