@@ -10,20 +10,11 @@ import { FilterBar } from '@/components/admin/FilterBar';
 import { HakedisStatusBadge } from '@/components/admin/HakedisStatusBadge';
 import { formatMoneyAmount } from '@/lib/format-money';
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+  BrandButton,
+  BrandCard,
+  BrandHeading,
+  BrandTable,
+} from '@/components/brand';
 
 export const dynamic = 'force-dynamic';
 
@@ -105,10 +96,10 @@ export default async function ExportsPage({
   const qsString = qs.toString() ? `?${qs.toString()}` : '';
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Heading row */}
       <div className="space-y-1">
-        <h1 className="text-xl font-semibold">{t('heading')}</h1>
+        <BrandHeading as="h1" size="h1">{t('heading')}</BrandHeading>
         <p className="text-sm text-muted-foreground">{t('subtitle')}</p>
       </div>
 
@@ -122,67 +113,67 @@ export default async function ExportsPage({
       </Suspense>
 
       {/* Surface 1a — Submission Ledger trigger card (EXP-01) */}
-      <Card>
-        <CardHeader className="px-4 pt-4 pb-2">
+      <BrandCard>
+        <BrandCard.Header>
           <div className="flex items-center gap-2">
             <FileSpreadsheet
               className="h-4 w-4 text-muted-foreground"
               aria-hidden="true"
             />
-            <CardTitle className="text-sm font-semibold">
+            <h2 className="text-sm font-semibold">
               {t('section_ledger')}
-            </CardTitle>
+            </h2>
           </div>
-        </CardHeader>
-        <CardContent className="flex items-center justify-between gap-4 px-4 pb-4">
+        </BrandCard.Header>
+        <BrandCard.Body className="flex items-center justify-between gap-4">
           <p className="text-sm text-muted-foreground">{chip}</p>
           <a href={`/api/exports/submissions${qsString}`} download>
-            <Button variant="default" size="sm">
+            <BrandButton variant="primary" size="sm">
               <Download className="h-4 w-4 mr-1" aria-hidden="true" />
               {t('download_excel')}
-            </Button>
+            </BrandButton>
           </a>
-        </CardContent>
-      </Card>
+        </BrandCard.Body>
+      </BrandCard>
 
       {/* Surface 1b — Performance Summary trigger card (EXP-03) */}
-      <Card>
-        <CardHeader className="px-4 pt-4 pb-2">
+      <BrandCard>
+        <BrandCard.Header>
           <div className="flex items-center gap-2">
             <FileSpreadsheet
               className="h-4 w-4 text-muted-foreground"
               aria-hidden="true"
             />
-            <CardTitle className="text-sm font-semibold">
+            <h2 className="text-sm font-semibold">
               {t('section_performance')}
-            </CardTitle>
+            </h2>
           </div>
-        </CardHeader>
-        <CardContent className="flex items-center justify-between gap-4 px-4 pb-4">
+        </BrandCard.Header>
+        <BrandCard.Body className="flex items-center justify-between gap-4">
           <p className="text-sm text-muted-foreground">{chip}</p>
           <a href={`/api/exports/performance${qsString}`} download>
-            <Button variant="default" size="sm">
+            <BrandButton variant="primary" size="sm">
               <Download className="h-4 w-4 mr-1" aria-hidden="true" />
               {t('download_excel')}
-            </Button>
+            </BrandButton>
           </a>
-        </CardContent>
-      </Card>
+        </BrandCard.Body>
+      </BrandCard>
 
       {/* Surface 1c — Hakkediş Files period picker (EXP-02 + EXP-04) */}
-      <Card>
-        <CardHeader className="px-4 pt-4 pb-2">
+      <BrandCard>
+        <BrandCard.Header>
           <div className="flex items-center gap-2">
             <FileText
               className="h-4 w-4 text-muted-foreground"
               aria-hidden="true"
             />
-            <CardTitle className="text-sm font-semibold">
+            <h2 className="text-sm font-semibold">
               {t('section_hakedis')}
-            </CardTitle>
+            </h2>
           </div>
-        </CardHeader>
-        <CardContent className="px-0 pb-4">
+        </BrandCard.Header>
+        <BrandCard.Body className="p-0">
           {periods.length === 0 ? (
             <div className="flex flex-col items-center gap-3 py-12 text-center">
               <FileX
@@ -205,32 +196,32 @@ export default async function ExportsPage({
               </Link>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead scope="col">{t('picker_col_period')}</TableHead>
-                  <TableHead scope="col">{t('picker_col_end_date')}</TableHead>
-                  <TableHead scope="col">{t('picker_col_currency')}</TableHead>
-                  <TableHead scope="col">{t('picker_col_status')}</TableHead>
-                  <TableHead scope="col" className="text-right">
+            <BrandTable.Root>
+              <BrandTable.Header>
+                <BrandTable.Row>
+                  <BrandTable.Head scope="col">{t('picker_col_period')}</BrandTable.Head>
+                  <BrandTable.Head scope="col">{t('picker_col_end_date')}</BrandTable.Head>
+                  <BrandTable.Head scope="col">{t('picker_col_currency')}</BrandTable.Head>
+                  <BrandTable.Head scope="col">{t('picker_col_status')}</BrandTable.Head>
+                  <BrandTable.Head scope="col" className="text-right">
                     {t('picker_col_net')}
-                  </TableHead>
-                  <TableHead scope="col">{t('picker_col_download')}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+                  </BrandTable.Head>
+                  <BrandTable.Head scope="col">{t('picker_col_download')}</BrandTable.Head>
+                </BrandTable.Row>
+              </BrandTable.Header>
+              <BrandTable.Body>
                 {periods.map((period) => (
-                  <TableRow key={period.id}>
-                    <TableCell className="font-medium">
+                  <BrandTable.Row key={period.id}>
+                    <BrandTable.Cell className="font-medium">
                       {period.periodNumber}
-                    </TableCell>
-                    <TableCell className="text-sm">
+                    </BrandTable.Cell>
+                    <BrandTable.Cell className="text-sm">
                       {period.periodEndDate}
-                    </TableCell>
-                    <TableCell className="text-sm">
+                    </BrandTable.Cell>
+                    <BrandTable.Cell className="text-sm">
                       {period.currencyCode}
-                    </TableCell>
-                    <TableCell>
+                    </BrandTable.Cell>
+                    <BrandTable.Cell>
                       <HakedisStatusBadge
                         status={
                           period.status as
@@ -240,47 +231,47 @@ export default async function ExportsPage({
                             | 'paid'
                         }
                       />
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums text-sm">
+                    </BrandTable.Cell>
+                    <BrandTable.Cell className="text-right tabular-nums text-sm">
                       {formatMoneyAmount(period.netByDisplay, locale)}
-                    </TableCell>
-                    <TableCell>
+                    </BrandTable.Cell>
+                    <BrandTable.Cell>
                       <div className="flex items-center gap-2">
                         <a
                           href={`/api/exports/hakedis/${period.id}`}
                           download
                           aria-label={`Excel İndir — ${period.periodNumber}`}
                         >
-                          <Button variant="outline" size="sm">
+                          <BrandButton variant="outline" size="sm">
                             <FileSpreadsheet
                               className="h-4 w-4 mr-1"
                               aria-hidden="true"
                             />
                             Excel
-                          </Button>
+                          </BrandButton>
                         </a>
                         <a
                           href={`/api/exports/hakedis/${period.id}/pdf`}
                           download
                           aria-label={`PDF İndir — ${period.periodNumber}`}
                         >
-                          <Button variant="outline" size="sm">
+                          <BrandButton variant="outline" size="sm">
                             <FileText
                               className="h-4 w-4 mr-1"
                               aria-hidden="true"
                             />
                             PDF
-                          </Button>
+                          </BrandButton>
                         </a>
                       </div>
-                    </TableCell>
-                  </TableRow>
+                    </BrandTable.Cell>
+                  </BrandTable.Row>
                 ))}
-              </TableBody>
-            </Table>
+              </BrandTable.Body>
+            </BrandTable.Root>
           )}
-        </CardContent>
-      </Card>
+        </BrandCard.Body>
+      </BrandCard>
     </div>
   );
 }
