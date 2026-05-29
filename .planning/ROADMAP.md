@@ -481,7 +481,7 @@ Plans:
 **Wave 3** *(blocked on Wave 1 — 13-03a and 13-03b run in parallel)*
 
 - [x] 13-03a-PLAN.md — Command-center re-skin: overview + analytics hub + OE scorecard + KpiCard refactor (composes BrandCard internally; D-87 contract preserved) + FilterBar + CurrencySelector + EVTableClient (BRAND-02)
-- [ ] 13-03b-PLAN.md — Directory + settings re-skin: people directory + per-person profile + ActivityTimeline + LeaderboardSortSelect + records list/detail + SubmissionDetailView (reverse-tabnabbing preserved) + ThresholdSettingsForm + TrendChartsClient (token-bound) + settings page (BRAND-02)
+- [x] 13-03b-PLAN.md — Directory + settings re-skin: people directory + per-person profile + ActivityTimeline + LeaderboardSortSelect + records list/detail + SubmissionDetailView (reverse-tabnabbing preserved) + ThresholdSettingsForm + TrendChartsClient (token-bound) + settings page (BRAND-02)
 
 **Wave 4** *(blocked on Wave 1 + Wave 2 + Wave 3a + Wave 3b)*
 
@@ -507,4 +507,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 10. Hakkediş Billing | 4/4 | Complete    | 2026-05-28 |
 | 11. Exports | 7/7 | Complete    | 2026-05-28 |
 | 12. Submission-Driven Hakkediş | 4/4 | Complete    | 2026-05-28 |
-| 13. UX & Brand Pass | 3/5 | In Progress|  |
+| 13. UX & Brand Pass | 4/5 | In Progress|  |

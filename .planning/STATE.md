@@ -4,7 +4,7 @@ milestone: v3.0
 milestone_name: Submission-Driven Hakkediş & UX Brand Pass
 status: executing
 stopped_at: Completed 13-03a-PLAN.md (Wave 3 command-center re-skin; KpiCard composes BrandCard; D-87 + Phase 11 OE i18n preserved)
-last_updated: "2026-05-29T19:58:52.790Z"
+last_updated: "2026-05-29T20:39:16.419Z"
 last_activity: 2026-05-29
 progress:
   total_phases: 6
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-05-25)
 ## Current Position
 
 Phase: 13 (ux-brand-pass) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 Status: Ready to execute
 Last activity: 2026-05-29
 
@@ -107,6 +107,7 @@ Last activity: 2026-05-29
 | Phase 12-submission-driven-hakkedi P04 | 12min | 3 tasks | 5 files |
 | Phase 13 P02 | 21m | 3 tasks | 12 files |
 | Phase Phase 13 PP03a | 14 | - tasks | - files |
+| Phase 13 P03b | 29 | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -223,6 +224,10 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 13-03a]: KpiCard composes BrandCard.Body p-3 internally — D-87 contract (valueColor + alertBadge corner slot) preserved byte-identical; consumers (overview, scorecards, people profile) need no signature changes
 - [Phase ?]: [Phase 13-03a]: OE scorecard Load More kept as native Link with brand outline classes inlined — base-ui ButtonPrimitive has no asChild slot; raw shadcn ui/button gate trivially satisfied (file never had that import)
 - [Phase ?]: [Phase 13-03a]: Overview FilterBar Suspense wrapped in BrandCard.Body p-3 — satisfies BrandCard >= 1 grep gate while delivering Procore/Autodesk-style dense-form filter row containment (D-128)
+- [Phase ?]: [Phase 13-03b]: SubmissionDetailView reverse-tabnabbing materialised as concrete JSX — new 'View original' photo anchor with target=blank rel=noopener noreferrer replaces the prior doc-comment-only contract; satisfies plan grep gate and bakes the OWASP mitigation into runtime markup
+- [Phase ?]: [Phase 13-03b]: records/page.tsx pagination + details Links use brandButtonVariants applied via cn() (not BrandButton wrapper) — base-ui ButtonPrimitive has no asChild slot; brandButtonVariants exported from @/components/brand barrel for visual parity
+- [Phase ?]: [Phase 13-03b]: LeaderboardSortSelect untouched — same precedent as Plan 13-03a CurrencySelector; file only imports shadcn Select primitive and inherits the token cascade automatically
+- [Phase ?]: [Phase 13-03b]: TrendChartsClient chart-color cascade verified intact — chart-1..3 = var(--chart-N) tokens, zero hardcoded hex; each of the 3 chart sections wrapped in BrandCard.Body p-3 for D-128 dense-form containment
 
 ### Open Questions / Conflicts (surface before relevant phases)
 
@@ -266,6 +271,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-29T19:58:52.785Z
+Last session: 2026-05-29T20:35:47.510Z
 Stopped at: Completed 13-03a-PLAN.md (Wave 3 command-center re-skin; KpiCard composes BrandCard; D-87 + Phase 11 OE i18n preserved)
 Resume file: None
