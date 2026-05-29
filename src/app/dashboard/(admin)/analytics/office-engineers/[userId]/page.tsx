@@ -24,16 +24,13 @@ import { db } from '@/db';
 import { sql } from 'drizzle-orm';
 import { getDefaultTenantId } from '@/lib/tenant';
 import { getOfficeActivityLog } from '@/actions/analytics';
-import { Badge } from '@/components/ui/badge';
-import { ClipboardList } from 'lucide-react';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+  BrandBadge,
+  BrandCard,
+  BrandHeading,
+  BrandTable,
+} from '@/components/brand';
+import { ClipboardList } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -136,85 +133,95 @@ export default async function OEProfilePage({ params, searchParams }: Props) {
 
       {/* Page heading + role badge */}
       <div className="space-y-2">
-        <h1 className="text-xl font-semibold">{engineerName}</h1>
+        <BrandHeading as="h1" size="h1">{engineerName}</BrandHeading>
         <div className="flex gap-2">
-          <Badge variant="secondary">{t('role_badge')}</Badge>
+          <BrandBadge variant="neutral">{t('role_badge')}</BrandBadge>
         </div>
       </div>
 
       {/* Activity Log section */}
-      <div className="space-y-3">
-        <h2 className="text-base font-semibold">{t('activity_log_heading')}</h2>
+      <section className="space-y-3">
+        <BrandHeading as="h2" size="h3">{t('activity_log_heading')}</BrandHeading>
 
         {entries.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-24 gap-4 text-muted-foreground">
-            <ClipboardList className="size-12" aria-hidden="true" />
-            <p className="text-sm">{t('empty_state')}</p>
-          </div>
+          <BrandCard>
+            <BrandCard.Body>
+              <div className="flex flex-col items-center justify-center py-24 gap-4 text-muted-foreground">
+                <ClipboardList className="size-12" aria-hidden="true" />
+                <p className="text-sm">{t('empty_state')}</p>
+              </div>
+            </BrandCard.Body>
+          </BrandCard>
         ) : (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead scope="col" className="w-40">{t('col_timestamp')}</TableHead>
-                  <TableHead scope="col">{t('col_action')}</TableHead>
-                  <TableHead scope="col">{t('col_context')}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {entries.map((entry) => {
-                  // Format timestamp
-                  const occurredAt = new Date(entry.occurredAt);
-                  const timestampDisplay = occurredAt.toLocaleDateString('tr-TR') + ' ' +
-                    occurredAt.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+          <BrandCard>
+            <BrandCard.Body className="p-0">
+              <div className="overflow-x-auto">
+                <BrandTable.Root>
+                  <BrandTable.Header>
+                    <BrandTable.Row>
+                      <BrandTable.Head scope="col" className="w-40">{t('col_timestamp')}</BrandTable.Head>
+                      <BrandTable.Head scope="col">{t('col_action')}</BrandTable.Head>
+                      <BrandTable.Head scope="col">{t('col_context')}</BrandTable.Head>
+                    </BrandTable.Row>
+                  </BrandTable.Header>
+                  <BrandTable.Body>
+                    {entries.map((entry) => {
+                      // Format timestamp
+                      const occurredAt = new Date(entry.occurredAt);
+                      const timestampDisplay = occurredAt.toLocaleDateString('tr-TR') + ' ' +
+                        occurredAt.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
 
-                  // Localized action label
-                  const actionKey = actionTypeToKey(entry.actionType);
-                  // We use a type assertion here since dynamic key lookup on the t function
-                  // React auto-escapes — no dangerouslySetInnerHTML (T-09-05-XSS)
-                  const actionLabel = t(actionKey as Parameters<typeof t>[0]);
+                      // Localized action label
+                      const actionKey = actionTypeToKey(entry.actionType);
+                      // We use a type assertion here since dynamic key lookup on the t function
+                      // React auto-escapes — no dangerouslySetInnerHTML (T-09-05-XSS)
+                      const actionLabel = t(actionKey as Parameters<typeof t>[0]);
 
-                  // Context: project name + optional metadata entity name
-                  // JSX auto-escapes all values — XSS-safe (T-09-05-XSS)
-                  const contextParts: string[] = [];
-                  if (entry.projectName) contextParts.push(entry.projectName);
-                  if (entry.metadata && typeof entry.metadata === 'object') {
-                    const meta = entry.metadata as Record<string, unknown>;
-                    if (typeof meta.name === 'string') contextParts.push(meta.name);
-                    else if (typeof meta.displayName === 'string') contextParts.push(meta.displayName);
-                  }
-                  const contextDisplay = contextParts.join(' · ') || '—';
+                      // Context: project name + optional metadata entity name
+                      // JSX auto-escapes all values — XSS-safe (T-09-05-XSS)
+                      const contextParts: string[] = [];
+                      if (entry.projectName) contextParts.push(entry.projectName);
+                      if (entry.metadata && typeof entry.metadata === 'object') {
+                        const meta = entry.metadata as Record<string, unknown>;
+                        if (typeof meta.name === 'string') contextParts.push(meta.name);
+                        else if (typeof meta.displayName === 'string') contextParts.push(meta.displayName);
+                      }
+                      const contextDisplay = contextParts.join(' · ') || '—';
 
-                  return (
-                    <TableRow key={entry.id}>
-                      <TableCell className="text-muted-foreground text-sm tabular-nums whitespace-nowrap">
-                        {timestampDisplay}
-                      </TableCell>
-                      <TableCell className="text-sm">{actionLabel}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {contextDisplay}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
+                      return (
+                        <BrandTable.Row key={entry.id}>
+                          <BrandTable.Cell className="text-muted-foreground text-sm tabular-nums whitespace-nowrap">
+                            {timestampDisplay}
+                          </BrandTable.Cell>
+                          <BrandTable.Cell className="text-sm">{actionLabel}</BrandTable.Cell>
+                          <BrandTable.Cell className="text-sm text-muted-foreground">
+                            {contextDisplay}
+                          </BrandTable.Cell>
+                        </BrandTable.Row>
+                      );
+                    })}
+                  </BrandTable.Body>
+                </BrandTable.Root>
+              </div>
+            </BrandCard.Body>
+          </BrandCard>
         )}
 
         {/* CR-04 (09-REVIEW): Load more — only shown when entries.length >= limit (i.e. more may exist).
-            Navigates to ?limit=<current+50> so the page fetches more on next render. */}
+            Navigates to ?limit=<current+50> so the page fetches more on next render.
+            Styled to match BrandButton variant="outline" size="md" (brand outline classes inlined
+            because base-ui Button has no asChild slot — Link must remain a native <a>). */}
         {entries.length >= limit && (
           <div className="flex justify-center pt-2">
             <Link
               href={`/dashboard/analytics/office-engineers/${userId}?limit=${limit + LOAD_MORE_LIMIT}`}
-              className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2"
+              className="inline-flex items-center justify-center rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 border border-slate-300 bg-white text-slate-900 hover:bg-slate-50 h-9 px-4 text-sm gap-2"
             >
               {t('load_more')}
             </Link>
           </div>
         )}
-      </div>
+      </section>
     </div>
   );
 }

@@ -20,16 +20,8 @@ import { auth } from '@/lib/auth';
 import { db } from '@/db';
 import { sql } from 'drizzle-orm';
 import { getDefaultTenantId } from '@/lib/tenant';
-import { Badge } from '@/components/ui/badge';
+import { BrandBadge, BrandCard, BrandHeading, BrandTable } from '@/components/brand';
 import { redirect } from 'next/navigation';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 
 export const dynamic = 'force-dynamic';
 
@@ -66,47 +58,55 @@ export default async function AnalyticsPage() {
     <div className="space-y-6">
       {/* Page heading — preserve Phase-8 stub copy */}
       <div className="space-y-1">
-        <h1 className="text-xl font-semibold">{t('analytics_heading')}</h1>
-        <Badge variant="secondary">{t('coming_soon')}</Badge>
+        <BrandHeading as="h1" size="h1">{t('analytics_heading')}</BrandHeading>
+        <BrandBadge variant="neutral">{t('coming_soon')}</BrandBadge>
       </div>
       <p className="text-sm text-muted-foreground">{t('analytics_body')}</p>
 
       {/* Office engineers list — entry point to scorecard views */}
-      <div className="space-y-3">
-        <h2 className="text-base font-semibold">{tOe('engineers_table_heading')}</h2>
+      <section className="space-y-3">
+        <BrandHeading as="h2" size="h3">{tOe('engineers_table_heading')}</BrandHeading>
 
         {engineers.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{tOe('no_engineers')}</p>
+          <BrandCard>
+            <BrandCard.Body>
+              <p className="text-sm text-muted-foreground">{tOe('no_engineers')}</p>
+            </BrandCard.Body>
+          </BrandCard>
         ) : (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead scope="col">{tOe('engineers_table_name')}</TableHead>
-                  <TableHead scope="col">{tOe('engineers_table_email')}</TableHead>
-                  <TableHead scope="col">{tOe('engineers_table_view')}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {engineers.map((eng) => (
-                  <TableRow key={eng.id}>
-                    <TableCell className="font-medium">{eng.displayName}</TableCell>
-                    <TableCell className="text-muted-foreground">{eng.email ?? '—'}</TableCell>
-                    <TableCell>
-                      <Link
-                        href={`/dashboard/analytics/office-engineers/${eng.id}`}
-                        className="text-sm hover:underline"
-                      >
-                        {tOe('engineers_table_view')}
-                      </Link>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+          <BrandCard>
+            <BrandCard.Body className="p-0">
+              <div className="overflow-x-auto">
+                <BrandTable.Root>
+                  <BrandTable.Header>
+                    <BrandTable.Row>
+                      <BrandTable.Head scope="col">{tOe('engineers_table_name')}</BrandTable.Head>
+                      <BrandTable.Head scope="col">{tOe('engineers_table_email')}</BrandTable.Head>
+                      <BrandTable.Head scope="col">{tOe('engineers_table_view')}</BrandTable.Head>
+                    </BrandTable.Row>
+                  </BrandTable.Header>
+                  <BrandTable.Body>
+                    {engineers.map((eng) => (
+                      <BrandTable.Row key={eng.id}>
+                        <BrandTable.Cell className="font-medium">{eng.displayName}</BrandTable.Cell>
+                        <BrandTable.Cell className="text-muted-foreground">{eng.email ?? '—'}</BrandTable.Cell>
+                        <BrandTable.Cell>
+                          <Link
+                            href={`/dashboard/analytics/office-engineers/${eng.id}`}
+                            className="text-sm hover:underline"
+                          >
+                            {tOe('engineers_table_view')}
+                          </Link>
+                        </BrandTable.Cell>
+                      </BrandTable.Row>
+                    ))}
+                  </BrandTable.Body>
+                </BrandTable.Root>
+              </div>
+            </BrandCard.Body>
+          </BrandCard>
         )}
-      </div>
+      </section>
     </div>
   );
 }

@@ -29,7 +29,7 @@ import { getActivePeople } from '@/actions/people';
 import { getTenantSettings } from '@/actions/settings';
 import { FilterBar } from '@/components/admin/FilterBar';
 import { KpiCard } from '@/components/admin/KpiCard';
-import { Badge } from '@/components/ui/badge';
+import { BrandBadge, BrandCard, BrandHeading } from '@/components/brand';
 import { EVTableClient } from './EVTableClient';
 
 export const dynamic = 'force-dynamic';
@@ -148,9 +148,9 @@ export default async function OverviewPage({ searchParams }: Props) {
   // ── Shared alert badge element (icon-only, destructive, per UI-SPEC Surface 5) ─────────────
   // aria-label on the wrapping span (in KpiCard) — icon itself is aria-hidden
   const alertBadgeEl = (
-    <Badge variant="destructive" className="p-1">
+    <BrandBadge variant="destructive" className="p-1">
       <TriangleAlert className="h-3 w-3" aria-hidden="true" />
-    </Badge>
+    </BrandBadge>
   );
 
   // Collect all available currencies from the overview data for the currency selector
@@ -166,21 +166,25 @@ export default async function OverviewPage({ searchParams }: Props) {
     <div className="space-y-8">
       {/* Page heading */}
       <div className="space-y-1">
-        <h1 className="text-xl font-semibold">{t('heading')}</h1>
+        <BrandHeading as="h1" size="h1">{t('heading')}</BrandHeading>
         <p className="text-sm text-muted-foreground">{subtitle}</p>
       </div>
 
       {/* Filter bar row (Suspense required — FilterBar uses useSearchParams) */}
-      <Suspense
-        fallback={
-          <div className="h-12 animate-pulse bg-muted rounded" />
-        }
-      >
-        <FilterBar
-          projectOptions={projectOptions}
-          personOptions={personOptions}
-        />
-      </Suspense>
+      <BrandCard>
+        <BrandCard.Body className="p-3">
+          <Suspense
+            fallback={
+              <div className="h-12 animate-pulse bg-muted rounded" />
+            }
+          >
+            <FilterBar
+              projectOptions={projectOptions}
+              personOptions={personOptions}
+            />
+          </Suspense>
+        </BrandCard.Body>
+      </BrandCard>
 
       {/* KPI card row: 2-col mobile / 3-col md / 5-col desktop (D-88: Stalled Projects 5th card) */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-8">

@@ -14,14 +14,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { LayoutDashboard } from 'lucide-react';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { BrandTable, BrandCard, BrandHeading } from '@/components/brand';
 import { Progress } from '@/components/ui/progress';
 import { CurrencySelector } from '@/components/admin/CurrencySelector';
 import { TrendChartsClient } from '@/components/admin/TrendChartsClient';
@@ -103,98 +96,106 @@ export function EVTableClient({
 
       {/* Earned Value table */}
       <section aria-label={tEVHeading} className="space-y-3">
-        <h2 className="text-base font-semibold">{tEVHeading}</h2>
+        <BrandHeading as="h2" size="h3">{tEVHeading}</BrandHeading>
 
         {!hasAnyProjectData ? (
-          <div className="flex flex-col items-center justify-center py-24 gap-4 text-muted-foreground">
-            <LayoutDashboard className="size-12" aria-hidden="true" />
-            <p className="text-sm">{tEmptyNoProjects}</p>
-          </div>
+          <BrandCard>
+            <BrandCard.Body>
+              <div className="flex flex-col items-center justify-center py-24 gap-4 text-muted-foreground">
+                <LayoutDashboard className="size-12" aria-hidden="true" />
+                <p className="text-sm">{tEmptyNoProjects}</p>
+              </div>
+            </BrandCard.Body>
+          </BrandCard>
         ) : (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead scope="col">{tColProject}</TableHead>
-                  <TableHead scope="col" className="text-right tabular-nums">
-                    {tColBAC}
-                  </TableHead>
-                  <TableHead scope="col" className="text-right tabular-nums">
-                    {tColEV}
-                  </TableHead>
-                  <TableHead scope="col" className="w-[200px]">
-                    {tColComplete}
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {overview.map((project) => {
-                  const bac = project.contractedValueByCurrency[currency];
-                  const ev = project.earnedValueByCurrency[currency];
-                  const pct = computeCompletePct(bac, ev);
-                  const hasCurrencyData = bac !== undefined || ev !== undefined;
+          <BrandCard>
+            <BrandCard.Body className="p-0">
+              <div className="overflow-x-auto">
+                <BrandTable.Root>
+                  <BrandTable.Header>
+                    <BrandTable.Row>
+                      <BrandTable.Head scope="col">{tColProject}</BrandTable.Head>
+                      <BrandTable.Head scope="col" className="text-right tabular-nums">
+                        {tColBAC}
+                      </BrandTable.Head>
+                      <BrandTable.Head scope="col" className="text-right tabular-nums">
+                        {tColEV}
+                      </BrandTable.Head>
+                      <BrandTable.Head scope="col" className="w-[200px]">
+                        {tColComplete}
+                      </BrandTable.Head>
+                    </BrandTable.Row>
+                  </BrandTable.Header>
+                  <BrandTable.Body>
+                    {overview.map((project) => {
+                      const bac = project.contractedValueByCurrency[currency];
+                      const ev = project.earnedValueByCurrency[currency];
+                      const pct = computeCompletePct(bac, ev);
+                      const hasCurrencyData = bac !== undefined || ev !== undefined;
 
-                  // If project has no data for the selected currency, show dashes
-                  if (!hasCurrencyData) {
-                    return (
-                      <TableRow key={project.projectId}>
-                        <TableCell>
-                          <Link
-                            href={`/dashboard/projects/${project.projectId}`}
-                            className="hover:underline"
-                          >
-                            {project.projectName}
-                          </Link>
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums text-muted-foreground">
-                          —
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums text-muted-foreground">
-                          —
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">—</TableCell>
-                      </TableRow>
-                    );
-                  }
+                      // If project has no data for the selected currency, show dashes
+                      if (!hasCurrencyData) {
+                        return (
+                          <BrandTable.Row key={project.projectId}>
+                            <BrandTable.Cell>
+                              <Link
+                                href={`/dashboard/projects/${project.projectId}`}
+                                className="hover:underline"
+                              >
+                                {project.projectName}
+                              </Link>
+                            </BrandTable.Cell>
+                            <BrandTable.Cell className="text-right tabular-nums text-muted-foreground">
+                              —
+                            </BrandTable.Cell>
+                            <BrandTable.Cell className="text-right tabular-nums text-muted-foreground">
+                              —
+                            </BrandTable.Cell>
+                            <BrandTable.Cell className="text-muted-foreground">—</BrandTable.Cell>
+                          </BrandTable.Row>
+                        );
+                      }
 
-                  return (
-                    <TableRow key={project.projectId}>
-                      <TableCell>
-                        <Link
-                          href={`/dashboard/projects/${project.projectId}`}
-                          className="hover:underline"
-                        >
-                          {project.projectName}
-                        </Link>
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {formatMoney(bac)}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {formatMoney(ev)}
-                      </TableCell>
-                      <TableCell>
-                        {pct != null ? (
-                          <div className="flex items-center gap-2">
-                            <Progress
-                              value={pct}
-                              className="h-2 flex-1"
-                              aria-label={`${pct.toFixed(1)}%`}
-                            />
-                            <span className="tabular-nums text-sm w-[48px] text-right">
-                              {pct.toFixed(1)}%
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
+                      return (
+                        <BrandTable.Row key={project.projectId}>
+                          <BrandTable.Cell>
+                            <Link
+                              href={`/dashboard/projects/${project.projectId}`}
+                              className="hover:underline"
+                            >
+                              {project.projectName}
+                            </Link>
+                          </BrandTable.Cell>
+                          <BrandTable.Cell className="text-right tabular-nums">
+                            {formatMoney(bac)}
+                          </BrandTable.Cell>
+                          <BrandTable.Cell className="text-right tabular-nums">
+                            {formatMoney(ev)}
+                          </BrandTable.Cell>
+                          <BrandTable.Cell>
+                            {pct != null ? (
+                              <div className="flex items-center gap-2">
+                                <Progress
+                                  value={pct}
+                                  className="h-2 flex-1"
+                                  aria-label={`${pct.toFixed(1)}%`}
+                                />
+                                <span className="tabular-nums text-sm w-[48px] text-right">
+                                  {pct.toFixed(1)}%
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </BrandTable.Cell>
+                        </BrandTable.Row>
+                      );
+                    })}
+                  </BrandTable.Body>
+                </BrandTable.Root>
+              </div>
+            </BrandCard.Body>
+          </BrandCard>
         )}
       </section>
     </>
