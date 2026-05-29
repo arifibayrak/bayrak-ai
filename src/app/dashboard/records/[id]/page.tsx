@@ -20,6 +20,7 @@ import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { getCanonicalSubmissions } from '@/actions/analytics';
 import { SubmissionDetailView } from '@/components/admin/SubmissionDetailView';
+import { BrandCard, BrandHeading } from '@/components/brand';
 
 export const dynamic = 'force-dynamic';
 
@@ -71,10 +72,14 @@ export default async function SubmissionDetailPage({ params, searchParams }: Pro
       </nav>
 
       {/* Page heading */}
-      <h1 className="text-xl font-semibold">{t('heading')}</h1>
+      <BrandHeading as="h1" size="h1">{t('heading')}</BrandHeading>
 
       {/* Full submission detail view */}
-      <SubmissionDetailView submission={submission} />
+      <BrandCard>
+        <BrandCard.Body>
+          <SubmissionDetailView submission={submission} />
+        </BrandCard.Body>
+      </BrandCard>
     </div>
   );
 }

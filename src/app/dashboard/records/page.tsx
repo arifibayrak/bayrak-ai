@@ -25,16 +25,13 @@ import { getCanonicalSubmissions } from '@/actions/analytics';
 import { getProjects } from '@/actions/projects';
 import { getActivePeople } from '@/actions/people';
 import { FilterBar } from '@/components/admin/FilterBar';
-import { Badge } from '@/components/ui/badge';
-import { buttonVariants } from '@/components/ui/button';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+  BrandBadge,
+  BrandCard,
+  BrandHeading,
+  BrandTable,
+  brandButtonVariants,
+} from '@/components/brand';
 import { cn } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
@@ -73,12 +70,12 @@ function StatusBadge({ status, t }: {
     t('filters.status_pending');
 
   if (status === 'approved') {
-    return <Badge className="bg-emerald-100 text-emerald-800">{label}</Badge>;
+    return <BrandBadge variant="success">{label}</BrandBadge>;
   }
   if (status === 'rejected') {
-    return <Badge variant="destructive">{label}</Badge>;
+    return <BrandBadge variant="destructive">{label}</BrandBadge>;
   }
-  return <Badge variant="secondary">{label}</Badge>;
+  return <BrandBadge variant="info">{label}</BrandBadge>;
 }
 
 // ── Page ───────────────────────────────────────────────────────────────────────
@@ -151,97 +148,105 @@ export default async function RecordsPage({ searchParams }: Props) {
     <div className="space-y-6">
       {/* Page heading */}
       <div>
-        <h1 className="text-xl font-semibold">{t('records.heading')}</h1>
+        <BrandHeading as="h1" size="h1">{t('records.heading')}</BrandHeading>
       </div>
 
       {/* Filter bar — Suspense required (useSearchParams CSR bailout) */}
-      <Suspense
-        fallback={
-          <div className="h-12 animate-pulse bg-muted rounded" />
-        }
-      >
-        <FilterBar
-          projectOptions={projectOptions}
-          personOptions={personOptions}
-          showStatus
-        />
-      </Suspense>
+      <BrandCard>
+        <BrandCard.Body className="p-3">
+          <Suspense
+            fallback={
+              <div className="h-12 animate-pulse bg-muted rounded" />
+            }
+          >
+            <FilterBar
+              projectOptions={projectOptions}
+              personOptions={personOptions}
+              showStatus
+            />
+          </Suspense>
+        </BrandCard.Body>
+      </BrandCard>
 
       {/* Records table */}
       {rows.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-24 gap-4 text-muted-foreground">
-          <FileSearch className="size-12" aria-hidden="true" />
-          <p className="text-sm">{t('records.empty')}</p>
-        </div>
+        <BrandCard>
+          <BrandCard.Body className="flex flex-col items-center justify-center py-24 gap-4 text-muted-foreground">
+            <FileSearch className="size-12" aria-hidden="true" />
+            <p className="text-sm">{t('records.empty')}</p>
+          </BrandCard.Body>
+        </BrandCard>
       ) : (
         <>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead scope="col">{t('records.col_status')}</TableHead>
-                  <TableHead scope="col">{t('records.col_worker')}</TableHead>
-                  <TableHead scope="col">{t('records.col_project')}</TableHead>
-                  <TableHead scope="col">{t('records.col_boq')}</TableHead>
-                  <TableHead scope="col" className="text-right">{t('records.col_quantity')}</TableHead>
-                  <TableHead scope="col">{t('records.col_submitted')}</TableHead>
-                  <TableHead scope="col">{t('records.col_auditor')}</TableHead>
-                  {/* sr-only for Actions column per UI-SPEC accessibility */}
-                  <TableHead scope="col" className="sr-only">{t('records.details_header')}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rows.map((row) => {
-                  const detailHref = filterQs
-                    ? `/dashboard/records/${row.id}?${filterQs}`
-                    : `/dashboard/records/${row.id}`;
-                  const qty = parseFloat(row.quantity);
-                  const qtyStr = isNaN(qty)
-                    ? row.quantity
-                    : new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 3 }).format(qty);
+          <BrandCard>
+            <BrandCard.Body className="p-0 overflow-x-auto">
+              <BrandTable.Root>
+                <BrandTable.Header>
+                  <BrandTable.Row>
+                    <BrandTable.Head scope="col">{t('records.col_status')}</BrandTable.Head>
+                    <BrandTable.Head scope="col">{t('records.col_worker')}</BrandTable.Head>
+                    <BrandTable.Head scope="col">{t('records.col_project')}</BrandTable.Head>
+                    <BrandTable.Head scope="col">{t('records.col_boq')}</BrandTable.Head>
+                    <BrandTable.Head scope="col" className="text-right">{t('records.col_quantity')}</BrandTable.Head>
+                    <BrandTable.Head scope="col">{t('records.col_submitted')}</BrandTable.Head>
+                    <BrandTable.Head scope="col">{t('records.col_auditor')}</BrandTable.Head>
+                    {/* sr-only for Actions column per UI-SPEC accessibility */}
+                    <BrandTable.Head scope="col" className="sr-only">{t('records.details_header')}</BrandTable.Head>
+                  </BrandTable.Row>
+                </BrandTable.Header>
+                <BrandTable.Body>
+                  {rows.map((row) => {
+                    const detailHref = filterQs
+                      ? `/dashboard/records/${row.id}?${filterQs}`
+                      : `/dashboard/records/${row.id}`;
+                    const qty = parseFloat(row.quantity);
+                    const qtyStr = isNaN(qty)
+                      ? row.quantity
+                      : new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 3 }).format(qty);
 
-                  return (
-                    <TableRow key={row.id}>
-                      <TableCell>
-                        <StatusBadge status={row.status} t={t} />
-                      </TableCell>
-                      <TableCell className="text-sm">{row.workerName}</TableCell>
-                      <TableCell className="text-sm">{row.projectName}</TableCell>
-                      <TableCell className="text-sm">{row.material}</TableCell>
-                      <TableCell className="text-sm text-right tabular-nums">
-                        {qtyStr} {row.unit}
-                      </TableCell>
-                      <TableCell className="text-sm tabular-nums text-muted-foreground">
-                        {new Date(row.submittedAt).toLocaleDateString('tr-TR')}
-                      </TableCell>
-                      <TableCell className="text-sm">{row.auditorName ?? '—'}</TableCell>
-                      <TableCell>
-                        <Link
-                          href={detailHref}
-                          className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }))}
-                        >
-                          {t('records.details')}
-                        </Link>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
+                    return (
+                      <BrandTable.Row key={row.id}>
+                        <BrandTable.Cell>
+                          <StatusBadge status={row.status} t={t} />
+                        </BrandTable.Cell>
+                        <BrandTable.Cell className="text-sm">{row.workerName}</BrandTable.Cell>
+                        <BrandTable.Cell className="text-sm">{row.projectName}</BrandTable.Cell>
+                        <BrandTable.Cell className="text-sm">{row.material}</BrandTable.Cell>
+                        <BrandTable.Cell className="text-sm text-right tabular-nums">
+                          {qtyStr} {row.unit}
+                        </BrandTable.Cell>
+                        <BrandTable.Cell className="text-sm tabular-nums text-muted-foreground">
+                          {new Date(row.submittedAt).toLocaleDateString('tr-TR')}
+                        </BrandTable.Cell>
+                        <BrandTable.Cell className="text-sm">{row.auditorName ?? '—'}</BrandTable.Cell>
+                        <BrandTable.Cell>
+                          <Link
+                            href={detailHref}
+                            className={cn(brandButtonVariants({ variant: 'ghost', size: 'sm' }))}
+                          >
+                            {t('records.details')}
+                          </Link>
+                        </BrandTable.Cell>
+                      </BrandTable.Row>
+                    );
+                  })}
+                </BrandTable.Body>
+              </BrandTable.Root>
+            </BrandCard.Body>
+          </BrandCard>
 
           {/* Pagination: prev/next (lookahead approach — no exact page count) */}
           <div className="flex items-center justify-between gap-4 pt-2">
             {pageNum > 1 ? (
               <Link
                 href={buildPageHref(pageNum - 1)}
-                className={cn(buttonVariants({ variant: 'outline', size: 'sm' }))}
+                className={cn(brandButtonVariants({ variant: 'outline', size: 'sm' }))}
               >
                 {t('records.prev')}
               </Link>
             ) : (
               <span
-                className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'pointer-events-none opacity-50')}
+                className={cn(brandButtonVariants({ variant: 'outline', size: 'sm' }), 'pointer-events-none opacity-50')}
                 aria-disabled="true"
               >
                 {t('records.prev')}
@@ -257,13 +262,13 @@ export default async function RecordsPage({ searchParams }: Props) {
             {hasNextPage ? (
               <Link
                 href={buildPageHref(pageNum + 1)}
-                className={cn(buttonVariants({ variant: 'outline', size: 'sm' }))}
+                className={cn(brandButtonVariants({ variant: 'outline', size: 'sm' }))}
               >
                 {t('records.next')}
               </Link>
             ) : (
               <span
-                className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'pointer-events-none opacity-50')}
+                className={cn(brandButtonVariants({ variant: 'outline', size: 'sm' }), 'pointer-events-none opacity-50')}
                 aria-disabled="true"
               >
                 {t('records.next')}

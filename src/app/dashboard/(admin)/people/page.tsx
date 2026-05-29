@@ -21,15 +21,12 @@ import { Suspense } from 'react';
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
 import { ArrowDown, ArrowUp, Users } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+  BrandBadge,
+  BrandCard,
+  BrandHeading,
+  BrandTable,
+} from '@/components/brand';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { FilterBar } from '@/components/admin/FilterBar';
 import { LeaderboardSortSelect } from '@/components/admin/LeaderboardSortSelect';
@@ -125,14 +122,18 @@ export default async function PeoplePage({ searchParams }: Props) {
     <div className="space-y-6">
       {/* Page heading */}
       <div className="space-y-1">
-        <h1 className="text-xl font-semibold">{t('heading')}</h1>
+        <BrandHeading as="h1" size="h1">{t('heading')}</BrandHeading>
         <p className="text-sm text-muted-foreground">{t('subtitle')}</p>
       </div>
 
       {/* Filter bar — MUST be in Suspense (useSearchParams) */}
-      <Suspense fallback={<div className="h-12 animate-pulse bg-muted rounded" />}>
-        <FilterBar projectOptions={projectOptions} />
-      </Suspense>
+      <BrandCard>
+        <BrandCard.Body className="p-3">
+          <Suspense fallback={<div className="h-12 animate-pulse bg-muted rounded" />}>
+            <FilterBar projectOptions={projectOptions} />
+          </Suspense>
+        </BrandCard.Body>
+      </BrandCard>
 
       {/* Workers / Auditors tabs */}
       <Tabs defaultValue={activeTab}>
@@ -155,110 +156,114 @@ export default async function PeoplePage({ searchParams }: Props) {
           </div>
 
           {rankedWorkers.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-24 gap-4 text-muted-foreground">
-              <Users className="size-12" />
-              <p className="text-sm">{t('empty_state')}</p>
-            </div>
+            <BrandCard>
+              <BrandCard.Body className="flex flex-col items-center justify-center py-24 gap-4 text-muted-foreground">
+                <Users className="size-12" />
+                <p className="text-sm">{t('empty_state')}</p>
+              </BrandCard.Body>
+            </BrandCard>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    {/* Rank column — no sort indicator */}
-                    <TableHead scope="col" aria-label="Rank" className="w-12">
-                      {t('col_rank')}
-                    </TableHead>
-                    <TableHead>{t('col_name')}</TableHead>
-                    <TableHead className="text-right tabular-nums">{t('col_submissions')}</TableHead>
-                    <TableHead className="text-right tabular-nums">
-                      <span className="inline-flex items-center gap-1">
-                        {t('col_approved')}
-                        {effectiveWorkerSort === 'approved' && (
-                          <ArrowDown className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
-                        )}
-                      </span>
-                    </TableHead>
-                    <TableHead className="text-right tabular-nums">
-                      <span className="inline-flex items-center gap-1">
-                        {t('col_rejected')}
-                        {effectiveWorkerSort === 'rejected' && (
-                          <ArrowDown className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
-                        )}
-                      </span>
-                    </TableHead>
-                    <TableHead className="text-right tabular-nums">{t('col_pending')}</TableHead>
-                    <TableHead className="text-right tabular-nums">
-                      <span className="inline-flex items-center gap-1">
-                        {t('col_value')}
-                        {effectiveWorkerSort === 'value' && (
-                          <ArrowDown className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
-                        )}
-                      </span>
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {rankedWorkers.map((w) => {
-                    const total =
-                      w.submissionsApproved + w.submissionsRejected + w.submissionsPending;
-                    // Display first available currency value or "—"
-                    const currencies = Object.keys(w.valueContributedByCurrency);
-                    const valueDisplay =
-                      currencies.length > 0
-                        ? w.valueContributedByCurrency[currencies[0]]
-                        : '—';
+            <BrandCard>
+              <BrandCard.Body className="p-0 overflow-x-auto">
+                <BrandTable.Root>
+                  <BrandTable.Header>
+                    <BrandTable.Row>
+                      {/* Rank column — no sort indicator */}
+                      <BrandTable.Head scope="col" aria-label="Rank" className="w-12">
+                        {t('col_rank')}
+                      </BrandTable.Head>
+                      <BrandTable.Head>{t('col_name')}</BrandTable.Head>
+                      <BrandTable.Head className="text-right tabular-nums">{t('col_submissions')}</BrandTable.Head>
+                      <BrandTable.Head className="text-right tabular-nums">
+                        <span className="inline-flex items-center gap-1">
+                          {t('col_approved')}
+                          {effectiveWorkerSort === 'approved' && (
+                            <ArrowDown className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+                          )}
+                        </span>
+                      </BrandTable.Head>
+                      <BrandTable.Head className="text-right tabular-nums">
+                        <span className="inline-flex items-center gap-1">
+                          {t('col_rejected')}
+                          {effectiveWorkerSort === 'rejected' && (
+                            <ArrowDown className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+                          )}
+                        </span>
+                      </BrandTable.Head>
+                      <BrandTable.Head className="text-right tabular-nums">{t('col_pending')}</BrandTable.Head>
+                      <BrandTable.Head className="text-right tabular-nums">
+                        <span className="inline-flex items-center gap-1">
+                          {t('col_value')}
+                          {effectiveWorkerSort === 'value' && (
+                            <ArrowDown className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+                          )}
+                        </span>
+                      </BrandTable.Head>
+                    </BrandTable.Row>
+                  </BrandTable.Header>
+                  <BrandTable.Body>
+                    {rankedWorkers.map((w) => {
+                      const total =
+                        w.submissionsApproved + w.submissionsRejected + w.submissionsPending;
+                      // Display first available currency value or "—"
+                      const currencies = Object.keys(w.valueContributedByCurrency);
+                      const valueDisplay =
+                        currencies.length > 0
+                          ? w.valueContributedByCurrency[currencies[0]]
+                          : '—';
 
-                    return (
-                      <TableRow key={w.personId}>
-                        {/* Rank cell */}
-                        <TableCell>
-                          {w.rank === 1 && (
-                            <Badge className="bg-primary text-primary-foreground">{w.rank}</Badge>
-                          )}
-                          {w.rank > 1 && w.rank <= 3 && (
-                            <Badge variant="secondary">{w.rank}</Badge>
-                          )}
-                          {w.rank > 3 && (
-                            <span className="text-sm font-semibold text-muted-foreground tabular-nums">
-                              {w.rank}
-                            </span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Link
-                            href={`/dashboard/people/${w.personId}`}
-                            className="hover:underline font-medium"
-                          >
-                            {w.displayName}
-                          </Link>
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">
-                          {new Intl.NumberFormat('tr-TR').format(total)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Badge className="bg-emerald-100 text-emerald-800">
-                            {new Intl.NumberFormat('tr-TR').format(w.submissionsApproved)}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Badge variant="destructive">
-                            {new Intl.NumberFormat('tr-TR').format(w.submissionsRejected)}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Badge variant="secondary">
-                            {new Intl.NumberFormat('tr-TR').format(w.submissionsPending)}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">
-                          {valueDisplay}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
+                      return (
+                        <BrandTable.Row key={w.personId}>
+                          {/* Rank cell */}
+                          <BrandTable.Cell>
+                            {w.rank === 1 && (
+                              <BrandBadge variant="primary">{w.rank}</BrandBadge>
+                            )}
+                            {w.rank > 1 && w.rank <= 3 && (
+                              <BrandBadge variant="neutral">{w.rank}</BrandBadge>
+                            )}
+                            {w.rank > 3 && (
+                              <span className="text-sm font-semibold text-muted-foreground tabular-nums">
+                                {w.rank}
+                              </span>
+                            )}
+                          </BrandTable.Cell>
+                          <BrandTable.Cell>
+                            <Link
+                              href={`/dashboard/people/${w.personId}`}
+                              className="hover:underline font-medium"
+                            >
+                              {w.displayName}
+                            </Link>
+                          </BrandTable.Cell>
+                          <BrandTable.Cell className="text-right tabular-nums">
+                            {new Intl.NumberFormat('tr-TR').format(total)}
+                          </BrandTable.Cell>
+                          <BrandTable.Cell className="text-right">
+                            <BrandBadge variant="success">
+                              {new Intl.NumberFormat('tr-TR').format(w.submissionsApproved)}
+                            </BrandBadge>
+                          </BrandTable.Cell>
+                          <BrandTable.Cell className="text-right">
+                            <BrandBadge variant="destructive">
+                              {new Intl.NumberFormat('tr-TR').format(w.submissionsRejected)}
+                            </BrandBadge>
+                          </BrandTable.Cell>
+                          <BrandTable.Cell className="text-right">
+                            <BrandBadge variant="neutral">
+                              {new Intl.NumberFormat('tr-TR').format(w.submissionsPending)}
+                            </BrandBadge>
+                          </BrandTable.Cell>
+                          <BrandTable.Cell className="text-right tabular-nums">
+                            {valueDisplay}
+                          </BrandTable.Cell>
+                        </BrandTable.Row>
+                      );
+                    })}
+                  </BrandTable.Body>
+                </BrandTable.Root>
+              </BrandCard.Body>
+            </BrandCard>
           )}
         </TabsContent>
 
@@ -276,122 +281,126 @@ export default async function PeoplePage({ searchParams }: Props) {
           </div>
 
           {rankedAuditors.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-24 gap-4 text-muted-foreground">
-              <Users className="size-12" />
-              <p className="text-sm">{t('empty_state')}</p>
-            </div>
+            <BrandCard>
+              <BrandCard.Body className="flex flex-col items-center justify-center py-24 gap-4 text-muted-foreground">
+                <Users className="size-12" />
+                <p className="text-sm">{t('empty_state')}</p>
+              </BrandCard.Body>
+            </BrandCard>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    {/* Rank column — no sort indicator */}
-                    <TableHead scope="col" aria-label="Rank" className="w-12">
-                      {t('col_rank')}
-                    </TableHead>
-                    <TableHead>{t('col_name')}</TableHead>
-                    <TableHead className="text-right tabular-nums">
-                      <span className="inline-flex items-center gap-1">
-                        {t('col_decisions')}
-                        {effectiveAuditorSort === 'decisions' && (
-                          <ArrowDown className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
-                        )}
-                      </span>
-                    </TableHead>
-                    <TableHead className="text-right">
-                      <span className="inline-flex items-center gap-1">
-                        {t('col_turnaround')}
-                        {effectiveAuditorSort === 'turnaround' && (
-                          <ArrowUp className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
-                        )}
-                      </span>
-                    </TableHead>
-                    <TableHead className="text-right tabular-nums">
-                      <span className="inline-flex items-center gap-1">
-                        {t('col_backlog')}
-                        {effectiveAuditorSort === 'backlog' && (
-                          <ArrowDown className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
-                        )}
-                      </span>
-                    </TableHead>
-                    {/* WR-05 (09-REVIEW): SLA breach rate column — only visible when threshold is configured.
-                        Provides a sort-direction indicator when effectiveAuditorSort==='sla_breach'. */}
-                    <TableHead className="text-right tabular-nums">
-                      <span className="inline-flex items-center gap-1">
-                        {tLeaderboard('auditor_sla_breach')}
-                        {effectiveAuditorSort === 'sla_breach' && (
-                          <ArrowDown className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
-                        )}
-                      </span>
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {rankedAuditors.map((a) => {
-                    const turnaroundDisplay =
-                      a.avgDecisionLatencyHours !== null
-                        ? `${a.avgDecisionLatencyHours.toFixed(1)} sa`
-                        : '—';
-                    const backlogVariant =
-                      a.pendingBacklogCount > 5 ? 'destructive' : 'secondary';
-                    // WR-05 / CR-01: display breach rate as percentage; null → '—'
-                    const breachRateDisplay =
-                      a.slaBreachRateDecided !== null
-                        ? `${(a.slaBreachRateDecided * 100).toFixed(0)}%`
-                        : '—';
-                    const breachVariant =
-                      a.slaBreachRateDecided !== null && a.slaBreachRateDecided > 0.2
-                        ? 'destructive'
-                        : 'secondary';
+            <BrandCard>
+              <BrandCard.Body className="p-0 overflow-x-auto">
+                <BrandTable.Root>
+                  <BrandTable.Header>
+                    <BrandTable.Row>
+                      {/* Rank column — no sort indicator */}
+                      <BrandTable.Head scope="col" aria-label="Rank" className="w-12">
+                        {t('col_rank')}
+                      </BrandTable.Head>
+                      <BrandTable.Head>{t('col_name')}</BrandTable.Head>
+                      <BrandTable.Head className="text-right tabular-nums">
+                        <span className="inline-flex items-center gap-1">
+                          {t('col_decisions')}
+                          {effectiveAuditorSort === 'decisions' && (
+                            <ArrowDown className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+                          )}
+                        </span>
+                      </BrandTable.Head>
+                      <BrandTable.Head className="text-right">
+                        <span className="inline-flex items-center gap-1">
+                          {t('col_turnaround')}
+                          {effectiveAuditorSort === 'turnaround' && (
+                            <ArrowUp className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+                          )}
+                        </span>
+                      </BrandTable.Head>
+                      <BrandTable.Head className="text-right tabular-nums">
+                        <span className="inline-flex items-center gap-1">
+                          {t('col_backlog')}
+                          {effectiveAuditorSort === 'backlog' && (
+                            <ArrowDown className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+                          )}
+                        </span>
+                      </BrandTable.Head>
+                      {/* WR-05 (09-REVIEW): SLA breach rate column — only visible when threshold is configured.
+                          Provides a sort-direction indicator when effectiveAuditorSort==='sla_breach'. */}
+                      <BrandTable.Head className="text-right tabular-nums">
+                        <span className="inline-flex items-center gap-1">
+                          {tLeaderboard('auditor_sla_breach')}
+                          {effectiveAuditorSort === 'sla_breach' && (
+                            <ArrowDown className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+                          )}
+                        </span>
+                      </BrandTable.Head>
+                    </BrandTable.Row>
+                  </BrandTable.Header>
+                  <BrandTable.Body>
+                    {rankedAuditors.map((a) => {
+                      const turnaroundDisplay =
+                        a.avgDecisionLatencyHours !== null
+                          ? `${a.avgDecisionLatencyHours.toFixed(1)} sa`
+                          : '—';
+                      const backlogVariant: 'destructive' | 'neutral' =
+                        a.pendingBacklogCount > 5 ? 'destructive' : 'neutral';
+                      // WR-05 / CR-01: display breach rate as percentage; null → '—'
+                      const breachRateDisplay =
+                        a.slaBreachRateDecided !== null
+                          ? `${(a.slaBreachRateDecided * 100).toFixed(0)}%`
+                          : '—';
+                      const breachVariant: 'destructive' | 'neutral' =
+                        a.slaBreachRateDecided !== null && a.slaBreachRateDecided > 0.2
+                          ? 'destructive'
+                          : 'neutral';
 
-                    return (
-                      <TableRow key={a.personId}>
-                        {/* Rank cell */}
-                        <TableCell>
-                          {a.rank === 1 && (
-                            <Badge className="bg-primary text-primary-foreground">{a.rank}</Badge>
-                          )}
-                          {a.rank > 1 && a.rank <= 3 && (
-                            <Badge variant="secondary">{a.rank}</Badge>
-                          )}
-                          {a.rank > 3 && (
-                            <span className="text-sm font-semibold text-muted-foreground tabular-nums">
-                              {a.rank}
-                            </span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Link
-                            href={`/dashboard/people/${a.personId}`}
-                            className="hover:underline font-medium"
-                          >
-                            {a.displayName}
-                          </Link>
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">
-                          {new Intl.NumberFormat('tr-TR').format(a.decisionsCount)}
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">
-                          {turnaroundDisplay}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Badge variant={backlogVariant}>
-                            {new Intl.NumberFormat('tr-TR').format(a.pendingBacklogCount)}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">
-                          {breachRateDisplay !== '—' ? (
-                            <Badge variant={breachVariant}>{breachRateDisplay}</Badge>
-                          ) : (
-                            <span className="text-muted-foreground">—</span>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
+                      return (
+                        <BrandTable.Row key={a.personId}>
+                          {/* Rank cell */}
+                          <BrandTable.Cell>
+                            {a.rank === 1 && (
+                              <BrandBadge variant="primary">{a.rank}</BrandBadge>
+                            )}
+                            {a.rank > 1 && a.rank <= 3 && (
+                              <BrandBadge variant="neutral">{a.rank}</BrandBadge>
+                            )}
+                            {a.rank > 3 && (
+                              <span className="text-sm font-semibold text-muted-foreground tabular-nums">
+                                {a.rank}
+                              </span>
+                            )}
+                          </BrandTable.Cell>
+                          <BrandTable.Cell>
+                            <Link
+                              href={`/dashboard/people/${a.personId}`}
+                              className="hover:underline font-medium"
+                            >
+                              {a.displayName}
+                            </Link>
+                          </BrandTable.Cell>
+                          <BrandTable.Cell className="text-right tabular-nums">
+                            {new Intl.NumberFormat('tr-TR').format(a.decisionsCount)}
+                          </BrandTable.Cell>
+                          <BrandTable.Cell className="text-right tabular-nums">
+                            {turnaroundDisplay}
+                          </BrandTable.Cell>
+                          <BrandTable.Cell className="text-right">
+                            <BrandBadge variant={backlogVariant}>
+                              {new Intl.NumberFormat('tr-TR').format(a.pendingBacklogCount)}
+                            </BrandBadge>
+                          </BrandTable.Cell>
+                          <BrandTable.Cell className="text-right tabular-nums">
+                            {breachRateDisplay !== '—' ? (
+                              <BrandBadge variant={breachVariant}>{breachRateDisplay}</BrandBadge>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </BrandTable.Cell>
+                        </BrandTable.Row>
+                      );
+                    })}
+                  </BrandTable.Body>
+                </BrandTable.Root>
+              </BrandCard.Body>
+            </BrandCard>
           )}
         </TabsContent>
       </Tabs>

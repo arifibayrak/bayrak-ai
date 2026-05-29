@@ -33,8 +33,7 @@ import {
   AlertCircle,
   MapPin,
 } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { BrandBadge, BrandCard } from '@/components/brand';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import type { CanonicalSubmission } from '@/lib/types/canonical-submission';
@@ -43,12 +42,13 @@ import type { CanonicalSubmission } from '@/lib/types/canonical-submission';
 
 function StatusBadge({ status, label }: { status: CanonicalSubmission['status']; label: string }) {
   if (status === 'approved') {
-    return <Badge className="bg-emerald-100 text-emerald-800">{label}</Badge>;
+    return <BrandBadge variant="success">{label}</BrandBadge>;
   }
   if (status === 'rejected') {
-    return <Badge variant="destructive">{label}</Badge>;
+    return <BrandBadge variant="destructive">{label}</BrandBadge>;
   }
-  return <Badge variant="secondary">{label}</Badge>;
+  // pending_audit
+  return <BrandBadge variant="info">{label}</BrandBadge>;
 }
 
 // ── Locale formatters ─────────────────────────────────────────────────────────
@@ -96,54 +96,69 @@ export function SubmissionDetailView({ submission }: SubmissionDetailViewProps) 
       <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-6">
 
         {/* Photo block (D-61 pattern) */}
-        <div className="flex flex-col gap-2">
-          {submission.photoUrl ? (
-            <>
-              {/* Thumbnail — opens lightbox on click */}
-              <button
-                type="button"
-                onClick={() => setLightboxOpen(true)}
-                className="relative block h-[200px] w-[200px] rounded overflow-hidden cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring"
-                aria-label={t('photo_alt')}
-              >
-                <Image
-                  src={submission.photoUrl}
-                  alt={t('photo_alt')}
-                  width={200}
-                  height={200}
-                  className="object-cover h-[200px] w-[200px]"
-                />
-              </button>
-
-              {/* Lightbox dialog (D-61 pattern — verbatim from KayitlarTabClient) */}
-              <Dialog
-                open={lightboxOpen}
-                onOpenChange={(open) => {
-                  if (!open) setLightboxOpen(false);
-                }}
-              >
-                <DialogContent className="max-w-3xl">
+        <BrandCard>
+          <BrandCard.Body className="flex flex-col gap-2 p-3">
+            {submission.photoUrl ? (
+              <>
+                {/* Thumbnail — opens lightbox on click */}
+                <button
+                  type="button"
+                  onClick={() => setLightboxOpen(true)}
+                  className="relative block h-[200px] w-[200px] rounded overflow-hidden cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring"
+                  aria-label={t('photo_alt')}
+                >
                   <Image
                     src={submission.photoUrl}
                     alt={t('photo_alt')}
-                    width={800}
-                    height={600}
-                    style={{ objectFit: 'contain' }}
+                    width={200}
+                    height={200}
+                    className="object-cover h-[200px] w-[200px]"
                   />
-                </DialogContent>
-              </Dialog>
-            </>
-          ) : (
-            /* No-photo state */
-            <div className="flex h-[200px] w-[200px] items-center justify-center rounded bg-muted text-muted-foreground">
-              <ImageOff className="h-12 w-12" aria-hidden="true" />
-              <span className="sr-only">{t('no_photo')}</span>
-            </div>
-          )}
-        </div>
+                </button>
+
+                {/* "View original" link — opens full-resolution photo in new tab.
+                    Security (T-08-06-TN): target="_blank" requires rel="noopener noreferrer"
+                    to mitigate reverse-tabnabbing (untrusted opener access to window.opener). */}
+                <a
+                  href={submission.photoUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-muted-foreground hover:text-foreground hover:underline"
+                >
+                  {t('photo_alt')} ↗
+                </a>
+
+                {/* Lightbox dialog (D-61 pattern — verbatim from KayitlarTabClient) */}
+                <Dialog
+                  open={lightboxOpen}
+                  onOpenChange={(open) => {
+                    if (!open) setLightboxOpen(false);
+                  }}
+                >
+                  <DialogContent className="max-w-3xl">
+                    <Image
+                      src={submission.photoUrl}
+                      alt={t('photo_alt')}
+                      width={800}
+                      height={600}
+                      style={{ objectFit: 'contain' }}
+                    />
+                  </DialogContent>
+                </Dialog>
+              </>
+            ) : (
+              /* No-photo state */
+              <div className="flex h-[200px] w-[200px] items-center justify-center rounded bg-muted text-muted-foreground">
+                <ImageOff className="h-12 w-12" aria-hidden="true" />
+                <span className="sr-only">{t('no_photo')}</span>
+              </div>
+            )}
+          </BrandCard.Body>
+        </BrandCard>
 
         {/* Detail fields */}
-        <div className="space-y-4">
+        <BrandCard>
+          <BrandCard.Body className="space-y-4">
           <dl className="space-y-3">
             {/* Worker */}
             <div>
@@ -193,9 +208,9 @@ export function SubmissionDetailView({ submission }: SubmissionDetailViewProps) 
                       {parseFloat(submission.locationDistanceM).toFixed(0)} m
                     </span>
                     {submission.locationMatch === 'far' && (
-                      <Badge variant="destructive">
+                      <BrandBadge variant="destructive">
                         {t('field_location_warning')}
-                      </Badge>
+                      </BrandBadge>
                     )}
                   </span>
                 ) : (
@@ -244,7 +259,8 @@ export function SubmissionDetailView({ submission }: SubmissionDetailViewProps) 
               {t('ai_slot_body')}
             </AlertDescription>
           </Alert>
-        </div>
+          </BrandCard.Body>
+        </BrandCard>
       </div>
     </div>
   );

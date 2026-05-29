@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { ChevronRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { BrandButton } from '@/components/brand';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -140,13 +140,13 @@ export function ActivityTimeline({ entries, mode }: ActivityTimelineProps) {
 
       {hasMore && (
         <div className="pt-2">
-          <Button
+          <BrandButton
             variant="outline"
             size="sm"
             onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
           >
             {t('load_more')}
-          </Button>
+          </BrandButton>
         </div>
       )}
     </div>

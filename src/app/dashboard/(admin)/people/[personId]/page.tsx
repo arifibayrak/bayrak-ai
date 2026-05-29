@@ -20,7 +20,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
+import { BrandBadge, BrandCard, BrandHeading } from '@/components/brand';
 import { Separator } from '@/components/ui/separator';
 import {
   CheckCircle2,
@@ -241,21 +241,25 @@ export default async function PersonProfilePage({ params, searchParams }: Props)
 
       {/* Person name + role badges */}
       <div className="space-y-2">
-        <h1 className="text-xl font-semibold">{displayName}</h1>
+        <BrandHeading as="h1" size="h1">{displayName}</BrandHeading>
         <div className="flex gap-2 flex-wrap">
           {isWorker && (
-            <Badge variant="secondary">{t('role_worker')}</Badge>
+            <BrandBadge variant="neutral">{t('role_worker')}</BrandBadge>
           )}
           {isAuditor && (
-            <Badge variant="secondary">{t('role_auditor')}</Badge>
+            <BrandBadge variant="neutral">{t('role_auditor')}</BrandBadge>
           )}
         </div>
       </div>
 
       {/* Filter bar — MUST be in Suspense (useSearchParams) */}
-      <Suspense fallback={<div className="h-12 animate-pulse bg-muted rounded" />}>
-        <FilterBar projectOptions={projectOptions} />
-      </Suspense>
+      <BrandCard>
+        <BrandCard.Body className="p-3">
+          <Suspense fallback={<div className="h-12 animate-pulse bg-muted rounded" />}>
+            <FilterBar projectOptions={projectOptions} />
+          </Suspense>
+        </BrandCard.Body>
+      </BrandCard>
 
       {/* KPI cards */}
       {hasNoRecords ? (
@@ -275,11 +279,12 @@ export default async function PersonProfilePage({ params, searchParams }: Props)
         <div className="space-y-6">
           {/* Worker KPI section — PERF-01: 6-card grid (existing 4 + Output Volume + Approval Rate) */}
           {isWorker && workerMetrics && (
-            <div className="space-y-3">
+            <BrandCard>
+              <BrandCard.Body className="space-y-3 p-3">
               {(isWorker && isAuditor) && (
-                <h2 className="text-sm font-semibold text-muted-foreground">
+                <BrandHeading as="h2" size="h3" className="text-sm font-semibold text-muted-foreground">
                   {t('kpi_worker_metrics')}
-                </h2>
+                </BrandHeading>
               )}
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
                 {/* Card 1: Approved */}
@@ -328,7 +333,8 @@ export default async function PersonProfilePage({ params, searchParams }: Props)
                   valueColor={approvalRateColor}
                 />
               </div>
-            </div>
+              </BrandCard.Body>
+            </BrandCard>
           )}
 
           {/* Separator between worker and auditor sections */}
@@ -336,11 +342,12 @@ export default async function PersonProfilePage({ params, searchParams }: Props)
 
           {/* Auditor KPI section — PERF-02: 5-card grid (existing 4 + SLA Breach Rate) */}
           {isAuditor && auditorMetrics && (
-            <div className="space-y-3">
+            <BrandCard>
+              <BrandCard.Body className="space-y-3 p-3">
               {(isWorker && isAuditor) && (
-                <h2 className="text-sm font-semibold text-muted-foreground">
+                <BrandHeading as="h2" size="h3" className="text-sm font-semibold text-muted-foreground">
                   {t('kpi_auditor_metrics')}
-                </h2>
+                </BrandHeading>
               )}
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
                 {/* Card 1: Decisions */}
@@ -387,40 +394,42 @@ export default async function PersonProfilePage({ params, searchParams }: Props)
                   valueColor={slaBreachValueColor}
                 />
               </div>
-            </div>
+              </BrandCard.Body>
+            </BrandCard>
           )}
         </div>
       )}
 
       {/* Activity timeline */}
-      <div className="space-y-4">
-        <Separator />
-        <h2 className="text-base font-semibold">
-          {tTimeline('heading')}
-        </h2>
+      <BrandCard>
+        <BrandCard.Body className="space-y-4 p-3">
+          <BrandHeading as="h2" size="h3">
+            {tTimeline('heading')}
+          </BrandHeading>
 
-        {isWorker && (
-          <div className="space-y-2">
-            {isAuditor && (
-              <h3 className="text-sm font-semibold text-muted-foreground">
-                {t('role_worker')}
-              </h3>
-            )}
-            <ActivityTimeline mode="worker" entries={workerEntries} />
-          </div>
-        )}
+          {isWorker && (
+            <div className="space-y-2">
+              {isAuditor && (
+                <h3 className="text-sm font-semibold text-muted-foreground">
+                  {t('role_worker')}
+                </h3>
+              )}
+              <ActivityTimeline mode="worker" entries={workerEntries} />
+            </div>
+          )}
 
-        {isAuditor && (
-          <div className="space-y-2">
-            {isWorker && (
-              <h3 className="text-sm font-semibold text-muted-foreground">
-                {t('role_auditor')}
-              </h3>
-            )}
-            <ActivityTimeline mode="auditor" entries={auditorEntries} />
-          </div>
-        )}
-      </div>
+          {isAuditor && (
+            <div className="space-y-2">
+              {isWorker && (
+                <h3 className="text-sm font-semibold text-muted-foreground">
+                  {t('role_auditor')}
+                </h3>
+              )}
+              <ActivityTimeline mode="auditor" entries={auditorEntries} />
+            </div>
+          )}
+        </BrandCard.Body>
+      </BrandCard>
 
       {/* Suppress unused variable warning */}
       {workerTotal > -1 && null}
