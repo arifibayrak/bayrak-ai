@@ -10,15 +10,12 @@ import {
 } from 'lucide-react';
 import { LandingHeader } from '@/components/landing/LandingHeader';
 import { Section } from '@/components/landing/Section';
-import { buttonVariants } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
 import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from '@/components/ui/card';
+  BrandButton,
+  BrandCard,
+  BrandHeading,
+  BrandLogo,
+} from '@/components/brand';
 
 export default async function Home() {
   const t = await getTranslations('landing');
@@ -28,7 +25,7 @@ export default async function Home() {
       {/* Skip-to-content link for keyboard users */}
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-lg"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-md"
       >
         {t('a11y.skip_to_content')}
       </a>
@@ -40,79 +37,82 @@ export default async function Home() {
         {/* ── HERO ──────────────────────────────────────────────── */}
         <Section
           id="hero"
-          className="bg-gradient-to-b from-accent/60 via-background to-background pt-20 pb-20 sm:pt-28 sm:pb-28"
+          className="bg-slate-50 pt-20 pb-20 sm:pt-28 sm:pb-28"
         >
           <div className="flex flex-col gap-7 max-w-2xl">
+            <BrandLogo size="lg" />
             <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-primary">
               <span className="size-1.5 rounded-full bg-primary" aria-hidden="true" />
               {t('hero.eyebrow')}
             </span>
-            <h1 className="text-display text-foreground">{t('hero.headline')}</h1>
+            <BrandHeading as="h1" size="display">
+              {t('hero.headline')}
+            </BrandHeading>
             <p className="max-w-xl text-lg sm:text-xl leading-relaxed text-muted-foreground">
               {t('hero.tagline')}
             </p>
             <div className="flex flex-col sm:flex-row gap-3 pt-1">
-              <Link
-                href="/auth/signin"
-                className={cn(
-                  buttonVariants({ size: 'lg' }),
-                  'h-12 rounded-xl px-6 text-[0.95rem] shadow-sm',
-                )}
+              <BrandButton
+                variant="primary"
+                size="lg"
+                render={<Link href="/auth/signin" />}
               >
                 {t('hero.cta_primary')}
-              </Link>
-              <a
-                href="mailto:burakkbayrak@gmail.com"
-                className={cn(
-                  buttonVariants({ variant: 'outline', size: 'lg' }),
-                  'h-12 rounded-xl px-6 text-[0.95rem]',
-                )}
+              </BrandButton>
+              <BrandButton
+                variant="outline"
+                size="lg"
+                render={<a href="mailto:burakkbayrak@gmail.com" />}
               >
                 {t('hero.cta_secondary')}
-              </a>
+              </BrandButton>
             </div>
           </div>
         </Section>
 
         {/* ── PROBLEM → SOLUTION ────────────────────────────────── */}
         <Section id="problem" muted>
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-10">
+          <BrandHeading as="h2" size="h1" className="mb-10">
             {t('problem.heading')}
-          </h2>
+          </BrandHeading>
           <div className="grid sm:grid-cols-2 gap-6">
             {/* Before */}
-            <div className="rounded-2xl border border-border bg-card p-6 flex flex-col gap-3 shadow-sm">
-              <div className="flex items-center gap-2.5">
-                <span className="inline-flex size-9 items-center justify-center rounded-xl bg-muted text-muted-foreground">
-                  <AlertTriangle className="size-5" aria-hidden="true" />
-                </span>
-                <h3 className="text-base font-semibold text-foreground">{t('problem.before_title')}</h3>
-              </div>
-              <p className="text-[0.95rem] leading-relaxed text-muted-foreground">{t('problem.before_body')}</p>
-            </div>
+            <BrandCard>
+              <BrandCard.Body className="flex flex-col gap-3">
+                <div className="flex items-center gap-2.5">
+                  <span className="inline-flex size-9 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                    <AlertTriangle className="size-5" aria-hidden="true" />
+                  </span>
+                  <h3 className="text-base font-semibold text-foreground">{t('problem.before_title')}</h3>
+                </div>
+                <p className="text-[0.95rem] leading-relaxed text-muted-foreground">{t('problem.before_body')}</p>
+              </BrandCard.Body>
+            </BrandCard>
             {/* After */}
-            <div className="rounded-2xl border border-primary/25 bg-primary/[0.04] p-6 flex flex-col gap-3 shadow-sm">
-              <div className="flex items-center gap-2.5">
-                <span className="inline-flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <CheckCircle2 className="size-5" aria-hidden="true" />
-                </span>
-                <h3 className="text-base font-semibold text-foreground">{t('problem.after_title')}</h3>
-              </div>
-              <p className="text-[0.95rem] leading-relaxed text-muted-foreground">{t('problem.after_body')}</p>
-            </div>
+            <BrandCard className="border-primary/25 bg-primary/[0.04]">
+              <BrandCard.Body className="flex flex-col gap-3">
+                <div className="flex items-center gap-2.5">
+                  <span className="inline-flex size-9 items-center justify-center rounded-md bg-primary/10 text-primary">
+                    <CheckCircle2 className="size-5" aria-hidden="true" />
+                  </span>
+                  <h3 className="text-base font-semibold text-foreground">{t('problem.after_title')}</h3>
+                </div>
+                <p className="text-[0.95rem] leading-relaxed text-muted-foreground">{t('problem.after_body')}</p>
+              </BrandCard.Body>
+            </BrandCard>
           </div>
         </Section>
 
         {/* ── HOW IT WORKS ──────────────────────────────────────── */}
         <Section id="how-it-works">
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-10">
+          <BrandHeading as="h2" size="h1" className="mb-10">
             {t('how.heading')}
-          </h2>
+          </BrandHeading>
           <div className="grid sm:grid-cols-3 gap-8 sm:gap-6">
             {[1, 2, 3].map((step) => (
               <div key={step} className="flex flex-col gap-3">
                 <div className="flex items-center gap-3">
-                  <span className="inline-flex items-center justify-center size-9 rounded-xl bg-primary text-sm font-bold text-primary-foreground shadow-sm shrink-0 tabular-nums">
+                  <span className="inline-flex items-center justify-center size-9 rounded-md bg-primary text-sm font-bold text-primary-foreground shrink-0 tabular-nums">
                     {step}
                   </span>
                   <h3 className="text-base font-semibold tracking-tight">
@@ -129,9 +129,9 @@ export default async function Home() {
 
         {/* ── KEY FEATURES ──────────────────────────────────────── */}
         <Section id="features" muted>
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-10">
+          <BrandHeading as="h2" size="h1" className="mb-10">
             {t('features.heading')}
-          </h2>
+          </BrandHeading>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
               { Icon: MessageSquare, key: 'telegram' },
@@ -141,21 +141,23 @@ export default async function Home() {
               { Icon: AlertTriangle, key: 'geo' },
               { Icon: Languages, key: 'bilingual' },
             ].map(({ Icon, key }) => (
-              <Card key={key} className="transition-shadow hover:shadow-md">
-                <CardHeader>
+              <BrandCard key={key}>
+                <BrandCard.Header className="pb-2">
                   <div className="flex items-center gap-3">
-                    <span className="inline-flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <span className="inline-flex size-9 items-center justify-center rounded-md bg-primary/10 text-primary">
                       <Icon className="size-5" aria-hidden="true" />
                     </span>
-                    <CardTitle>{t(`features.${key}_title`)}</CardTitle>
+                    <h3 className="text-base font-semibold tracking-tight">
+                      {t(`features.${key}_title`)}
+                    </h3>
                   </div>
-                </CardHeader>
-                <CardContent>
-                  <CardDescription className="leading-relaxed">
+                </BrandCard.Header>
+                <BrandCard.Body className="pt-0">
+                  <p className="text-sm leading-relaxed text-muted-foreground">
                     {t(`features.${key}_body`)}
-                  </CardDescription>
-                </CardContent>
-              </Card>
+                  </p>
+                </BrandCard.Body>
+              </BrandCard>
             ))}
           </div>
         </Section>
@@ -165,7 +167,7 @@ export default async function Home() {
       {/* ── FOOTER ────────────────────────────────────────────── */}
       <footer className="border-t border-border bg-card py-10">
         <div className="max-w-5xl mx-auto px-6 flex flex-col items-center gap-3 text-center">
-          <span className="text-base font-bold tracking-tight">bayrak.ai</span>
+          <BrandLogo size="md" />
           <p className="text-sm text-muted-foreground max-w-md leading-relaxed">{t('footer.tagline')}</p>
           <p className="text-xs text-muted-foreground/80">{t('footer.copyright')}</p>
         </div>

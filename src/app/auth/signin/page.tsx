@@ -3,11 +3,10 @@
 import { useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
-import { Button } from '@/components/ui/button';
+import { BrandButton, BrandCard, BrandHeading, BrandLogo } from '@/components/brand';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
 
 export default function SignInPage() {
   const t = useTranslations('auth.signin');
@@ -43,16 +42,17 @@ export default function SignInPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-accent/50 via-background to-background px-4 py-16">
-      <Card className="w-full max-w-sm shadow-md">
-        <CardHeader className="text-center pb-2 gap-2">
-          <span className="text-sm font-bold tracking-tight text-muted-foreground">
-            {t('heading')}
-          </span>
-          <h1 className="text-2xl font-bold tracking-tight leading-tight">{t('subheading')}</h1>
-        </CardHeader>
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4 py-16">
+      <BrandCard className="w-full max-w-md mx-auto">
+        <BrandCard.Header className="flex flex-col items-center text-center gap-3 pb-2">
+          <BrandLogo size="lg" />
+          <BrandHeading as="h1" size="h2" className="leading-tight">
+            {t('subheading')}
+          </BrandHeading>
+          <p className="text-sm text-muted-foreground">{t('heading')}</p>
+        </BrandCard.Header>
 
-        <CardContent>
+        <BrandCard.Body>
           {sent ? (
             <p className="text-sm text-center text-muted-foreground">{t('success')}</p>
           ) : (
@@ -76,19 +76,21 @@ export default function SignInPage() {
                 />
               </div>
 
-              <Button
+              <BrandButton
                 type="submit"
-                className="h-10 w-full text-[0.95rem]"
+                variant="primary"
+                size="md"
+                className="w-full"
                 disabled={loading || !email.trim()}
               >
                 {loading ? t('sending') : t('cta')}
-              </Button>
+              </BrandButton>
 
               <p className="text-sm text-muted-foreground text-center">{t('helper')}</p>
             </form>
           )}
-        </CardContent>
-      </Card>
+        </BrandCard.Body>
+      </BrandCard>
     </div>
   );
 }

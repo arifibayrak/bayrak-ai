@@ -1,8 +1,7 @@
 import { useTranslations } from 'next-intl';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
+import { TriangleAlert } from 'lucide-react';
+import { BrandButton, BrandEmpty } from '@/components/brand';
 
 // Note: This is a Server Component — error type comes from Auth.js searchParams
 export default async function AuthErrorPage({
@@ -21,28 +20,24 @@ function AuthErrorContent({ errorType }: { errorType?: string }) {
   const t = useTranslations('auth.signin');
 
   // Auth.js sends AccessDenied for a failed signIn callback (allowlist block)
+  // Parsing preserved verbatim — only visual rendering changed
   const isAccessDenied =
     !errorType || errorType === 'AccessDenied' || errorType === 'Verification';
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4 py-16">
-      <Card className="w-full max-w-sm">
-        <CardHeader className="text-center pb-2">
-          <h1 className="text-[28px] font-semibold leading-tight">{t('heading')}</h1>
-        </CardHeader>
-
-        <CardContent className="space-y-4">
-          <Alert variant="destructive">
-            <AlertDescription>
-              {isAccessDenied ? t('error_not_allowed') : t('error_not_allowed')}
-            </AlertDescription>
-          </Alert>
-
-          <Button render={<Link href="/auth/signin" />} variant="outline" className="w-full">
-            {t('cta')}
-          </Button>
-        </CardContent>
-      </Card>
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4 py-16">
+      <div className="w-full max-w-md mx-auto">
+        <BrandEmpty
+          icon={<TriangleAlert className="size-12 text-destructive" />}
+          title={t('heading')}
+          description={isAccessDenied ? t('error_not_allowed') : t('error_not_allowed')}
+          action={
+            <BrandButton variant="outline" render={<Link href="/auth/signin" />}>
+              {t('cta')}
+            </BrandButton>
+          }
+        />
+      </div>
     </div>
   );
 }
