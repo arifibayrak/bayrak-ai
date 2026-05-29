@@ -257,8 +257,6 @@ export default async function OverviewPage({ searchParams }: Props) {
         tColEV={t('ev_col_ev')}
         tColComplete={t('ev_col_complete')}
         tEmptyNoProjects={t('empty_no_projects')}
-        tChartNoData={t('chart_no_data')}
-        tChartThroughput={t('chart_throughput')}
       />
     </div>
   );
