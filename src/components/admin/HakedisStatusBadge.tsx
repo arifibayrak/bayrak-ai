@@ -24,7 +24,7 @@
 import { useTranslations } from 'next-intl';
 import { BrandBadge } from '@/components/brand';
 
-type HakedisStatus = 'draft' | 'finalized' | 'submitted' | 'paid';
+export type HakedisStatus = 'draft' | 'finalized' | 'submitted' | 'paid';
 
 const STATUS_VARIANT_MAP: Record<
   HakedisStatus,
@@ -36,19 +36,35 @@ const STATUS_VARIANT_MAP: Record<
   paid: 'success',
 };
 
+/**
+ * Allowlist guard for raw DB status strings (WR-04).
+ * Returns the typed status if it is one of the four known values, else `null`.
+ * Lets call sites avoid the unsafe `as HakedisStatus` cast that asserts a
+ * guarantee the data layer does not enforce at the render boundary.
+ */
+export function asHakedisStatus(s: string | null | undefined): HakedisStatus | null {
+  return s != null && s in STATUS_VARIANT_MAP ? (s as HakedisStatus) : null;
+}
+
 interface HakedisStatusBadgeProps {
-  status: HakedisStatus;
+  // Accepts a raw string: unknown values render a neutral badge with the raw
+  // label instead of silently falling through to an undefined variant (WR-04).
+  status: string;
 }
 
 export function HakedisStatusBadge({ status }: HakedisStatusBadgeProps) {
   const t = useTranslations('dashboard.admin.hakedis');
-  const label = t(`status_${status}` as `status_${'draft' | 'finalized' | 'submitted' | 'paid'}`);
+  const known = asHakedisStatus(status);
+
+  // Known status → translated label + semantic variant.
+  // Unknown status → raw string label + neutral variant (no missing-key throw).
+  const label = known
+    ? t(`status_${known}` as `status_${HakedisStatus}`)
+    : status;
+  const variant = known ? STATUS_VARIANT_MAP[known] : 'neutral';
 
   return (
-    <BrandBadge
-      variant={STATUS_VARIANT_MAP[status]}
-      aria-label={`Status: ${label}`}
-    >
+    <BrandBadge variant={variant} aria-label={`Status: ${label}`}>
       {label}
     </BrandBadge>
   );

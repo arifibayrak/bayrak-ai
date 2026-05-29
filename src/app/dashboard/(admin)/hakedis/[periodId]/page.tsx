@@ -27,7 +27,7 @@ import { formatMoney } from '@/lib/format-money';
 import { auth } from '@/lib/auth';
 import { getPeriodDetail } from '@/actions/hakedis';
 import { getProjects } from '@/actions/projects';
-import { HakedisStatusBadge } from '@/components/admin/HakedisStatusBadge';
+import { HakedisStatusBadge, asHakedisStatus } from '@/components/admin/HakedisStatusBadge';
 import { LineSubmissionsPanel } from '@/components/admin/LineSubmissionsPanel';
 import { LivePeriodPoller } from '@/components/admin/LivePeriodPoller';
 import { PeriodDetailControls } from '@/components/admin/PeriodDetailControls';
@@ -103,7 +103,13 @@ export default async function PeriodDetailPage({ params }: Props) {
   const project = projects.find((p) => p.id === period.projectId);
   const projectName = project?.name ?? period.projectId;
 
-  const status = period.status as 'draft' | 'finalized' | 'submitted' | 'paid';
+  // WR-04: never assert an unguarded `as` cast on a raw DB string. Narrow via the
+  // allowlist guard; an unknown status falls back to 'finalized' for control-flow
+  // purposes — the conservative read-only path that removes destructive draft-only
+  // actions (poller, finalize). The badge below receives the RAW string so an
+  // unknown value still renders honestly (neutral pill + raw label).
+  const rawStatus = period.status;
+  const status = asHakedisStatus(rawStatus) ?? 'finalized';
   const currency = period.currencyCode;
   const formattedEndDate = formatDateTR(period.periodEndDate);
   const formattedFinalizedAt = period.finalizedAt ? formatDateTR(period.finalizedAt) : '—';
@@ -131,7 +137,7 @@ export default async function PeriodDetailPage({ params }: Props) {
         <div className="space-y-1">
           <div className="flex items-center gap-3">
             <BrandHeading as="h1" size="h1">{period.periodNumber}</BrandHeading>
-            <HakedisStatusBadge status={status} />
+            <HakedisStatusBadge status={rawStatus} />
           </div>
           <p className="text-sm text-muted-foreground">
             {projectName} · {t('detail.end_date_label')}: {formattedEndDate}

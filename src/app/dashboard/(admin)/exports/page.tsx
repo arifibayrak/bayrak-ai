@@ -222,15 +222,7 @@ export default async function ExportsPage({
                       {period.currencyCode}
                     </BrandTable.Cell>
                     <BrandTable.Cell>
-                      <HakedisStatusBadge
-                        status={
-                          period.status as
-                            | 'draft'
-                            | 'finalized'
-                            | 'submitted'
-                            | 'paid'
-                        }
-                      />
+                      <HakedisStatusBadge status={period.status} />
                     </BrandTable.Cell>
                     <BrandTable.Cell className="text-right tabular-nums text-sm">
                       {formatMoneyAmount(period.netByDisplay, locale)}

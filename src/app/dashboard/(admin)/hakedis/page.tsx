@@ -171,9 +171,7 @@ export default async function HakedisPage({ searchParams }: Props) {
 
                     {/* Durum — status badge */}
                     <BrandTable.Cell>
-                      <HakedisStatusBadge
-                        status={period.status as 'draft' | 'finalized' | 'submitted' | 'paid'}
-                      />
+                      <HakedisStatusBadge status={period.status} />
                     </BrandTable.Cell>
 
                     {/* Net Ödeme — tabular-nums, right-aligned; "—" when null.
