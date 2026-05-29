@@ -117,10 +117,13 @@ export default async function OEProfilePage({ params, searchParams }: Props) {
   // Clamp to avoid runaway queries. The Load more link emits ?limit=N to increment.
   const limit = Math.min(Math.max(Number(limitParam ?? INITIAL_LIMIT) || INITIAL_LIMIT, INITIAL_LIMIT), 500);
 
-  // Fetch activity log (reuse Phase-7 function — do NOT rebuild the data layer)
-  const entries = await getOfficeActivityLog({ actorUserId: userId, limit });
-
-  const hasMore = entries.length >= limit;
+  // Fetch activity log (reuse Phase-7 function — do NOT rebuild the data layer).
+  // WR-05: lookahead pattern — request limit + 1 so we can distinguish "exactly
+  // limit rows, no more pages" from "more pages exist" without a phantom Load more
+  // when the total is an exact multiple of limit. Slice to `limit` for display.
+  const fetched = await getOfficeActivityLog({ actorUserId: userId, limit: limit + 1 });
+  const hasMore = fetched.length > limit;
+  const entries = hasMore ? fetched.slice(0, limit) : fetched;
 
   return (
     <div className="space-y-6">
@@ -207,11 +210,11 @@ export default async function OEProfilePage({ params, searchParams }: Props) {
           </BrandCard>
         )}
 
-        {/* CR-04 (09-REVIEW): Load more — only shown when entries.length >= limit (i.e. more may exist).
-            Navigates to ?limit=<current+50> so the page fetches more on next render.
+        {/* CR-04 (09-REVIEW): Load more — only shown when `hasMore` (lookahead row exists, WR-05).
+            Navigates to ?limit=<current+LOAD_MORE_LIMIT> so the page fetches more on next render.
             Styled to match BrandButton variant="outline" size="md" (brand outline classes inlined
             because base-ui Button has no asChild slot — Link must remain a native <a>). */}
-        {entries.length >= limit && (
+        {hasMore && (
           <div className="flex justify-center pt-2">
             <Link
               href={`/dashboard/analytics/office-engineers/${userId}?limit=${limit + LOAD_MORE_LIMIT}`}
