@@ -130,17 +130,49 @@ Defined: 2026-05-28. Each maps to roadmap Phases 12–13.
 - [x] **BRAND-02**: Every existing dashboard surface (overview, project pages, people, analytics, hakkediş, exports, period detail) is re-skinned to follow the brand reference; default shadcn/tailwind treatments replaced with bayrak.ai-branded equivalents
 - [x] **BRAND-03**: New shared brand component primitives (logo, brand button variants, brand heading, brand empty-state) exist so future phases inherit the brand language by default instead of reaching for unbranded shadcn defaults
 
-## Future Requirements (post-v3.0)
+## v4.0 Requirements — Document-Driven Route Import, Chainage As-Built Tracking & AI Vision Assist
+
+Defined: 2026-05-29. **Locked decisions:** DWG handled via engineer-exported DXF (no binary parser); source CRS declared explicitly per import (no auto-detect) and reprojected to WGS84 — mandatory satellite preview before save; chainage is **snapshotted at auditor approval** for the immutable as-built record (live derived chainage only for pending work), with route geometry versioned so re-import never rewrites history; AI flags are advisory-only and **eval-gated** before display; BOQ ingestion stays on the existing Excel importer (drawing-based BOQ extraction remains Out of Scope, saha ADR-0002).
+
+### Route & Document Import
+
+- [ ] **RTE-01**: Office engineer can import a project route by uploading a DXF file (exported from AutoCAD/DWG), selecting the centerline layer and declaring the source coordinate system (e.g. TUREF/TM30, UTM 35N/36N); the route is parsed and reprojected to WGS84 before storage
+- [ ] **RTE-02**: Before saving an imported route, the engineer previews the reprojected route on a satellite basemap and must confirm it is correctly georeferenced
+- [ ] **RTE-03**: The original uploaded drawing/document (DXF, and PDF where provided) is stored and viewable alongside the map as a reference
+- [ ] **RTE-04**: The existing GeoJSON LineString upload path continues to work unchanged (DXF import is additive)
+- [ ] **RTE-05**: Re-importing a route is versioned — existing approved submissions retain their recorded chainage; only new work uses the updated geometry (no silent rewrite of the as-built record)
+
+### Chainage As-Built Tracking
+
+- [ ] **CHN-01**: Every point along the route has a kilometre/chainage value derived from cumulative length from the route start (km 0 = start)
+- [ ] **CHN-02**: Office engineer can calibrate chainage by anchoring a known station value to a reference point, offsetting derived chainage to match the engineering drawing
+- [ ] **CHN-03**: Each approved submission's chainage is snapshotted at the moment of auditor approval (immutable as-built record); in-progress/pending work may show a live derived chainage
+- [ ] **CHN-04**: Office engineer can view a per-kilometre / per-segment as-built strip of the route showing, for each segment, status (not started / in progress / approved), what work was submitted, who the worker was, and who audited it
+- [ ] **CHN-05**: Selecting a chainage segment drills down to the underlying submissions (linking to the canonical submission detail view)
+- [ ] **CHN-06**: Per-segment approved work feeds route completion % by chainage and the BOQ progress view
+- [ ] **CHN-07**: The per-kilometre as-built breakdown is exportable to Excel/PDF consistent with existing reports
+
+### AI Vision Assist (activating v1 Phase 6)
+
+- [ ] **AI-01**: On submission, AI vision analyzes the photo and flags anomalies (photo content inconsistent with the claimed work or location)
+- [ ] **AI-02**: AI parses the worker's text notes to understand the work and auto-suggest the material / classification
+- [ ] **AI-03**: AI flags (vision, location, text) appear in the auditor's Telegram message and on the dashboard as advisory hints; they never block or auto-decide
+- [ ] **AI-04**: AI processing runs asynchronously and never delays the worker's confirmation or the auditor's notification
+- [ ] **AI-05**: AI outputs are validated against a reference dataset with defined acceptance criteria before being shown to auditors (eval harness)
+- [ ] **AI-06**: Duplicate / near-duplicate submission photos are detected via a server-side perceptual-hash pre-filter and surfaced as an advisory flag
+
+### Housekeeping
+
+- [ ] **Bookkeeping reconciliation**: Move already-built v1 core-loop capabilities from Active to Validated in PROJECT.md so the tracker reflects reality (roadmap task, not a testable REQ-ID)
+
+## Future Requirements (post-v4.0)
 
 Deferred. Tracked but not in the current roadmap.
 
-### AI Assist (carried over from v1 Phase 6)
-
-- **AI-01 … AI-05**: Async Claude vision anomaly flagging, notes classification, advisory dashboard/Telegram hints, eval-harness gate — listed under v1 Requirements above; Phase 6 deferred out of v2.0
-
 ### Drawings
 
-- **CAD-01**: CAD/DWG viewer with manual pin-on-drawing mapping
+- **CAD-01**: ~~CAD/DWG viewer with manual pin-on-drawing mapping~~ — superseded by v4.0 DXF route import (RTE-01..05) + chainage as-built tracking (CHN-01..07); the geospatial pipeline replaces pin-on-drawing
+- **RTE-SPLINE**: SPLINE/arc-based centerline tessellation on DXF import (v4.0 ships a non-blocking "use LWPOLYLINE" warning; revisit if field drawings prove SPLINE-heavy)
 
 ### Forms
 
