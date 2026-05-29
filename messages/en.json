@@ -534,5 +534,17 @@
     "yes_delete": "Yes, Delete",
     "yes_remove": "Yes, Remove",
     "delete_project_confirm": "Are you sure you want to delete '{projectName}'? This cannot be undone."
+  },
+  "meta": {
+    "not_found": {
+      "title": "Page not found",
+      "description": "The page you're looking for doesn't exist or may have moved.",
+      "cta": "Back to dashboard"
+    },
+    "error": {
+      "title": "Something went wrong",
+      "description": "An unexpected error occurred. Would you like to retry?",
+      "cta_retry": "Try again"
+    }
   }
 }

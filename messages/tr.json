@@ -534,5 +534,17 @@
     "yes_delete": "Evet, Sil",
     "yes_remove": "Evet, Kaldır",
     "delete_project_confirm": "'{projectName}' projesini silmek istediğinize emin misiniz? Bu işlem geri alınamaz."
+  },
+  "meta": {
+    "not_found": {
+      "title": "Sayfa bulunamadı",
+      "description": "Aradığınız sayfa mevcut değil veya taşınmış olabilir.",
+      "cta": "Panele dön"
+    },
+    "error": {
+      "title": "Bir şeyler ters gitti",
+      "description": "Beklenmeyen bir hata oluştu. Tekrar denemek ister misiniz?",
+      "cta_retry": "Tekrar dene"
+    }
   }
 }
