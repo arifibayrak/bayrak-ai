@@ -42,6 +42,26 @@ function computeCompletePct(bac: string | undefined, ev: string | undefined): nu
   return Math.min(100, Math.max(0, (evN / bacN) * 100));
 }
 
+/** True when a currency-keyed value parses to a finite number (rejects undefined/empty/NaN). */
+function isUsableValue(value: string | undefined): boolean {
+  if (!value) return false;
+  return !isNaN(parseFloat(value));
+}
+
+/**
+ * WR-06: single source of truth for "does this project have a usable value in
+ * `currency`". Used by BOTH the page-level empty-state check and the per-row
+ * dash branch so the two cannot diverge — "has a key" is no longer conflated
+ * with "has a usable value" (which previously produced rows that look
+ * data-bearing but render all em-dashes).
+ */
+function hasUsableCurrencyData(project: ProjectSummary, currency: string): boolean {
+  return (
+    isUsableValue(project.contractedValueByCurrency[currency]) ||
+    isUsableValue(project.earnedValueByCurrency[currency])
+  );
+}
+
 // ── Props ─────────────────────────────────────────────────────────────────────
 
 interface EVTableClientProps {
@@ -70,12 +90,8 @@ export function EVTableClient({
 }: EVTableClientProps) {
   const [currency, setCurrency] = useState('TRY');
 
-  // Projects that have any value data in the selected currency
-  const hasAnyProjectData = overview.some(
-    (p) =>
-      p.contractedValueByCurrency[currency] !== undefined ||
-      p.earnedValueByCurrency[currency] !== undefined
-  );
+  // Projects that have any USABLE value data in the selected currency (WR-06)
+  const hasAnyProjectData = overview.some((p) => hasUsableCurrencyData(p, currency));
 
   return (
     <>
@@ -127,9 +143,9 @@ export function EVTableClient({
                       const bac = project.contractedValueByCurrency[currency];
                       const ev = project.earnedValueByCurrency[currency];
                       const pct = computeCompletePct(bac, ev);
-                      const hasCurrencyData = bac !== undefined || ev !== undefined;
+                      const hasCurrencyData = hasUsableCurrencyData(project, currency);
 
-                      // If project has no data for the selected currency, show dashes
+                      // If project has no usable data for the selected currency, show dashes
                       if (!hasCurrencyData) {
                         return (
                           <BrandTable.Row key={project.projectId}>
