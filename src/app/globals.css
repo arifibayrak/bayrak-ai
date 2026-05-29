@@ -7,14 +7,14 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  /* `--font-inter` is set on <body> by next/font (layout.tsx). Previously
-     `--font-sans` referenced itself → undefined → app fell back to a system
-     font. Now it resolves to Inter with a robust fallback stack. */
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system,
+  /* `--font-geist-sans` / `--font-geist-mono` are set on <html> by next/font
+     (layout.tsx) via the `geist` package. `--font-sans` resolves to Geist Sans
+     with a robust system fallback stack; `--font-mono` resolves to Geist Mono. */
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system,
     "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-mono: ui-monospace, "SF Mono", "SFMono-Regular", Menlo, Consolas,
-    "Liberation Mono", monospace;
-  --font-heading: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", "SFMono-Regular",
+    Menlo, Consolas, "Liberation Mono", monospace;
+  --font-heading: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -44,6 +44,9 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  --color-success: var(--success);
+  --color-info: var(--info);
+  --color-warning: var(--warning);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -54,48 +57,52 @@
 }
 
 :root {
-  /* Richer light theme: cool slate-tinted neutrals (hue ~264) instead of flat
-     gray, with cards (white) lifting above a faintly tinted background.
-     Accent = Industrial Blue. Status colors (destructive/amber/emerald) and
-     the BOQ marker hex palette are governed by 05-UI-SPEC.md and unchanged. */
-  --background: oklch(0.985 0.004 264);
-  --foreground: oklch(0.21 0.02 264);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.21 0.02 264);
+  /* Brand = bayrak.ai amber (D-121). Light mode only — dark block below
+     intentionally not synced (deferred to v3.1+ per D-121). Canvas is slate-50
+     / slate-900; cards lift in pure white; brand primary is amber-500 with
+     slate-900 reading on top. Semantic destructive stays red-600 (NOT brand). */
+  --background: oklch(0.984 0.003 247);          /* slate-50 */
+  --foreground: oklch(0.21 0.034 264);           /* slate-900 */
+  --card: oklch(1 0 0);                          /* white */
+  --card-foreground: oklch(0.21 0.034 264);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.21 0.02 264);
-  /* Industrial Blue ~#2563EB */
-  --primary: oklch(0.55 0.2 255);
-  --primary-foreground: oklch(0.985 0.01 264);
-  --secondary: oklch(0.967 0.006 264);
-  --secondary-foreground: oklch(0.28 0.025 264);
-  --muted: oklch(0.967 0.006 264);
-  --muted-foreground: oklch(0.5 0.022 264);
-  --accent: oklch(0.955 0.012 255);
-  --accent-foreground: oklch(0.4 0.12 255);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.915 0.01 264);
-  --input: oklch(0.915 0.01 264);
-  --ring: oklch(0.62 0.17 255);
-  --chart-1: oklch(0.55 0.2 255);
-  --chart-2: oklch(0.62 0.16 195);
-  --chart-3: oklch(0.68 0.15 70);
-  --chart-4: oklch(0.6 0.18 300);
-  --chart-5: oklch(0.62 0.19 350);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0.004 264);
-  --sidebar-foreground: oklch(0.21 0.02 264);
-  --sidebar-primary: oklch(0.55 0.2 255);
-  --sidebar-primary-foreground: oklch(0.985 0.01 264);
-  --sidebar-accent: oklch(0.955 0.012 255);
-  --sidebar-accent-foreground: oklch(0.4 0.12 255);
-  --sidebar-border: oklch(0.915 0.01 264);
-  --sidebar-ring: oklch(0.62 0.17 255);
+  --popover-foreground: oklch(0.21 0.034 264);
+  --primary: oklch(0.769 0.188 70);              /* amber-500 (BRAND PRIMARY) */
+  --primary-foreground: oklch(0.21 0.034 264);   /* slate-900 reads on amber */
+  --secondary: oklch(0.968 0.007 247);           /* slate-100 */
+  --secondary-foreground: oklch(0.21 0.034 264);
+  --muted: oklch(0.968 0.007 247);               /* slate-100 */
+  --muted-foreground: oklch(0.446 0.03 256);     /* slate-600 */
+  --accent: oklch(0.987 0.022 95);               /* amber-50 */
+  --accent-foreground: oklch(0.21 0.034 264);
+  --destructive: oklch(0.577 0.245 27);          /* red-600 (UNCHANGED semantic) */
+  --border: oklch(0.929 0.013 255);              /* slate-200 */
+  --input: oklch(0.929 0.013 255);
+  --ring: oklch(0.769 0.188 70);                 /* amber-500 focus */
+  --chart-1: oklch(0.769 0.188 70);              /* amber */
+  --chart-2: oklch(0.588 0.158 241);             /* sky */
+  --chart-3: oklch(0.696 0.17 162);              /* emerald */
+  --chart-4: oklch(0.555 0.163 49);              /* amber-700 (dark amber) */
+  --chart-5: oklch(0.704 0.04 257);              /* slate-400 */
+  --radius: 0.375rem;                            /* D-125 rounded-md (was 0.625rem) */
+  --sidebar: oklch(0.984 0.003 247);             /* slate-50 */
+  --sidebar-foreground: oklch(0.21 0.034 264);
+  --sidebar-primary: oklch(0.769 0.188 70);      /* amber-500 */
+  --sidebar-primary-foreground: oklch(0.21 0.034 264);
+  --sidebar-accent: oklch(0.987 0.022 95);       /* amber-50 */
+  --sidebar-accent-foreground: oklch(0.21 0.034 264);
+  --sidebar-border: oklch(0.929 0.013 255);
+  --sidebar-ring: oklch(0.769 0.188 70);
+  /* D-121 semantic-color extension — no shadcn slot equivalents */
+  --success: oklch(0.696 0.17 162);              /* emerald-600 */
+  --info: oklch(0.588 0.158 241);                /* sky-600 */
+  --warning: oklch(0.705 0.213 47);              /* orange-500 — NOT amber per D-121 */
 }
 
 .dark {
-  /* Coherent dark variant in the same slate + Industrial Blue language.
-     Dark mode is not toggled by default, but the tokens stay correct if enabled. */
+  /* Dark variant — deferred to v3.1+ per D-121. Token slot values left intact
+     from v3.0 so they stay legal if enabled, but bayrak.ai brand pass only
+     adopts the light-mode :root above. */
   --background: oklch(0.18 0.02 264);
   --foreground: oklch(0.97 0.005 264);
   --card: oklch(0.22 0.022 264);
@@ -135,8 +142,6 @@
   }
   body {
     @apply bg-background text-foreground;
-    /* Inter optical tuning: contextual alternates + tabular-friendly rendering */
-    font-feature-settings: "cv11", "ss01";
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;

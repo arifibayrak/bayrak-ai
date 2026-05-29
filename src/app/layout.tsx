@@ -1,17 +1,14 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { GeistSans } from "geist/font/sans";
+import { GeistMono } from "geist/font/mono";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
 import "./globals.css";
 
-// Inter — single UI family. `latin-ext` is REQUIRED: the Turkish glyphs
-// İ ı Ş ş Ğ ğ live in Latin Extended-A, not the base `latin` subset.
-// Exposed as `--font-inter`; globals.css maps `--font-sans` → var(--font-inter).
-const inter = Inter({
-  subsets: ["latin", "latin-ext"],
-  variable: "--font-inter",
-  display: "swap",
-});
+// Geist Sans + Geist Mono — Vercel-published font package (D-122).
+// Latin Extended-A coverage includes Turkish glyphs (İ ı Ş ş Ğ ğ ç ö ü).
+// GeistSans.variable → `--font-geist-sans`; GeistMono.variable → `--font-geist-mono`.
+// globals.css maps `--font-sans` / `--font-heading` / `--font-mono` to these vars.
 
 export const metadata: Metadata = {
   title: "bayrak.ai",
@@ -27,8 +24,8 @@ export default async function RootLayout({
   const messages = await getMessages();
 
   return (
-    <html lang={locale}>
-      <body className={`${inter.variable} antialiased`}>
+    <html lang={locale} className={`${GeistSans.variable} ${GeistMono.variable}`}>
+      <body className="antialiased">
         <NextIntlClientProvider messages={messages}>
           {children}
         </NextIntlClientProvider>
