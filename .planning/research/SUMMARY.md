@@ -1,43 +1,54 @@
 # Project Research Summary
 
-**Project:** bayrak.ai — v2.0 Operations Intelligence & Hakkediş
-**Domain:** Turkish linear-infrastructure subcontractor operations: analytics dashboards, earned-value cost intelligence, and Turkish hakkediş (progress payment) billing
-**Researched:** 2026-05-25
-**Confidence:** HIGH (all four research files grounded in official docs, codebase inspection, and multi-source Turkish tax authority verification)
-
----
+**Project:** bayrak.ai v4.0 — Document-Driven Route Import, Chainage As-Built Tracking & AI Vision Assist
+**Domain:** Linear-infrastructure field operations platform (pipeline/utility construction, Turkey)
+**Researched:** 2026-05-29
+**Confidence:** HIGH
 
 ## Executive Summary
 
-v2.0 adds a financial and analytical layer on top of the v1 submission-audit-BOQ loop. The core product move is: every approved unit of field work already tracked in the database gains a monetary value through a single `unit_price` column on `boq_items`. Once that column exists, earned value (`approvedQty × unit_price`), budget at completion (`plannedQty × unit_price`), per-worker value contribution, and Turkish hakkediş billing calculations all become computable without any new data collection. The data foundation (`unit_price` + `hakedis_periods` table) is the single critical-path dependency — every financial and billing feature is blocked until it is in place.
+bayrak.ai v4.0 is a precision extension to a shipped and validated field-ops platform: the goal is to transform the existing PostGIS-backed geospatial pipeline into a formal as-built record that engineers and project owners can trust as a contractual deliverable. The three capability areas — DXF route import, chainage-based progress tracking, and AI vision assist — are tightly sequenced: import is the foundation everything else stands on, chainage tracking is the headline deliverable, and AI vision is an independently deployable enhancement once the route and submission data structures are stable. The research confirms all three areas are achievable with the existing stack plus three small net-new dependencies (`dxf-parser`, `proj4`, `react-pdf`), all pure JavaScript, all Vercel-safe.
 
-The recommended approach is strictly additive: no existing v1 routes, schema tables, or Server Actions are moved or deleted. New analytics pages live in a `(admin)` Next.js App Router route group with a persistent sidebar shell; new hakkediş tables (`hakedis_periods`, `hakedis_period_lines`) snapshot approved quantities at period cutoff to prevent double-billing; all financial arithmetic happens in Postgres using `numeric` aggregation, never in JavaScript float arithmetic. The v2 technology additions are minimal: `recharts` (via the existing shadcn chart wrapper), `decimal.js` for any JS-side money display, and `pdf-lib` + `@pdf-lib/fontkit` for the hakkediş PDF certificate. ExcelJS, TanStack Table, and react-day-picker are already present or peer-installed.
+The dominant technical risk is georeferencing correctness. Turkish engineering DXF files use projected coordinate systems (TUREF/TM30, UTM Zone 35, ED50) that produce coordinates with values like 600,000 m — if these are ingested as WGS84 degrees, the route silently lands in the ocean and every downstream spatial query returns nonsense. The mandatory safeguard is a two-step import UX: (1) engineer selects the source CRS from a labelled dropdown, (2) a satellite preview over the Mapbox basemap must be confirmed before any DB write occurs. The preview catches axis-swap, datum errors, and wrong CRS selection simultaneously — without it, errors are invisible until field submissions start failing spatial snapping.
 
-The key risks are financial correctness and security. Turkish hakkediş math has legally mandated rounding order (round once at the final total, not per line item), and the KDV tevkifat fraction is a money-math item requiring accountant confirmation before any billing code is written (see Unresolved Decisions below). All new `/api/export/*` route handlers must carry explicit `auth()` guards — they do not inherit layout-level session checks. The double-billing trap (computing cumulative quantity instead of period-delta quantity) and Istanbul-timezone errors in date-range filters are the two silent correctness pitfalls most likely to reach production unnoticed.
+The second-order risk is data integrity of the as-built record. Research revealed a direct conflict between the ARCHITECTURE.md recommendation (derive chainage dynamically from `segment_fraction × total_length_m`) and the PITFALLS.md assessment (dynamic derivation is the most insidious risk: a route re-import silently rewrites all historical chainage values). This conflict is resolved in the Open Questions / Decisions section with a clear recommendation that the roadmapper must inherit. The AI vision assist carries a distinct trust risk: false positives shown to auditors before an eval harness establishes precision erode trust in the feature permanently — the eval gate must be built before flags are surfaced in any UI.
 
 ---
 
-## Unresolved Decisions / Open Questions
+## Open Questions / Decisions
 
-**These two conflicts must be surfaced before the relevant phases begin. Do not silently pick one side.**
+### RESOLVED: Dynamic vs. Snapshotted Chainage — CRITICAL ARCHITECTURAL DECISION
 
-### Conflict 1 — PDF Library
+**The conflict:**
+- ARCHITECTURE.md recommends computing chainage dynamically at read time: `chainage_m = segment_fraction × total_length_m + chainage_offset_m`. Explicitly avoids a `route_segments` table. The `segment_fraction` stored per submission is the canonical linear-referencing primitive.
+- PITFALLS.md (Pitfall 2, Severity: CRITICAL) flags this as the "most insidious data-integrity risk": when an office engineer re-imports a corrected DXF, the route geometry changes, `total_length_m` changes, and every historical submission's implied chainage silently shifts. An as-built record showing "km 2.3: 150 m of pipe approved" may show "km 2.1" after re-import — without audit trail — corrupting the legal record.
 
-| | Recommendation | Cited Reasoning |
-|---|---|---|
-| **STACK.md** | `pdf-lib` + `@pdf-lib/fontkit` | `@react-pdf/renderer` 4.x has an unresolved `PDFDocument is not a constructor` error in Next.js 15 App Router route handlers (GitHub issue #3074, filed Feb 2025, closed without fix); memory leak warnings on repeated `renderToBuffer()` calls. Playwright/Chromium is ~300 MB, exceeds Vercel's 250 MB function bundle limit. |
-| **ARCHITECTURE.md** | `@react-pdf/renderer` | Described as "Vercel-compatible, pure Node.js, no binary dependencies." The file did not cite issue #3074 and recommended `renderToBuffer()` directly. |
+**Resolved recommendation: SNAPSHOT chainage at approval time; derive dynamically only for in-progress work.**
 
-**Synthesis:** The STACK.md citation of GitHub issue #3074 is specific and externally verifiable. The ARCHITECTURE.md recommendation appears to have been written without awareness of the Next.js 15 App Router breakage. `pdf-lib` is the safer choice: pure JS, zero native deps, confirmed Vercel Functions compatible, and the Turkish font embedding via `@pdf-lib/fontkit` is well-documented. **Recommendation: lean toward `pdf-lib`, but defer the final pick to a `plan-phase --research-phase` investigation during the Exports phase** so the issue status can be re-verified at implementation time (the GitHub issue may be resolved by then).
+- Add a `chainage_m numeric(10,2)` column to `submissions`. At the moment an auditor approves a submission, the approval transaction MUST compute and store `ROUND(segment_fraction × total_length_m, 2)` as the frozen chainage value. This value is immutable after that point.
+- Add a `route_geometry_version integer` column to `routes`. Each re-import increments this version. Add `route_geometry_version integer` to `submissions` to record which route geometry the chainage was computed against — creating an explicit audit trail.
+- For **in-progress/pending submissions** (not yet approved), chainage MAY be derived dynamically for display only: `segment_fraction × total_length_m + chainage_offset_m`. Acceptable because pending submissions have no legal standing yet.
+- All user-facing displays (dashboard, Telegram notifications, Excel/PDF exports, as-built strip view) MUST read `submissions.chainage_m` (the snapshotted value) for approved records. Never recompute from fraction at export or display time.
+- On route re-import, show a confirmation warning: "This project has N approved submissions with recorded chainage. Their chainage will NOT change. Only new submissions will use the updated route geometry (v{N+1})."
+- The ARCHITECTURE.md anti-pattern note ("no `route_segments` table") remains valid — the `chainage_m` snapshot is on `submissions`, not a new table.
 
-### Conflict 2 — KDV Tevkifat Fraction (Money-Math)
+**Schema additions required in migration 0010 (or split 0010/0011):**
+```sql
+ALTER TABLE submissions ADD COLUMN chainage_m numeric(10,2);
+ALTER TABLE submissions ADD COLUMN route_geometry_version integer;
+ALTER TABLE routes ADD COLUMN geometry_version integer NOT NULL DEFAULT 1;
+-- plus: total_length_m, source_blob_url, source_crs, source_layer, chainage_offset_m
+```
 
-| | Rate | Source |
-|---|---|---|
-| **FEATURES.md** | **4/10** of KDV withheld by employer (above 5,000,000 TL threshold for yapım işleri) | ozbekcpa.com, karenaudit.com, hakedis.org — multiple sources agree |
-| **PITFALLS.md** | **3/10** of KDV | Presented in the rounding-order worked example without a source citation for the fraction |
+**Approval path implication:** `handleAuditDecision` in `bot-audit.ts` must write `chainage_m` and `route_geometry_version` in the same transaction as `status = 'approved'`. Planner must schedule this explicitly alongside the chainage view phase.
 
-**This is a money-math discrepancy in a legally issued billing document.** The FEATURES.md figure (4/10) is sourced from three external Turkish CPA and audit firm references and is consistent with the 2024 yapım işleri threshold. The PITFALLS.md figure (3/10) appears in a worked calculation example without citation. **Action required: the user's accountant must confirm the applicable fraction for their specific contract type before any KDV tevkifat code is written.** The hakkediş schema stores `kdv_rate` and `retention_rate` as configurable text columns per period — the tevkifat fraction should also be a per-period configurable field, not a hardcoded constant, so an incorrect rate can be corrected without a code deploy.
+### NEEDS DESIGN STEP: SPLINE Entity Support
+
+`dxf-parser` 1.1.2 parses SPLINE entities structurally but does not interpolate control points into curve geometry. PITFALLS.md recommends skipping SPLINE with a warning for v4.0 ("use LWPOLYLINE export from AutoCAD"). For Turkish pipeline survey workflows LWPOLYLINE is dominant. Recommended v4.0 approach: parse LWPOLYLINE and POLYLINE only; detect SPLINE entities in the selected layer and surface a non-blocking warning. If the resulting geometry has < 2 vertices after filtering, reject with a clear error. Flag for v4.x if field evidence shows SPLINE-based centerlines are common.
+
+### NEEDS DESIGN STEP: Chainage Calibration Override UX
+
+The calibration offset (`chainage_offset_m` stored per route) lets engineers align displayed chainages to a contract datum (e.g. project master chainage starts at "km 12+450", not "km 0"). PITFALLS.md (Pitfall 13) flags inconsistent offset application across surfaces as a medium-severity issue. Recommended v4.0 approach: store the offset as a numeric field on `routes`; apply consistently in Postgres (`calibrated_chainage_m = raw_chainage_m + chainage_offset_m`); recompute all approved submissions' `calibrated_chainage_m` in a single UPDATE transaction when the offset changes. The "anchor on map" UX (pick a GPS point, enter known chainage, system solves the offset) requires a dedicated design step — defer to a v4.x phase; ship as a simple numeric input in v4.0.
 
 ---
 
@@ -45,223 +56,178 @@ The key risks are financial correctness and security. Turkish hakkediş math has
 
 ### Recommended Stack
 
-The v1 stack (Next.js 15, shadcn/ui, Drizzle, Neon/PostGIS, grammY, Auth.js, Mapbox, next-intl, ExcelJS) is unchanged. v2 requires four net-new additions:
+The v4.0 stack additions are deliberately minimal: three pure-JavaScript npm packages on top of the fully-validated existing stack. All three run on Vercel Node.js runtime and in the browser where needed; none require WASM, native binaries, or edge-runtime workarounds.
 
-**Core technology additions:**
-- `recharts` 3.8.1 — charts and data visualisation, via `npx shadcn@latest add chart`; the shadcn chart wrapper uses Recharts v3 directly, keeping the design system unified
-- `decimal.js` 10.6.0 — JS-side money display and KDV/retention calculation; Drizzle returns `numeric` columns as strings, making a decimal library mandatory for any JS arithmetic on financial figures
-- `pdf-lib` 1.17.1 + `@pdf-lib/fontkit` 1.1.1 — hakkediş PDF certificate generation; pure JS, no native deps, Vercel Functions compatible; fontkit enables Turkish TTF embedding (`ğ ş ı ö ü ç` etc.)
-- `@tanstack/react-table` 8.21.3 — server-side paginated analytics tables (likely already present via v1 shadcn data-table; check `package.json` first)
+**Net-new dependencies:**
+- `dxf-parser` 1.1.2: DXF file parsing — pure JS, synchronous `parseSync()`, typed entity objects for LWPOLYLINE/POLYLINE/LINE; preferred over `dxf` 5.3.1 (rendering-optimized) for server-side geometry extraction where entity-type discrimination matters
+- `proj4` 2.20.8: CRS reprojection to WGS84 in JavaScript at upload time — preferred over PostGIS `ST_Transform` because Neon's inclusion of TUREF EPSG:5254 in `spatial_ref_sys` is unverifiable without a live query; JS reprojection requires no migration and no DB dependency
+- `react-pdf` 10.4.1 + `pdfjs-dist` 5.7.284 (peer dep): browser-side PDF viewing for the source document reference panel; must be `'use client'` with dynamic import `{ ssr: false }` in RSC parents
 
-**No new installs needed for:**
-- ExcelJS multi-sheet export — `addWorksheet()` calls on existing ExcelJS 4.4.0
-- Date-range picker — shadcn `Calendar` + `react-day-picker` 10.x already peer-installed via shadcn
-- SQL aggregation — raw `db.execute(sql...)` following the existing spatial query pattern; no new query library
+**What NOT to add:** No DWG parser (proprietary; DXF export from AutoCAD is one-click). No in-browser DXF viewer (heavy bundle, CAD software serves this better). No Braintrust/Langfuse for v4.0 (add after eval baseline established). No `proj4-epsg` package (only 7 Turkish CRS strings needed; hardcode in `src/lib/crs.ts`).
 
-**Critical version constraints:**
-- TanStack Table: pin to `^8` — v9 is alpha-only (v9.0.0-alpha.50 as of May 2026); shadcn data-table targets v8
-- ExcelJS `writeBuffer()` returns `ExcelJS.Buffer` (extends `ArrayBuffer`); pass directly to `Response()` — do NOT call `Buffer.from()` (corrupts file, ExcelJS issue #1032, unfixed in 4.4.0)
-- All SQL aggregation for analytics: use `db.execute(sql...)` not `db.query.*` — Drizzle relational builder does not support `GROUP BY` and aggregation functions well
+**Turkey CRS lookup table** (embed as hardcoded constants — do NOT fetch from epsg.io at runtime): EPSG:5254 (TUREF/TM30, primary modern Turkey), EPSG:5253 (TUREF/TM27), EPSG:5255 (TUREF/TM33), EPSG:23035 (ED50/UTM35N, pre-2005 legacy), EPSG:23036 (ED50/UTM36N), EPSG:32635 (WGS84/UTM35N), EPSG:32636 (WGS84/UTM36N).
+
+**Linear referencing:** No new dependency. PostGIS functions already on Neon: `ST_LineLocatePoint`, `ST_Length(::geography)`, `ST_LineInterpolatePoint`, `ST_LineSubstring`. Store `total_length_m` on `routes` at import time to avoid recomputing on every chainage query.
+
+**AI vision:** No new library. Existing AI SDK v6 + Vercel AI Gateway + Claude vision. Use `generateObject` with a Zod schema (not `generateText`) for typed structured output that guards against prompt injection via image content.
 
 ### Expected Features
 
-**Must have (v2.0 table stakes):**
-- `unit_price` on `boq_items` — schema migration + form field; gates every financial feature
-- Navigation IA restructure — admin shell sidebar: Overview · Projects · People · Analytics · Hakkediş · Exports
-- Admin command-center overview — pending backlog count, total approvals/rejections (rolling 30d), EV/BAC across projects
-- Global date-range + project + person filters — applied across all analytics views
-- BOQ progress view (qty-based % + value-based % once unit_price added)
-- Per-worker scorecard — approval rate, rejection rate, output rate, value contribution, location compliance
-- Per-auditor scorecard + SLA alert — decision throughput, avg turnaround, pending backlog, SLA breach count
-- Hakkediş period management — create/close periods linking submissions to billing periods
-- Hakkediş yeşil defter calculation — cumulative qty, previous period qty, this period qty per BOQ item
-- Hakkediş fiyat icmali — this period qty × unit_price per item = period value
-- Hakkediş summary — gross → KDV (20%) → KDV tevkifat (fraction TBD per Conflict 2) → stopaj (5% if multi-year) → teminat (5%) → avans kesintisi (configurable) → net ödeme
-- Hakkediş Excel export — bilingual TR/EN, yeşil defter format
-- Submission log + worker/auditor performance Excel exports
+v4.0 net-new features only. Existing core loop (Telegram bot, auditor approval, PostGIS snapping, Mapbox dashboard, BOQ decrement, hakkediş, exports, brand) is infrastructure and unchanged.
 
-**Should have (v2.x differentiators, add after v2.0 validation):**
-- Employee profile pages with activity timeline
-- Drill-down from every metric to underlying submission records
-- Hakkediş PDF certificate export (formal document delivery)
-- Trend charts (throughput, rejection rate, turnaround over time)
-- BOQ depletion alert (approvedQty approaching plannedQty)
-- Rejection cost / rework value dashboard card
+**Must have (table stakes — v4.0 launch blockers):**
+- DXF upload with layer picker + CRS declaration — without this, import requires engineer to pre-convert to GeoJSON
+- Satellite import preview before save — the critical safety net; no other mitigation catches wrong CRS selection before data is corrupted
+- Chainage snapshotted at approval time (`chainage_m` column on `submissions`) — all downstream features require this; see RESOLVED decision above
+- Per-segment as-built strip view (chainage X-axis, colour-coded by status) with drill-down — headline deliverable of the milestone
+- Per-km completion % KPI on dashboard — trivial once chainage exists; expected by the office audience
+- AI vision assist (async, advisory-only, eval-gated) — deferred from v1; PROJECT.md explicitly commits to v4.0
 
-**Defer to v3+:**
-- Full EVM (SPI, CPI, EAC) — requires project schedule baseline and actual cost capture not yet collected
-- Fiyat farkı auto-calculation — requires monthly Turkish government coefficient tables (BIM/KGM)
-- Multi-tenant hakkediş with per-tenant contract settings
-- AI KPI narrative / anomaly explanation
-- Gantt / TILOS time-distance chart
+**Should have (competitive differentiators — v4.x):**
+- Chainage attribution drill-down by km range — who submitted, who audited, what BOQ line
+- Chainage calibration override (numeric offset input) — displayed chainages must match contract drawings
+- As-built Excel/PDF export keyed by chainage — formal contractual deliverable for project owners
+- DXF source document reference viewer (PDF path) — react-pdf renders stored PDF alongside the map
 
-**Critical dependency chain:**
-```
-unit_price on boq_items
-  → EV / BAC / % complete by value
-  → Per-worker value contribution, rework value
-  → Hakkediş line item calculation
+**Defer to v5+:**
+- Chainage-aware AI anomaly flag — requires AI assist to be stable and chainage calibrated
+- Time-chainage / Gantt overlay — requires schedule data not yet in the system
+- SPLINE entity tessellation — only if field evidence shows this is common
+- Full in-browser DXF/DWG viewer — anti-feature; engineer's CAD software does this better
 
-hakedis_periods table
-  → Hakkediş yeşil defter (cumulative vs period split)
-  → Hakkediş summary (deductions → net)
-  → Hakkediş Excel export
-  → Hakkediş PDF certificate
-
-Navigation IA restructure
-  → All new v2 pages are reachable
-```
+**Anti-features (never build):**
+- Automatic CRS detection from DXF (unreliable; silent failure corrupts route)
+- BOQ auto-extraction from CAD drawings (saha ADR-0002; heavy ML, error-prone billing)
+- Real-time chainage feedback in Telegram submission critical path (adds latency)
+- Per-worker km-zone geofencing in bot (GPS drift causes false blocks)
 
 ### Architecture Approach
 
-v2 is strictly additive to the v1 codebase. Existing `dashboard/projects/*` routes are untouched. New analytics and billing pages are added under a `(admin)` App Router route group (no URL segment) with a new `AdminSidebar` client component. A `CanonicalSubmission` TypeScript type defined in `src/lib/types/canonical-submission.ts` becomes the single shared shape used by analytics scorecards, Excel exports, and hakkediş period line computation. All financial aggregation happens in `src/actions/analytics.ts` using `db.execute(sql...)` raw queries with `FILTER (WHERE ...)` clauses — no Postgres materialized views (refresh-timing complexity in serverless), no Drizzle relational builder for aggregation.
+The v4.0 architecture extends the existing App Router pattern cleanly. A new `uploadDxf` Server Action mirrors the existing `uploadRoute` Server Action, both leading to the same `ST_GeomFromGeoJSON` upsert path. DXF parsing and CRS reprojection live in a pure library function (`src/lib/dxf-parser.ts`) that is Node.js-runtime-only, unit-testable with fixture files, and never imported from edge routes or middleware. The chainage strip view is a new "As-Built" tab in the existing project page tab bar, implemented as RSC + client component following the established `RouteTab`/`KayitlarTab` pattern. AI vision runs entirely off the Telegram webhook critical path via fire-and-forget `enqueueAiFlag` after the approval transaction commits, with a cron-job retry for stuck pending rows.
 
 **Major components:**
+1. `src/lib/dxf-parser.ts` [NEW pure lib] — `parseDxfToLineString(buffer, sourceCrs, sourceLayer)`: extracts LWPOLYLINE/POLYLINE vertices, reprojects via `proj4` to WGS84, returns GeoJSON LineString string
+2. `uploadDxf` Server Action [NEW in `src/actions/routes.ts`] — auth guard → ownership check → Blob upload → parse → bounding-box validation → DB upsert with `total_length_m`, `geometry_version`, provenance columns
+3. `DxfUpload.tsx` [NEW client component] — `accept=".dxf"`, reads as `ArrayBuffer`, CRS selector with human-readable labels, layer picker, satellite preview modal before save
+4. `getChainageBuckets` Server Action [NEW in `src/actions/chainage.ts`] — SQL GROUP BY on `floor(chainage_m / bucket_size_m)`, returns `ChainageBucket[]` with worker/auditor attribution, BOQ breakdown, submission IDs
+5. `ChainageTab.tsx` / `ChainageTable.tsx` [NEW RSC + client] — as-built strip view with colour-coded km buckets, click-to-drill-down to existing submission detail page
+6. `src/lib/ai-flag-queue.ts` + `src/lib/ai-vision.ts` [NEW libs] — `enqueueAiFlag` inserts pending row and fires `runAiAnalysis` as detached Promise; `runAiAnalysis` calls AI SDK `generateObject` with Zod schema, writes result with `eval_passed` gate
+7. `/api/cron/ai-flags/route.ts` [NEW] — cron retry for rows stuck in `pending` > 5 minutes; registered in `vercel.json`
+8. `submission_ai_flags` table [NEW] — per-submission AI analysis result with status, scores, classification, `eval_passed` gate, raw response for eval harness
 
-1. **Data foundation** (`src/db/schema/`) — Four schema changes: `boq_items.unit_price` column (nullable `numeric(15,4)`), `office_activity_log` table, `hakedis_periods` table, `hakedis_period_lines` table. Migration sequence: 0004 (unit_price) → 0005 (activity_log) → 0006 (hakedis tables) → 0007 (hand-edited partial indexes — drizzle-kit cannot emit partial index syntax). Run `tsx src/db/migrate.ts`, never `drizzle-kit push`.
-
-2. **Aggregation layer** (`src/actions/analytics.ts`) — `getCanonicalSubmissions()`, `getProjectMetrics()`, `getPersonMetrics()`, `getPortfolioOverview()` as typed Server Actions with `auth()` guard and `getDefaultTenantId()` scope. Single JOIN queries, no per-row looping. Composite indexes needed: `(status, submitted_at DESC)`, partial index `WHERE status = 'pending_audit'`, `(decided_by, decided_at DESC)`.
-
-3. **Admin shell IA** (`src/app/dashboard/(admin)/`) — Route group layout wraps Overview, People, Analytics, Hakkediş, and Exports pages. Sidebar is a `'use client'` component using `usePathname()`. All new pages: `export const dynamic = 'force-dynamic'` (financial data must never be statically cached).
-
-4. **Hakkediş engine** (`src/actions/hakedis.ts`) — `createHakkedişPeriod()`, `computePeriodLines()`, `finalizeHakkedişPeriod()`. Period lines are computed by aggregating `approved` submissions `WHERE decided_at <= periodEndDate` per `boq_item_id`, then subtracting the previous period's cumulative quantities to get the period delta. Snapshot columns (`unitPriceSnapshot`, `materialSnapshot`) are immutable after `status = 'finalized'`.
-
-5. **Export pipeline** (`src/lib/excel-exports.ts`, `src/app/api/exports/`) — In-memory buffer approach (Vercel function timeout 10–60s; typical hakkediş Excel < 1 MB). Every export `route.ts` carries an explicit `auth()` guard at line 1. ExcelJS monetary cells written as `number` type with `numFmt = '#,##0.00 ₺'`. Turkish TTF font embedded at module level (not per-request) for PDF export.
-
-6. **Charts** (`src/components/dashboard/analytics/`) — `'use client'` Recharts components receiving pre-fetched data as props from parent Server Components. Three charts for v2.0: `ThroughputChart`, `EarnedValueChart`, `RejectionRateChart`.
+**Build order (dependency-ordered):**
+- Phase A: Schema migrations (foundation — all phases blocked until this ships)
+- Phase B: DXF import pipeline (depends on Phase A; independent of Phase C)
+- Phase C: Chainage view + approval snapshot modification (depends on Phase A; independent of Phase B)
+- Phase D: AI vision assist (depends on Phase A schema; independent of Phase B and C)
 
 ### Critical Pitfalls
 
-1. **Money math in JS float arithmetic** — Drizzle returns `numeric` columns as strings, not numbers. `row.approvedQty * row.unitPrice` silently produces IEEE 754 drift. Rule: all earned-value multiplication happens in Postgres (`SUM(quantity * unit_price)` in SQL); `decimal.js` for any JS-side display arithmetic. Never accumulate money in a JS `number` loop.
+Full inventory is in PITFALLS.md (13 pitfalls, all HIGH/CRITICAL/MEDIUM severity). The five that must be addressed before writing any code:
 
-2. **Cumulative vs period double-billing** — If `hakedis_period_lines.period_qty` is computed as the raw `SUM(approved_qty)` rather than `cumulativeQtyApproved − previousCumulativeQty`, the same work gets billed twice across consecutive periods. Highest financial-damage pitfall. The `hakedis_period_lines` schema must store `previous_cumulative_qty` as a snapshot; add `CHECK (cumulative_qty >= previous_cumulative_qty)`. Finalized periods must be immutable.
+1. **CRS mismatch — projected coordinates treated as WGS84** (Pitfall 1, CATASTROPHIC) — DXF files never embed CRS; Turkish engineering coordinates have values like 600,000 m. If inserted as WGS84 without reprojection, route lands in the ocean; all spatial queries return wrong results silently. Prevention: mandatory CRS selector with human-readable labels; mandatory satellite preview before DB write; Turkey bounding-box validation after reprojection (`lng: 25.7–44.8, lat: 35.8–42.2`); include ED50 EPSG codes for pre-2005 drawings (~100 m datum shift).
 
-3. **KDV rounding order** — Round once at the total level, not per line item. Compute all intermediate values at full `numeric(12,3)` precision; apply `ROUND(..., 2)` once at the final SELECT. A single server-side `computeHakkedis()` function owns the rounding sequence. Include a test fixture with a known real hakkediş document asserting exact kuruş output.
+2. **Route re-import silently shifts historical chainage** (Pitfall 2, CRITICAL) — resolved by the SNAPSHOT decision above. Snapshot `chainage_m` at approval time in the same transaction; never recompute historical values from current route geometry.
 
-4. **Istanbul timezone in date-range filters** — Turkey is UTC+3 (Europe/Istanbul, no DST since 2016). `WHERE submitted_at >= '2026-05-01'` uses UTC midnight, not Istanbul midnight. All date-range filter boundaries must use `AT TIME ZONE 'Europe/Istanbul'` in Postgres, or be constructed with explicit `+03:00` offset in the UI. Hakkediş period `cutoff_at` must be stored in UTC after converting from Istanbul time.
+3. **AI vision in the Telegram webhook critical path** (Pitfall 10, CRITICAL) — awaiting a Claude vision call (2–6 s) inside the webhook handler causes Telegram to retry after timeout, creating duplicate submissions. Prevention: fire-and-forget `enqueueAiFlag` after approval transaction; cron retry for stuck rows; never `await runAiAnalysis` in webhook path.
 
-5. **Export route handlers lack auth guards** — `route.ts` files do not inherit `dashboard/layout.tsx` session checks. Every export route handler must call `const session = await auth(); if (!session) return new Response('Unauthorized', { status: 401 })` as its first statement.
+4. **AI hallucinated anomalies eroding auditor trust** (Pitfall 11, HIGH) — flags shown before eval precision threshold (≥ 0.80) is validated against a labeled dataset causes auditors to permanently stop reading AI flags. Prevention: build eval harness and labeled fixture dataset first; gate all flag display behind `eval_passed = true`; use `generateObject` with Zod schema to prevent prompt injection via image.
 
-6. **NULL `decidedAt` poisons SLA averages** — `AVG(decided_at - submitted_at)` silently excludes pending submissions. Always split: average latency for decided submissions (`WHERE decided_at IS NOT NULL`) and a separate backlog count/age for pending submissions.
+5. **DXF layer selection — wrong polyline taken as centerline** (Pitfall 5, HIGH) — multi-layer DXF files contain topography, cadastral boundaries, annotation alongside the pipeline centerline. Prevention: parse layer list first (layer name + entity count), present to engineer, require explicit selection, parse only selected layer; default to layers named `AXIS`, `CL`, `CENTERLINE`, or `MERKEZ`.
 
-7. **Role lives on assignments, not on people** — A person can be `worker` on Project A and `auditor` on Project B. All scorecard queries must join `assignments` and include `project_id` scope.
+**Additional must-handle pitfalls:**
+- Axis order confusion in proj4: write a single `reprojectToWGS84(epsg, easting, northing)` utility with unit tests against known Turkish coordinates — e.g., EPSG:5254 easting 600,000 / northing 4,570,000 → approximately [29.0°E, 41.3°N] (Pitfall 3)
+- Drizzle migration hand-edits: `geometry(LineString, 4326)` not `geometry(Geometry, 4326)`; GIST index must be hand-added; both Neon branches must be migrated (Pitfall 12)
+- Float precision: store `chainage_m` as `numeric(10,2)`, bucket in Postgres, clamp completion at 100% with `LEAST(..., 100.00)` (Pitfall 7)
+- DXF upload via Vercel Blob direct client PUT, not through Next.js bodyParser (4.5 MB limit vs. potentially 50 MB DXF files) (Pitfall 6)
 
 ---
 
 ## Implications for Roadmap
 
-Based on the dependency graph and pitfall-to-phase mapping, five sequential phases are recommended.
+Four phases emerge from the dependency graph in FEATURES.md and the build order in ARCHITECTURE.md. Ordering is driven by hard data dependencies: schema before everything; import and chainage view are independent after schema; AI vision is independently deployable after schema.
 
-### Phase 1: Data Foundation + Canonical Record
+### Phase 14: Schema Foundation + DXF Route Import
 
-**Rationale:** `unit_price` is the critical-path blocker for every financial feature. The three new schema tables and the `CanonicalSubmission` type are the foundation every subsequent phase builds on. Nothing else can start until this phase is complete.
-
-**Delivers:**
-- `boq_items.unit_price` column (migration 0004)
-- `office_activity_log` table (migration 0005)
-- `hakedis_periods` + `hakedis_period_lines` tables (migration 0006)
-- Hand-edited partial index migration (0007)
-- `CanonicalSubmission` type in `src/lib/types/canonical-submission.ts`
-- `src/actions/analytics.ts` — all four aggregation functions
-- Unit price field in BOQ item create/edit UI
-- `logOfficeActivity()` wired into existing Server Actions
-
-**Features addressed:** unit_price schema migration (P1), earned value formulas foundation
-**Pitfalls to prevent:** Money math in JS (establish Postgres aggregation pattern before any cost display); cumulative vs period double-billing (schema constraints locked in at table creation)
-**Research flag:** Standard patterns — no `plan-phase --research-phase` needed.
-
----
-
-### Phase 2: Admin Shell IA
-
-**Rationale:** Without the navigation shell, all new pages are unreachable. This phase has no data layer work — it depends on Phase 1 actions being available.
+**Rationale:** The `chainage_m` column must exist before any approval can snapshot it. The DXF import pipeline must exist before any chainage view has data to display. Schema and import ship together: schema without import leaves no data pipeline; import without snapshot schema corrupts the as-built record from day one.
 
 **Delivers:**
-- `(admin)` route group layout + `AdminSidebar` component
-- Overview page (portfolio KPIs from `getPortfolioOverview()`)
-- People list + employee profile pages (from `getPersonMetrics()`)
-- Redirect `/dashboard` → `/dashboard/overview`
-- i18n keys for all new nav items
+- Migrations: `routes` extended (5 new columns including `total_length_m`, `geometry_version`); `submissions` extended (`chainage_m`, `route_geometry_version`); `submission_ai_flags` table created
+- `src/lib/crs.ts` — hardcoded Turkey CRS lookup table (7 EPSG strings)
+- `reprojectToWGS84(epsg, easting, northing)` utility with unit tests against Istanbul-area known coordinates
+- `src/lib/dxf-parser.ts` — `parseDxfToLineString(buffer, sourceCrs, sourceLayer)` pure function with vitest fixtures
+- `uploadDxf` Server Action — auth guard, Blob upload (client PUT pattern), parse, bounding-box validation, DB upsert
+- `DxfUpload.tsx` — CRS selector (human-readable labels), layer picker, satellite preview modal with confirm/cancel
+- `uploadRoute` Server Action modified to populate `total_length_m` and increment `geometry_version` on every upsert
 
-**Features addressed:** Navigation IA restructure (P1), pending backlog view (P1), admin command-center overview (P1)
-**Pitfalls to prevent:** Additive-only route strategy (no existing paths moved); auth guard confirmed on page routes
-**Research flag:** Standard patterns — App Router route groups and sidebar navigation are well-documented Next.js patterns.
+**Addresses:** DXF upload (P1), CRS declaration (P1), import preview (P1) from FEATURES.md
+**Avoids:** Pitfalls 1, 2, 3, 4, 5, 6, 8, 12 — all route-import pitfalls addressed in one foundational phase
+**Research flag:** NEEDS RESEARCH on the satellite preview modal UX (temporary Mapbox GeoJSON source before save, confirm/cancel flow) and the two-step Blob upload pattern (client PUT to Blob → Server Action receives URL). Novel for this project.
 
----
+### Phase 15: Chainage As-Built View + Approval Snapshot
 
-### Phase 3: Analytics UI + Scorecards
-
-**Rationale:** The analytics page is the primary value demonstration of v2. Building this before hakkediş validates that aggregation queries are correct. Charts and scorecards are lower risk than billing calculations.
-
-**Delivers:**
-- `analytics/page.tsx` — date-range + global filters via URL `searchParams`
-- Per-worker scorecard (approval rate, rejection rate, output rate, value contribution, location compliance)
-- Per-auditor scorecard (decision throughput, avg turnaround, pending backlog, SLA breach count)
-- Recharts client components: `ThroughputChart`, `EarnedValueChart`, `RejectionRateChart`
-- SLA alert (submissions pending > 4h)
-- Submission detail page
-- All new pages: `export const dynamic = 'force-dynamic'`
-
-**Features addressed:** Per-worker scorecard (P1), per-auditor scorecard + SLA (P1), global filters (P1), BOQ progress
-**Pitfalls to prevent:** NULL decidedAt SLA poison; role-scoped attribution; N+1 per-person queries; Istanbul timezone in date filters; missing `force-dynamic`
-**Research flag:** Standard patterns. Istanbul timezone utility and role-scoped query patterns should be established as utility functions before the first query is written — internal design decision, not external research.
-
----
-
-### Phase 4: Hakkediş Billing
-
-**Rationale:** Highest-complexity feature with highest financial risk. Must come after analytics is validated (engineers cross-check billing totals against dashboard KPIs). KDV rounding and tevkifat fraction must be accountant-confirmed before any export is built.
+**Rationale:** Once the schema exists, the approval path must be updated to snapshot `chainage_m` before any new submission is approved under the new schema. The chainage view is then built against real data. The snapshot modification and the view ship together to avoid a period where the view exists but shows NULL chainages for all approvals.
 
 **Delivers:**
-- `src/actions/hakedis.ts` — `createHakkedişPeriod()`, `computePeriodLines()`, `finalizeHakkedişPeriod()`
-- Period list and period detail pages
-- KDV and retention deduction summary (rates configurable per period)
-- Finalization lock: `status = 'finalized'` makes snapshot columns immutable
-- Activity log wiring
+- `handleAuditDecision` modified: snapshots `chainage_m = ROUND(segment_fraction × total_length_m, 2)` and `route_geometry_version` in the approval transaction
+- One-time backfill migration: computes `chainage_m` for all existing approved submissions using current route geometry (clearly noted as estimated, not true snapshots)
+- `getChainageBuckets` Server Action — SQL GROUP BY on `floor(chainage_m / 1000)` with worker/auditor/BOQ JSON aggregations, over-completion clamp
+- `ChainageTab.tsx` RSC + `ChainageTable.tsx` client component — as-built strip view with colour-coded km buckets
+- Per-km completion % KPI on dashboard
+- `GET /api/exports/chainage` route handler — Excel + PDF chainage as-built export (reuses existing ExcelJS + `@react-pdf/renderer`)
+- `numeric(10,2)` storage convention enforced; Postgres-side bucketing throughout
 
-**Features addressed:** Hakkediş period management (P1), yeşil defter calculation (P1), fiyat icmali (P1), hakkediş summary (P1)
-**Pitfalls to prevent:** Cumulative vs period double-billing (CHECK constraint, previousCumulativeQty snapshot); KDV rounding order (single `computeHakkedis()` with fixture test); tevkifat fraction configurable not hardcoded
-**Research flag:** Needs `plan-phase --research-phase` — (1) accountant must confirm KDV tevkifat fraction (4/10 vs 3/10) and stopaj applicability (single-year vs multi-year) before any billing code is written.
+**Addresses:** Chainage derivation snapshot (P1), per-segment strip view (P1), per-km completion % (P1), as-built export (P2 — included because it reuses existing infrastructure trivially) from FEATURES.md
+**Avoids:** Pitfalls 2 (snapshot enforced), 7 (float precision), 9 (over-completion clamp), 13 (calibration consistency)
+**Research flag:** Standard patterns — SQL GROUP BY and JSON aggregation follow established Drizzle `sql` template patterns from Phases 4 and 10; exports follow Phase 11 patterns. Skip research phase.
 
----
+### Phase 16: AI Vision Assist
 
-### Phase 5: Exports
-
-**Rationale:** Exports render calculated data — build the renderer after the calculations are validated. PDF library decision should be re-researched at this point with more information.
+**Rationale:** AI vision is independently deployable after Phase 14 schema (needs `submission_ai_flags` table). Placed last because the eval harness must be built and pass before any flags are surfaced — this has the longest QA cycle regardless of code complexity. Placing it last also means the chainage view (headline deliverable) ships before the AI feature.
 
 **Delivers:**
-- `src/lib/excel-exports.ts` — `generateSubmissionsExcel()`, `generateHakkedişExcel()` (multi-sheet, bilingual)
-- Submission log, hakkediş Excel export route handlers
-- PDF export route handler (library TBD)
-- PDF layout component with Turkish TTF embedded at module level
-- Export trigger UI with required date-range selector
-- `export const maxDuration = 60` on all export route handlers
-- Date-range cap: reject requests with range > 90 days or no date range
+- `src/lib/ai-vision.ts` — `runAiAnalysis`: AI SDK `generateObject` with Zod schema, writes to `submission_ai_flags`, applies `eval_passed` gate
+- `src/lib/ai-flag-queue.ts` — `enqueueAiFlag`: inserts pending row, fires `runAiAnalysis` as detached Promise
+- `tests/ai-vision.test.ts` — Vitest eval harness with labeled fixture photos (≥ 30 submissions, ground-truth labels); precision ≥ 0.80 on "anomaly" class required before enabling flag display (AI-01..AI-05)
+- `handleAuditDecision` modified: adds `enqueueAiFlag` call after hakkediş recompute block (best-effort, never awaited)
+- `/api/cron/ai-flags/route.ts` — cron retry for stuck pending rows, registered in `vercel.json`
+- `getSubmissionAiFlag` Server Action — queries `WHERE eval_passed = true`
+- `AiFlagCard.tsx` — client component on submission detail page; amber dot on `ChainageTable` rows with eval-passed flag
 
-**Features addressed:** Hakkediş Excel export (P1), submission log Excel export (P1), worker/auditor performance Excel export (P1), hakkediş PDF certificate (P2)
-**Pitfalls to prevent:** Export route auth guards; Turkish characters in PDF (TTF at module level); ExcelJS numeric cell type; Vercel export memory/timeout; ExcelJS Buffer gotcha
-**Research flag:** Needs `plan-phase --research-phase` — (1) re-verify @react-pdf/renderer issue #3074 status; (2) if unresolved, confirm pdf-lib approach and Turkish font strategy (Noto Sans vs Open Sans vs DejaVu glyph coverage).
+**Addresses:** AI vision assist (P1 — PROJECT.md commitment) from FEATURES.md
+**Avoids:** Pitfalls 10 (vision off critical path), 11 (eval harness gates all display), prompt injection via typed Zod schema
+**Research flag:** NEEDS RESEARCH on eval harness labeling workflow (tooling for creating labeled fixture dataset from real submission photos), the `generateObject` Zod schema for construction photo classification, and Vercel `after()` behavior in cold-start serverless contexts.
 
----
+### Phase 17 (Optional): Chainage Calibration Override UX
+
+**Rationale:** `chainage_offset_m` is already stored in the schema from Phase 14. The simple numeric offset input is a small addition. Placed as a separate optional phase because it requires the dedicated UX design step noted above and because the strip view is fully functional without it using raw arc-length chainage.
+
+**Delivers:**
+- `setChainageOffset` Server Action
+- `ChainageOffsetForm.tsx` — numeric input for offset in metres, converting to/from `km+m` display format
+- Recompute trigger: UPDATE `calibrated_chainage_m` for all project approvals on offset change
+
+**Addresses:** Chainage calibration override (P2) from FEATURES.md
+**Avoids:** Pitfall 13 (calibration inconsistency across surfaces)
+**Research flag:** Skip research phase — math and DB pattern are straightforward.
 
 ### Phase Ordering Rationale
 
-- Phase 1 before everything: `unit_price` gates all financial math; new schema tables must exist before any action function can reference them; `CanonicalSubmission` type must be defined before analytics queries and exports share a data shape
-- Phase 2 before Phase 3: analytics pages need to be reachable before they can be validated; sidebar shell is prerequisite for usability
-- Phase 3 before Phase 4: earned-value analytics validates aggregation queries before the higher-stakes hakkediş calculation uses the same data; office engineers cross-check billing totals against dashboard KPIs
-- Phase 4 before Phase 5: exports render calculated data; PDF library decision can be made with more information after Phase 4 proves the data model
-- Additive-only constraint throughout: no existing `dashboard/projects/*` routes, schema tables, or Server Actions are moved
+- Schema precedes everything: `chainage_m` must exist before any approval snapshots it; `submission_ai_flags` must exist before AI vision runs
+- DXF import and chainage view are independent after Phase 14 and could run in parallel; serialized here to give each phase clean scope
+- Approval snapshot modification (Phase 15) is placed with the chainage view — not with DXF import — because it requires the view to provide value, and the backfill migration must be sequenced carefully
+- AI vision (Phase 16) is independent and placed last to give the eval harness maximum preparation time
+- Calibration override (Phase 17) is optional and correctly follows the strip view: engineers notice the calibration need only after seeing raw chainages
 
 ### Research Flags
 
-Phases requiring `plan-phase --research-phase`:
-- **Phase 4 (Hakkediş Billing):** KDV tevkifat fraction must be confirmed (4/10 vs 3/10 — accountant required); stopaj applicability depends on contract type
-- **Phase 5 (Exports):** PDF library decision (re-verify @react-pdf/renderer issue #3074 status; Turkish font strategy)
+Phases needing deeper research during planning:
+- **Phase 14 (DXF Import):** Satellite preview + confirm UX (Mapbox modal, temporary GeoJSON source before save); two-step Blob upload pattern (client PUT → Server Action receives URL); final SPLINE handling decision
+- **Phase 16 (AI Vision):** Eval harness labeling workflow; `generateObject` Zod schema design for construction photo classification; Vercel `after()` behavior in cold-start serverless contexts
 
-Phases with standard patterns (skip research-phase):
-- **Phase 1 (Data Foundation):** Drizzle schema migration patterns and Postgres aggregation are well-documented; partial index hand-edit is an established codebase pattern
-- **Phase 2 (Admin Shell IA):** App Router route groups and sidebar navigation are standard Next.js patterns
-- **Phase 3 (Analytics UI):** Recharts via shadcn chart, TanStack Table server-side pagination, and URL-based filter state are all high-confidence patterns
+Phases with standard, well-documented patterns (skip research phase):
+- **Phase 15 (Chainage View):** SQL GROUP BY + JSON aggregation follows established Drizzle `sql` template patterns from Phases 4 and 10; exports follow Phase 11 patterns exactly
+- **Phase 17 (Calibration Override):** Simple numeric input → Server Action → single-table UPDATE; no novel integration
 
 ---
 
@@ -269,53 +235,48 @@ Phases with standard patterns (skip research-phase):
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | All versions npm-verified; pdf-lib vs @react-pdf/renderer conflict documented with specific GitHub issue; ExcelJS Buffer gotcha confirmed via open issue |
-| Features | HIGH / MEDIUM | HIGH for hakkediş mechanics and EVM formulas (EY, PwC Turkey, KPMG verified); MEDIUM for exact KPI benchmarks (practitioner consensus); KDV tevkifat fraction requires accountant confirmation |
-| Architecture | HIGH | Grounded in actual codebase inspection; additive strategy and neon-http driver constraints confirmed |
-| Pitfalls | HIGH | 15 pitfalls covering financial correctness, security, performance, UX; all grounded in codebase-specific patterns |
+| Stack | HIGH | All three new packages verified against npm registry (versions, peer deps, Vercel compatibility). PostGIS linear referencing functions confirmed against official docs. AI SDK image content format verified against ai-sdk.dev. |
+| Features | HIGH | Turkish chainage K+M notation, as-built conventions, strip view industry standard all verified via multiple sources. Feature priority matrix grounded in competitor analysis (TILOS, Procore, Vitruvi). Anti-features have clear rationale. |
+| Architecture | HIGH | Architecture researcher read all existing source files before making recommendations. Component boundaries and data flows grounded in actual codebase. Dynamic chainage recommendation overridden by RESOLVED decision above. |
+| Pitfalls | HIGH | All 13 pitfalls grounded in existing project constraints (D-49 drizzle-kit push ban, `::geography` cast convention, bot-path `after()` ban, immutable migration protocol) and PostGIS/DXF/AI domain knowledge. |
 
 **Overall confidence:** HIGH
 
 ### Gaps to Address
 
-- **KDV tevkifat fraction (4/10 vs 3/10):** Accountant must confirm before any billing calculation is written. Store fraction as a configurable `numeric` per hakkediş period. Address in Phase 4 planning.
-- **Stopaj applicability:** Stopaj (5%) applies only to multi-year contracts. Hakkediş summary UI should present stopaj as a toggle with tooltip. Confirm with accountant before Phase 4.
-- **PDF library final pick:** Defer to Phase 5 planning. Re-verify @react-pdf/renderer issue #3074 status at implementation time.
-- **Avans kesintisi rate:** No default should be hardcoded — office engineer enters advance recovery rate when creating a hakkediş period.
-- **Office activity log retention policy:** KVKK compliance risk for long-retained logs. Document a 90-day retention window in the schema and scope a cleanup mechanism for Phase 1 or 2.
+- **TUREF EPSG:5254 in Neon `spatial_ref_sys`:** Unverifiable without a live query. The `proj4` JS approach sidesteps this entirely. During Phase 14 execution, run `SELECT COUNT(*) FROM spatial_ref_sys WHERE srid = 5254` against the Neon dev branch — purely informational.
+- **Vercel `after()` vs. fire-and-forget Promise in serverless:** PITFALLS.md recommends `after()` as more reliable; ARCHITECTURE.md uses fire-and-forget Promise. The cron retry covers the gap either way. Verify against current Vercel docs during Phase 16 planning.
+- **One-time chainage backfill for existing approvals:** Approved submissions from Phases 4–13 have no `chainage_m`. A backfill migration computes `ROUND(segment_fraction × total_length_m, 2)` for all existing approvals. Accuracy depends on route geometry not having changed since approval — for the current single-tenant MVP with one active project this is deterministic. Flag for verification during Phase 15 planning.
+- **DXF fixture files for unit tests:** `parseDxfToLineString` unit tests require real DXF fixture files in Turkish projected coordinates. Source not identified in research. During Phase 14 planning, export a sample DXF from AutoCAD in TUREF/TM30 for the fixture set.
 
 ---
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- EY, PwC Turkey, KPMG, Grant Thornton — KDV rate (20%), stopaj (5%), tevkifat applicability
-- ozbekcpa.com, karenaudit.com, hakedis.org — KDV tevkifat fraction (4/10) and 2024 yapım işleri threshold
-- muhasebetr.com — hakkediş worked calculation example
-- sanalsantiye.com, amp.com.tr, insaatgundemi.com — hakkediş document structure (yeşil defter, fiyat icmali)
-- Drizzle ORM docs — `numeric` type string return behavior (issues #570, #1042)
-- GitHub @react-pdf/renderer issue #3074 — `PDFDocument is not a constructor` in Next.js 15 App Router
-- GitHub ExcelJS issue #1032 — `writeBuffer()` type mismatch (unfixed in 4.4.0)
-- shadcn/ui chart docs — Recharts v3 confirmed as underlying engine
-- TanStack Table v8 docs — `manualPagination`, `manualSorting`, `manualFiltering`
-- pdf-lib GitHub — pure JS, fontkit embedding, Turkish font approach
-- Wanago money storage guide — `decimal.js` with Drizzle numeric columns
-- Next.js `after()` API reference — post-response activity log writes
-- Auth.js v5 docs — `auth()` in route handlers
-- Vercel function docs — `maxDuration`, memory limits, 4.5 MB body limit
-- Actual codebase: `src/db/schema/*.ts`, `src/actions/submissions.ts`, `src/db/migrate.ts`, `src/lib/excel.ts`
+- postgis.net/docs/ST_LineLocatePoint.html — linear referencing function signatures confirmed
+- postgis.net/workshops/postgis-intro/linear_referencing.html — chainage pattern confirmed
+- ai-sdk.dev/docs/foundations/prompts — image content part format (URL, base64, buffer) verified
+- epsg.io/5254 — TUREF/TM30 proj4 string verified
+- epsg.io/23035, epsg.io/23036 — ED50 UTM 35N/36N proj4 strings verified
+- npm: dxf-parser 1.1.2 — entity type list, `parseSync()` API, pure-JS confirmed
+- npm: proj4 2.20.8 — 1,036 dependents, actively maintained, axis order convention confirmed
+- npm: react-pdf 10.4.1, pdfjs-dist 5.7.284 — React 19 peer dep, Next.js 15 worker setup confirmed
+- github.com/wojtekmaj/react-pdf README — Next.js 15 App Router worker setup pattern
+- grammy.dev/plugins/conversations — replay engine behavior and `conversation.external()` usage
 
 ### Secondary (MEDIUM confidence)
-- famcod.com 2026 EVM guide — EVM benchmarks (CPI/SPI thresholds)
-- Procore, iFieldSmart, Vitruvi — construction KPI benchmark ranges (85–90% approval rate, <15% rejection rate)
-- Projul, SmartPM, BoldBI — operations dashboard structure conventions
-- FlyDash, Domo, InetSoft — KPI dashboard best practices
+- medium.com/@supulkalhara7 — DXF to GeoJSON + proj4 reprojection pattern confirmed working
+- strategicerp.com — strip chart and chainage-wise DPR (as-built strip view industry standard)
+- construction.trimble.com/tilos — TILOS competitor feature set for chainage-based progress
+- spin.atomicobject.com/linestring-geometry-drizzle/ — Drizzle LineString migration hand-edit pattern (known project constraint D-49)
+- hkmo.org.tr — ED50 Turkey datum shift documentation
 
-### Tertiary (LOW confidence / needs validation)
-- Neon materialized view refresh behavior — reasoning-based, no Neon-specific benchmark; revisit after v2 launch if dashboard page load > 2s
-- Fiyat farkı scope — described as minority of private subcontracts; deferred to v3+ without formal survey of user's contract portfolio
+### Tertiary (LOW confidence — validate during implementation)
+- Vercel `after()` behavior with fire-and-forget Promises in cold-start serverless contexts — inferred from Vercel docs; empirical verification needed during Phase 16
+- `dxf-parser` SPLINE entity interpolation gap — stated in package README; needs a real SPLINE fixture to verify behavior
 
 ---
 
-*Research completed: 2026-05-25*
+*Research completed: 2026-05-29*
 *Ready for roadmap: yes*

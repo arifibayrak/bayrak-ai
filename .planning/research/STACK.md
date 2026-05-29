@@ -1,154 +1,137 @@
 # Stack Research
 
-**Domain:** v2.0 Operations Intelligence & Hakkediş — analytics dashboards, earned-value cost, hakkediş billing, Excel/PDF export additions to an existing Next.js 15 / shadcn / Drizzle / Neon app
-**Researched:** 2026-05-25
-**Confidence:** HIGH (all versions verified against npm registry; key behaviours verified against official docs and GitHub issues)
-
-> This file covers ONLY the net-new libraries needed for v2. The v1 stack (Next.js 15, shadcn/ui, Drizzle, Neon, grammY, Auth.js, Mapbox, next-intl, ExcelJS, @vercel/blob) is established and not repeated here.
+**Domain:** v4.0 additions — document-driven CAD route import, chainage linear referencing, AI vision assist
+**Researched:** 2026-05-29
+**Confidence:** HIGH (all version numbers verified against npm registry; EPSG codes verified against epsg.io; PostGIS functions confirmed against official docs; AI SDK image format confirmed against ai-sdk.dev)
 
 ---
 
-## Recommended Stack Additions
+> This file covers ONLY the net-new libraries required for v4.0 capabilities. The full existing stack (Next.js 15, Drizzle, Neon/PostGIS, grammY, react-map-gl, AI SDK v6, next-intl, @vercel/blob, ExcelJS, @react-pdf/renderer) is validated and unchanged.
 
-### Charts / Data Visualisation
+---
 
-| Technology | Version | Purpose | Why Recommended |
-|------------|---------|---------|-----------------|
-| recharts | 3.8.1 | Line, bar, area, pie charts for throughput / burn-rate / value-complete trend charts | shadcn's own `chart` component is a thin wrapper over Recharts v3 — no extra dep, design system stays unified, `"use client"` boundary is already the pattern for all interactive components |
+## New Stack Additions for v4.0
 
-**How it fits this stack:** shadcn/ui does not abstract Recharts — you use `<BarChart>`, `<LineChart>` etc. directly. This means you can follow the official Recharts docs verbatim and the shadcn chart theming (CSS variables) applies automatically. Data is fetched in a Server Component or Server Action, serialised to plain arrays, and passed as props to a `'use client'` chart component — the canonical RSC pattern. No SSR penalty because charts are always client-only interactive widgets.
+### DXF Parsing (Node / Serverless)
 
-**Bundle cost:** ~50 kB gzipped for Recharts v3 (Bundlephobia). Acceptable for a dashboard that is office-only (not public-facing).
+| Library | Version | Purpose | Why |
+|---------|---------|---------|-----|
+| `dxf-parser` | 1.1.2 | Parse DXF text files into a structured JS object | Pure JavaScript, zero native dependencies — runs in any Vercel Node function with no bundling issues; confirmed tested against LWPOLYLINE, POLYLINE, and LINE entity types; synchronous `parseSync()` API; actively used in production DXF-to-GeoJSON pipelines |
 
-**Installation:** `npm install recharts` then `npx shadcn@latest add chart` to scaffold the themed wrapper.
+**Entity support in `dxf-parser` 1.1.2:**
+- `LWPOLYLINE` — parsed; vertices exposed as `vertices[]` array with `x`, `y` per vertex
+- `POLYLINE` — parsed; vertices exposed similarly
+- `LINE` — parsed as start/end point pair
+- `SPLINE` — parsed structurally but interpolated points are not computed (the raw control points are available); for route import purposes LWPOLYLINE is the only entity type the Turkey survey CAD workflow produces
 
-### Data Grid / Advanced Table
+**Why not `dxf` (skymakerolof, v5.3.1):** More actively maintained (last publish September 2025 vs June 2022 for dxf-parser), but its value-add is SVG/WebGL rendering — the `toPolylines()` output flattens everything into an undifferentiated array with no entity-type discrimination. For server-side route extraction where entity type matters (LWPOLYLINE vs irrelevant annotation lines), `dxf-parser`'s typed entity object is preferable. If `dxf-parser` proves inadequate for a specific file, `dxf@5.3.1` is the fallback — both are pure JS and serverless-safe.
 
-| Technology | Version | Purpose | Why Recommended |
-|------------|---------|---------|-----------------|
-| @tanstack/react-table | 8.21.3 | Headless table engine for analytics drill-down, sorting, pagination, column filtering | Already implied by the shadcn data-table pattern; v1 likely uses shadcn's `DataTable` recipe which is built on TanStack Table v8; adding server-side pagination and column-filter state is a config change, not a new dep |
+**Why not DWG parsing:** DWG is Autodesk's proprietary binary format. No reliable pure-JS DWG parser exists. `libredwg-web` uses WASM via LibreDWG (a reverse-engineered library with ambiguous legal status for commercial use). The correct path for v4.0 is: "user exports DXF from AutoCAD before uploading" — this is a one-click operation for any AutoCAD user. DXF covers DWG for this purpose.
 
-**Pattern for v2:** Use `manualPagination: true` + `manualSorting: true` + `manualFiltering: true` and encode page/sort/filter into URL search params (Next.js `useSearchParams` + `useRouter`). Server Component reads params, queries Drizzle, passes rows + rowCount to the `'use client'` table. This keeps the table stateless and shareable by URL — important for drill-down navigation.
+**Cloud conversion fallback (not recommended for v4.0):** Autodesk APS Model Derivative API and CloudConvert can convert DWG→DXF server-side, but both require external API keys, per-conversion cost, and add latency to what should be a simple upload. For a single-tenant MVP with one office engineer, training them to export DXF is zero-friction. Add cloud conversion only if field evidence shows DWG-only files are a real blocker.
 
-**Note:** TanStack Table v9 is in alpha (v9.0.0-alpha.50 as of May 2026). Do NOT upgrade — v8.21.3 is stable and the shadcn data-table recipe targets v8. Pin to `^8`.
+### Coordinate Reprojection
 
-**No new install needed** if v1 already has `@tanstack/react-table`; check `package.json` — it is likely already there via shadcn scaffolding. If not: `npm install @tanstack/react-table`.
+| Library | Version | Purpose | Why |
+|---------|---------|---------|-----|
+| `proj4` | 2.20.8 | Reproject projected CRS coordinates to WGS84 (EPSG:4326) | Pure JavaScript, no WASM, no native modules; runs identically in Vercel Node functions and browser; 1036 npm dependents; last published 22 days ago (actively maintained); single `proj4(fromDef, toDef, [x, y])` call |
 
-### PDF Generation (Hakkediş Certificate)
+**Turkey EPSG codes and proj4 strings (verified via epsg.io):**
 
-| Technology | Version | Purpose | Why Recommended |
-|------------|---------|---------|-----------------|
-| pdf-lib | 1.17.1 | Programmatic PDF generation for hakkediş certificates in a Vercel Function | Pure JavaScript, zero native dependencies, works in any Node.js environment including Vercel Fluid Compute; supports custom TTF/OTF font embedding (Turkish chars: ş ğ ı ö ü ç) via @pdf-lib/fontkit |
-| @pdf-lib/fontkit | 1.1.1 | Font embedding engine for pdf-lib | Required companion for Unicode font support; fontkit registered once, then any TTF with Turkish coverage works |
+| CRS | EPSG | Coverage | Proj4 String |
+|-----|------|----------|--------------|
+| TUREF / TM30 | 5254 | Turkey 28.5°E–31.5°E — primary for modern Turkey surveys | `+proj=tmerc +lat_0=0 +lon_0=30 +k=1 +x_0=500000 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs` |
+| TUREF / TM27 | 5253 | Turkey 25.5°E–28.5°E — Trakya/Edirne corridor | `+proj=tmerc +lat_0=0 +lon_0=27 +k=1 +x_0=500000 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs` |
+| TUREF / TM33 | 5255 | Turkey 31.5°E–34.5°E — Ankara region | `+proj=tmerc +lat_0=0 +lon_0=33 +k=1 +x_0=500000 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs` |
+| ED50 / UTM 35N | 23035 | Turkey/Europe 24°E–30°E — legacy survey files | `+proj=utm +zone=35 +ellps=intl +towgs84=-87,-98,-121,0,0,0,0 +units=m +no_defs` |
+| ED50 / UTM 36N | 23036 | Turkey 30°E–36°E — legacy survey files | `+proj=utm +zone=36 +ellps=intl +towgs84=-89.05,-87.03,-124.56,0,0,0,0 +units=m +no_defs` |
+| WGS84 / UTM 35N | 32635 | Modern GPS-based surveys in the same band | `+proj=utm +zone=35 +datum=WGS84 +units=m +no_defs` |
+| WGS84 / UTM 36N | 32636 | Modern GPS-based surveys | `+proj=utm +zone=36 +datum=WGS84 +units=m +no_defs` |
 
-**Why pdf-lib over @react-pdf/renderer:** @react-pdf/renderer 4.x has an unresolved `PDFDocument is not a constructor` error in Next.js 15 App Router route handlers (GitHub issue #3074, filed Feb 2025, marked closed without resolution). It also has memory leak warnings on repeated `renderToBuffer()` calls. These are blockers for a Vercel Function producing hakkediş certificates on demand.
+**Target CRS:** Always EPSG:4326 (`+proj=longlat +datum=WGS84 +no_defs`) for GeoJSON ingestion into the existing PostGIS/Mapbox pipeline.
 
-**Why pdf-lib over Playwright/Puppeteer:** Playwright's Chromium binary is ~300 MB, which exceeds Vercel's 250 MB function bundle limit. Spawning subprocesses is also not supported in Vercel Functions.
+**Reprojection location: do it in JavaScript (proj4), not in PostGIS (ST_Transform).**
 
-**Why not a PDF API service:** Adds external dependency and per-call cost. Hakkediş certificates are low-frequency (monthly per project), so the programmatic approach is worth the manual table-drawing code.
+Rationale: ST_Transform works via the `spatial_ref_sys` table. PostGIS 3.x ships with "over 3000" common EPSG definitions, but TUREF (EPSG:5254, added to EPSG registry in 2010) may or may not be present in Neon's specific PostGIS build — this is not verifiable without querying the live database. Neon docs do not enumerate which SRIDs are included. Even if TUREF is present, inserting it as a migration step adds schema complexity. Doing reprojection in JS at upload time (before calling `ST_GeomFromGeoJSON`) is architecturally cleaner: the DXF parser extracts vertices in projected coordinates, `proj4` converts them to `[lng, lat]` pairs, then the existing `validateLineStringGeoJSON` + `uploadRoute` Server Action flow takes over unchanged. No Postgres migration required.
 
-**Turkish font approach:** Embed a free Turkish-compatible TTF (e.g. Noto Sans or Open Sans, both cover the full Turkish alphabet) from `public/fonts/`. Embed at server start, not per-request, to avoid the font-loading race condition known to affect @react-pdf/renderer.
+Embed the 6–7 Turkish proj4 strings as a hardcoded lookup table in a `src/lib/crs.ts` module (not fetched from epsg.io at runtime).
 
-**Serverless memory:** pdf-lib with an embedded 200 kB font and a one-page hakkediş table uses well under 100 MB. Vercel Function default memory is 1024 MB — no issue.
+### PDF Viewing in Browser
 
-**Installation:** `npm install pdf-lib @pdf-lib/fontkit`
+| Library | Version | Purpose | Why |
+|---------|---------|---------|-----|
+| `react-pdf` | 10.4.1 | Display PDF files in browser | Works with Next.js 15 App Router; `'use client'` component wrapping required; actively maintained (wojtekmaj); peer-compatible with React 18/19; requires `pdfjs-dist` worker setup |
+| `pdfjs-dist` | 5.7.284 | PDF.js worker (peer dep of react-pdf) | Installed automatically as peer dep; worker must be configured in the client component |
 
-### Multi-Sheet Excel Export
+**Next.js 15 App Router integration pattern:**
 
-**No new package needed.** ExcelJS 4.4.0 is already installed.
+```tsx
+'use client';
+import { Document, Page, pdfjs } from 'react-pdf';
+import 'react-pdf/dist/Page/TextLayer.css';
+import 'react-pdf/dist/Page/AnnotationLayer.css';
 
-Multi-sheet workbooks work by calling `workbook.addWorksheet('Sheet Name')` multiple times before `writeBuffer()`. Each sheet is independent: columns, rows, styles, tab colour.
-
-**The critical Node 24 Buffer→BodyInit gotcha** (already encountered in v1 for import — now confirmed for export too):
-
-ExcelJS `writeBuffer()` returns `ExcelJS.Buffer` which extends `ArrayBuffer`, not Node's `Buffer`. The existing v1 pattern in `src/lib/excel.ts` (lines 47–49) already solves the import side:
-```typescript
-const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.mjs',
+  import.meta.url,
+).toString();
 ```
 
-For **export** from a Route Handler, the reverse problem applies — `Next.js Response` / `NextResponse` accepts `BodyInit` which in Node 24 is `ReadableStream | string | Blob | ArrayBuffer | Uint8Array`. `ExcelJS.Buffer` satisfies `ArrayBuffer`, so it can be passed directly without conversion:
-```typescript
-const buf = await workbook.xlsx.writeBuffer(); // returns ExcelJS.Buffer (extends ArrayBuffer)
-return new Response(buf, {                      // Response accepts ArrayBuffer directly
-  status: 200,
-  headers: {
-    'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    'Content-Disposition': 'attachment; filename="hakkdis-rapor.xlsx"',
-  },
+This component must be `'use client'` and dynamically imported in RSC parents with `{ ssr: false }` to avoid SSR crashes. Next.js 15 (>= 14.1.1) no longer requires `next.config.js` workarounds for this — the `import.meta.url` worker pattern works out of the box.
+
+**For DXF side-panel viewing:** Do NOT add a DXF rendering library. The DXF file is parsed server-side to extract geometry only; the dashboard map panel already shows the parsed route as a Mapbox GL layer. A raw DXF viewer (three-dxf, dxf-viewer) adds substantial bundle weight for marginal value — the engineer's CAD software is the authoritative DXF viewer. The "view source drawing beside the map" requirement is satisfied by: (a) parsing the DXF and rendering it as a Mapbox source on the existing map, or (b) showing a preview of the extracted polyline in a lightweight SVG panel using the parsed vertices directly. Neither requires an additional dependency.
+
+### Linear Referencing
+
+**No new dependency.** Chainage is fully achievable with PostGIS functions already installed on Neon:
+
+| Function | What it does | Chainage use |
+|----------|-------------|-------------|
+| `ST_Length(geom::geography)` | Returns length in meters (geodesic, accurate on WGS84 ellipsoid) | Total route length; chainage denominator |
+| `ST_LineLocatePoint(line, point)` | Returns 0–1 fraction of line where point is closest | Convert submission lat/lon to chainage fraction |
+| `ST_LineInterpolatePoint(line, fraction)` | Returns point geometry at fraction along line | Map chainage km-mark back to coordinates |
+| `ST_LineSubstring(line, start_frac, end_frac)` | Returns sub-line between two fractions | Extract per-segment geometry for interval views |
+
+Chainage in meters = `ST_LineLocatePoint(route.geom, submission.snapped_point) * ST_Length(route.geom::geography)`.
+
+Per-km segment queries group submissions by `floor(chainage_m / 1000)`. All of this is raw SQL in Drizzle `sql\`\`` templates — the same pattern already used in Phase 4 for nearest-segment matching. Confirmed: PostGIS linear referencing chapter covers exactly this use case. GIST index on `routes.geom` (already exists per schema) ensures performant `ST_LineLocatePoint` calls.
+
+### AI Vision Assist
+
+**No new library.** The existing `ai` (AI SDK v6) via Vercel AI Gateway with latest Claude models covers async photo anomaly flagging completely.
+
+**Confirmed image content format (verified against ai-sdk.dev/docs/foundations/prompts):**
+
+```ts
+import { generateText } from 'ai';
+import { createOpenAI } from '@ai-sdk/openai'; // or gateway client
+
+const result = await generateText({
+  model: gateway('anthropic/claude-sonnet-4.6'), // latest vision-capable model
+  messages: [{
+    role: 'user',
+    content: [
+      { type: 'text', text: 'Inspect this construction photo for anomalies...' },
+      { type: 'image', image: photoUrl }, // @vercel/blob URL — direct HTTPS URL works
+    ],
+  }],
 });
 ```
-Do NOT call `Buffer.from(buf)` — this corrupts the file (confirmed open issue #1032 in exceljs repo, unfixed in 4.4.0). Use the raw `ExcelJS.Buffer` directly. This works because `Response` accepts `ArrayBuffer`, and `ExcelJS.Buffer` is an `ArrayBuffer`.
 
-**Multi-sheet structure for v2 exports:**
-```typescript
-const wb = new ExcelJS.Workbook();
-const summarySheet = wb.addWorksheet('Özet / Summary');
-const boqSheet     = wb.addWorksheet('BOQ');
-const periodSheet  = wb.addWorksheet('Hakediş Dönemleri');
-// populate each sheet independently
-const buf = await wb.xlsx.writeBuffer();
-```
+The `@vercel/blob` public URL is passed directly as the `image` field — no base64 encoding needed. This is the cleanest path: submission photo is already stored in Blob at approval time.
 
-### Date-Range Picker
+**Execution pattern:** Call `generateText` inside a Vercel Node route handler (not Edge) triggered by the auditor approval webhook callback. Store the AI flag result in a new `submission_ai_flags` DB column or table before the auditor's Telegram decision UI renders. This is the "async" pattern — fire the vision check at submission receipt, not at auditor render time. If the AI call takes >2s (Claude vision typically 1–3s), use a background queue pattern: store the submission first, respond to Telegram immediately, then trigger vision analysis via a separate API route call or Vercel background function.
 
-| Technology | Version | Purpose | Why Recommended |
-|------------|---------|---------|-----------------|
-| react-day-picker | 10.0.1 | Calendar / date-range picker for global date filter | Already the underlying engine of shadcn's `Calendar` component; no new dependency, just use `npx shadcn@latest add calendar` and compose with `Popover` for a range picker |
+**Eval harness (lightweight, hand-rolled — no new dependency):**
 
-**Pattern:** `npx shadcn@latest add calendar date-picker`. The shadcn Date Picker recipe composes `<Popover>` + `<Calendar mode="range">`. react-day-picker v10 renamed its package to `@dayPicker/react` but `react-day-picker` still ships as the alias. shadcn's calendar component already imports from `react-day-picker` — no change needed.
+Do not add Braintrust, Langfuse, or any observability platform for v4.0. Per the project constraint "eval rigor required since AI is in v1," the correct v4.0 approach is:
 
-**Do not add a third-party date picker library** (e.g. `react-datepicker`, `@mui/x-date-pickers`). These conflict stylistically with shadcn/Tailwind v4 and add significant bundle weight for something shadcn already provides.
+1. A `__tests__/ai/vision-eval.ts` Vitest suite with a fixed set of labeled test photos (stored in `test/fixtures/`) and expected classification outcomes
+2. Each test calls `generateText` against the real model and asserts the structured output matches the expected label
+3. Gate: suite must pass before any AI flag is shown to an auditor (acceptance criteria AI-01..AI-05)
+4. This is zero new dependencies — Vitest is already in the test stack
 
-### Decimal / Money Math
-
-| Technology | Version | Purpose | Why Recommended |
-|------------|---------|---------|-----------------|
-| decimal.js | 10.6.0 | Precise KDV (20%) and retention (5%) calculation in JavaScript | Drizzle returns `numeric` columns as strings (not numbers) — a confirmed Drizzle behaviour since it avoids JS float precision loss. Those strings must be parsed with a decimal library before arithmetic |
-
-**Why decimal.js over dinero.js:** Dinero is ideal when currency is a first-class type throughout the app; here bayrak.ai deals with quantities × unit_price in TRY only, and the calculations are straightforward (gross × 0.20 for KDV, gross × 0.05 for retention). Decimal.js is lighter, has no currency concept overhead, and is the library explicitly recommended by the Drizzle/NestJS money-storage guide.
-
-**The problem it solves:** With Drizzle + Neon, a `numeric(15,4)` column returns `"1234.5000"` (string). `parseFloat("1234.5000") * 0.20` may produce `246.89999999999998` due to IEEE 754. `new Decimal("1234.5000").times("0.20").toFixed(2)` gives `"246.90"` — correct for a TRY billing document.
-
-**Rule:** Do ALL money arithmetic (BOQ earned value, KDV, retention, running totals) with `Decimal` objects. Only convert to `number` for chart props (approximate display is fine). Store results back to Postgres as strings (Drizzle accepts string for numeric columns).
-
-**Installation:** `npm install decimal.js` (it is not yet in package.json).
-
-### SQL Aggregation: Drizzle Raw Queries + Neon Views
-
-**Recommendation:** Use Drizzle's `sql` tagged template for cross-project aggregation queries; define Postgres regular views (not materialized) for the most-reused analytics shapes; skip materialized views for MVP.
-
-**Rationale:**
-
-1. **Drizzle aggregation functions** (`sum()`, `count()`, `avg()`) with `.groupBy()` cover most per-project rollups type-safely. Use these first.
-
-2. **Raw `sql` tagged templates** for complex cross-table aggregations (e.g. `earned_value = SUM(approved_qty * unit_price)`). Drizzle's `sql` operator is fully typed when column names are bound; keep these in `src/lib/queries/analytics.ts` and test them directly.
-
-3. **Postgres regular views** for the shapes queried repeatedly across multiple dashboard components (e.g. `v_project_earned_value` joining `boq_items × submissions`). Declare them in Drizzle as `.existing()` views and reference in selects for type safety. Create/update via raw migration SQL.
-
-4. **Neon materialized views** are NOT recommended for MVP because:
-   - Neon serverless suspends compute between requests; `REFRESH MATERIALIZED VIEW` must be called explicitly and costs a query.
-   - For a single-tenant app with low write volume, Neon's query planner on a regular view over properly indexed tables is fast enough.
-   - Materialized views add operational complexity (when to refresh? on every approve? cron?).
-   - Revisit if dashboard page load exceeds 2 s after v2 launch.
-
-5. **Drizzle `pgMaterializedView` API** exists (`db.refreshMaterializedView(view)`) and works with Neon — but the refresh timing problem makes it premature. Document the path in a comment, do not implement yet.
-
----
-
-## Alternatives Considered
-
-| Category | Recommended | Alternative | Why Not |
-|----------|-------------|-------------|---------|
-| Charts | recharts (via shadcn chart) | Tremor | Tremor is also built on Recharts v3; adding Tremor means an extra layer with its own component naming, reducing customisation flexibility; bayrak.ai's design system is already shadcn/Tailwind — Recharts directly keeps it unified |
-| Charts | recharts (via shadcn chart) | Nivo | 500 kB+ bundle if you use multiple chart types; SSR-friendly but unnecessary complexity for 3–5 chart types; overkill |
-| Charts | recharts (via shadcn chart) | visx | Low-level D3 wrapper; excellent for custom visualisations but ~2-3× the implementation effort for standard dashboards; no shadcn integration |
-| Table | @tanstack/react-table (headless) | AG Grid Community | AG Grid's free tier has licensing restrictions; heavier; shadcn data-table pattern is already TanStack-based |
-| PDF | pdf-lib | @react-pdf/renderer | Broken in Next.js 15 App Router (issue #3074, unresolved Feb 2025); memory leaks on repeated renderToBuffer; avoid |
-| PDF | pdf-lib | Playwright/Puppeteer | 300 MB Chromium binary exceeds Vercel's 250 MB function bundle limit; subprocess spawning not allowed |
-| Money math | decimal.js | dinero.js | Dinero adds currency-type complexity unnecessary for single-currency TRY app; overkill |
-| Money math | decimal.js | native JS Number | IEEE 754 floats produce rounding errors in Turkish KDV/retention calculations (confirmed in financial literature) |
-| Analytics SQL | Drizzle sql`` + regular views | Neon materialized views | Premature optimisation; refresh-timing complexity in serverless; indexed regular views are fast enough at single-tenant scale |
-| Date picker | shadcn Calendar (react-day-picker) | react-datepicker / @mui/x-date-pickers | Stylistic conflict with Tailwind v4 / shadcn; unnecessary bundle addition when shadcn already provides a date-range picker |
+Add Braintrust/Langfuse observability in v5.0 once the eval harness is proven and volumes justify the integration overhead.
 
 ---
 
@@ -156,213 +139,32 @@ const buf = await wb.xlsx.writeBuffer();
 
 | Avoid | Why | Use Instead |
 |-------|-----|-------------|
-| @react-pdf/renderer | Broken `PDFDocument is not a constructor` in Next.js 15 App Router (issue #3074, open Feb 2025); memory leak on repeated renderToBuffer; React 19 internals conflict | pdf-lib + @pdf-lib/fontkit |
-| Playwright / puppeteer | 300 MB Chromium binary exceeds Vercel 250 MB bundle limit; no subprocess support in Functions | pdf-lib |
-| Tremor | Second Recharts wrapper on top of the shadcn chart wrapper; doubles abstraction; bayrak.ai is already shadcn-native | recharts directly via shadcn chart |
-| Nivo / visx | 500 kB+ bundle; steeply higher implementation cost for 3–5 standard chart types | recharts v3 |
-| react-datepicker / @mui/x-date-pickers | Style conflict with Tailwind v4 shadcn tokens; extra bundle weight | shadcn calendar + react-day-picker (already present) |
-| dinero.js | Currency-type system is overkill for single-currency TRY; adds conceptual overhead | decimal.js |
-| SheetJS (xlsx) | Would duplicate ExcelJS which is already installed and used; ExcelJS has better styling API | ExcelJS (already installed) |
-| TanStack Table v9 | Still in alpha (v9.0.0-alpha.50, May 2026); shadcn data-table targets v8; API is breaking | @tanstack/react-table@^8 |
+| Native DWG parser (`libredwg-web`, `dwg-*`) | DWG is proprietary binary; libredwg has ambiguous licensing for commercial use; WASM bundling on Vercel requires `outputFileTracingIncludes` workarounds | Train user to export DXF from AutoCAD (one click) |
+| `dxf-viewer` / `three-dxf` / `@dxfom/svg` in browser | Heavy WebGL/three.js dependency for a feature (DXF viewer) that the engineer's CAD app already serves better; adds 500 KB+ to bundle | Parse DXF server-side; render extracted geometry as Mapbox GL layer |
+| `@dxfom/dxf` | v0.2.0 (very early stage); no LWPOLYLINE vertex documentation; insufficient ecosystem evidence | `dxf-parser` 1.1.2 |
+| PostGIS `ST_Transform` for reprojection | Requires TUREF EPSG:5254 to exist in Neon's `spatial_ref_sys` — not verifiable without live query; adds migration complexity | `proj4` 2.20.8 in JS at upload time |
+| Autodesk APS / CloudConvert DWG→DXF pipeline | External API cost, latency, key management — over-engineered for a single-tenant MVP | DXF export from AutoCAD |
+| Braintrust / Langfuse for v4.0 | Adds integration overhead and new service dependency before the eval baseline is even established | Hand-rolled Vitest eval suite with labeled fixture photos |
+| `proj4-epsg` / `epsg` npm packages | Runtime-fetched or bundled EPSG registries add unnecessary weight; only 6–7 Turkish CRS strings are needed | Hardcoded `src/lib/crs.ts` lookup with verified proj4 strings |
 
 ---
 
 ## Installation
 
 ```bash
-# Charts (Recharts is installed as peer via shadcn chart add)
-npx shadcn@latest add chart
-npm install recharts          # recharts 3.8.1
+# DXF parsing
+pnpm add dxf-parser
 
-# Table (if not already present from v1 shadcn data-table setup)
-npm install @tanstack/react-table   # 8.21.3
+# Coordinate reprojection
+pnpm add proj4
+pnpm add -D @types/proj4
 
-# PDF
-npm install pdf-lib @pdf-lib/fontkit
-
-# Money math
-npm install decimal.js
-
-# Date picker (if not already present)
-npx shadcn@latest add calendar
-# react-day-picker is installed as a peer dep of shadcn calendar — no direct install
+# PDF viewer (browser-side)
+pnpm add react-pdf
+# pdfjs-dist installs automatically as peer dependency of react-pdf
 ```
 
-**ExcelJS (already installed):** No change. Use existing `src/lib/excel.ts` as the base; extend with `addWorksheet()` calls for multi-sheet exports.
-
----
-
-## Key Integration Patterns
-
-### ExcelJS Multi-Sheet Export Route Handler
-
-```typescript
-// app/api/exports/hakkdis/route.ts
-import ExcelJS from 'exceljs';
-import { NextRequest } from 'next/server';
-
-export async function GET(req: NextRequest) {
-  const wb = new ExcelJS.Workbook();
-
-  const summary = wb.addWorksheet('Özet');
-  summary.columns = [
-    { header: 'Proje / Project', key: 'project', width: 30 },
-    { header: 'Kazanılan Değer / Earned Value (₺)', key: 'earned', width: 25 },
-  ];
-  // ... add rows
-
-  const boq = wb.addWorksheet('BOQ');
-  // ... configure boq sheet
-
-  // ExcelJS.Buffer extends ArrayBuffer; pass directly to Response — do NOT Buffer.from()
-  const buf = await wb.xlsx.writeBuffer();
-  return new Response(buf, {
-    status: 200,
-    headers: {
-      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'Content-Disposition': 'attachment; filename="hakkdis-rapor.xlsx"',
-    },
-  });
-}
-```
-
-### pdf-lib Hakkediş Certificate
-
-```typescript
-// src/lib/pdf/hakkdis.ts
-import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
-import fontkit from '@pdf-lib/fontkit';
-import { readFileSync } from 'fs';
-import path from 'path';
-
-// Load font once at module level (not per-request)
-const turkishFontBytes = readFileSync(
-  path.join(process.cwd(), 'public', 'fonts', 'NotoSans-Regular.ttf')
-);
-
-export async function generateHakkdisePDF(data: HakkdisData): Promise<Uint8Array> {
-  const pdfDoc = await PDFDocument.create();
-  pdfDoc.registerFontkit(fontkit);
-  const font = await pdfDoc.embedFont(turkishFontBytes);
-
-  const page = pdfDoc.addPage([595, 842]); // A4
-  const { width, height } = page.getSize();
-
-  // Header
-  page.drawText('HAKEDİŞ SERTİFİKASI', {
-    x: 50, y: height - 80,
-    size: 18, font, color: rgb(0.1, 0.2, 0.4),
-  });
-
-  // Table: draw rows manually with drawLine + drawText
-  const tableTop = height - 150;
-  const rowHeight = 22;
-  data.lineItems.forEach((item, i) => {
-    const y = tableTop - i * rowHeight;
-    page.drawText(item.material, { x: 50, y, size: 10, font });
-    page.drawText(`₺${item.earnedValue}`, { x: 400, y, size: 10, font });
-  });
-
-  return pdfDoc.save();
-}
-```
-
-Route handler:
-```typescript
-// app/api/exports/hakkdis-pdf/route.ts
-export async function GET(req: NextRequest) {
-  const pdfBytes = await generateHakkdisePDF(data);
-  return new Response(pdfBytes, {
-    headers: {
-      'Content-Type': 'application/pdf',
-      'Content-Disposition': 'attachment; filename="hakkdis.pdf"',
-    },
-  });
-}
-```
-
-### Decimal.js for KDV + Retention
-
-```typescript
-import Decimal from 'decimal.js';
-
-// Drizzle returns numeric as string — parse with Decimal
-function calculateHakkdis(grossStr: string) {
-  const gross    = new Decimal(grossStr);
-  const kdv      = gross.times('0.20');           // 20% KDV
-  const retention = gross.times('0.05');          // 5% hakediş stopajı
-  const net      = gross.minus(retention);        // gross - stopaj (KDV added separately)
-  const total    = net.plus(kdv);
-
-  return {
-    gross:     gross.toFixed(2),
-    kdv:       kdv.toFixed(2),
-    retention: retention.toFixed(2),
-    net:       net.toFixed(2),
-    total:     total.toFixed(2),
-  };
-}
-```
-
-### shadcn Chart with Server-Fetched Data
-
-```typescript
-// app/dashboard/analytics/page.tsx (Server Component)
-import { ThroughputChart } from '@/components/charts/ThroughputChart';
-import { db } from '@/db';
-
-export default async function AnalyticsPage() {
-  const data = await db.select({
-    week: sql<string>`date_trunc('week', submitted_at)`,
-    count: count(),
-  }).from(submissions)
-    .where(eq(submissions.status, 'approved'))
-    .groupBy(sql`date_trunc('week', submitted_at)`)
-    .orderBy(sql`1`);
-
-  return <ThroughputChart data={data} />;
-}
-
-// components/charts/ThroughputChart.tsx
-'use client';
-import { LineChart, Line, XAxis, YAxis, Tooltip } from 'recharts';
-
-export function ThroughputChart({ data }: { data: { week: string; count: number }[] }) {
-  return (
-    <LineChart width={600} height={300} data={data}>
-      <XAxis dataKey="week" />
-      <YAxis />
-      <Tooltip />
-      <Line type="monotone" dataKey="count" stroke="var(--color-primary)" />
-    </LineChart>
-  );
-}
-```
-
-### TanStack Table Server-Side Pagination
-
-```typescript
-// URL: /projects/1/submissions?page=2&sort=decidedAt&dir=desc
-// Server Component reads params, queries Drizzle, passes to client table
-export default async function SubmissionsPage({
-  searchParams
-}: {
-  searchParams: Promise<{ page?: string; sort?: string; dir?: string }>
-}) {
-  const { page = '1', sort = 'submittedAt', dir = 'desc' } = await searchParams;
-  const pageNum = Math.max(1, parseInt(page));
-  const pageSize = 25;
-
-  const [rows, [{ total }]] = await Promise.all([
-    db.select().from(submissions)
-      .orderBy(dir === 'desc' ? desc(submissions[sort]) : asc(submissions[sort]))
-      .limit(pageSize).offset((pageNum - 1) * pageSize),
-    db.select({ total: count() }).from(submissions),
-  ]);
-
-  return <SubmissionsTable rows={rows} total={Number(total)} page={pageNum} pageSize={pageSize} />;
-}
-```
+No new dev-only dependencies beyond `@types/proj4`.
 
 ---
 
@@ -370,49 +172,44 @@ export default async function SubmissionsPage({
 
 | Package | Version | Compatible With | Notes |
 |---------|---------|-----------------|-------|
-| recharts | 3.8.1 | React 19, Next.js 15 | `'use client'` required; peer dep of shadcn chart |
-| @tanstack/react-table | 8.21.3 | React 19, Next.js 15 | Pin to `^8`; v9 is alpha-only |
-| pdf-lib | 1.17.1 | Node.js 24, Vercel Fluid Compute | Pure JS, no native deps; works anywhere |
-| @pdf-lib/fontkit | 1.1.1 | pdf-lib 1.17.x | Must register before `embedFont()` |
-| decimal.js | 10.6.0 | TypeScript 5.x | Full types included; no @types needed |
-| react-day-picker | 10.0.1 | React 19, shadcn calendar | shadcn imports from `react-day-picker` (not `@daypicker/react`); stick with package alias |
-| ExcelJS | 4.4.0 (existing) | Node.js 24 | `writeBuffer()` returns `ExcelJS.Buffer` (ArrayBuffer subtype); pass to `Response()` directly, do NOT call `Buffer.from()` |
+| `dxf-parser` | 1.1.2 | Node.js 14+, browser | Pure JS, no native deps; Vercel-safe |
+| `proj4` | 2.20.8 | Node.js 12+, browser, Edge | Pure JS, no WASM; works in all Vercel runtimes |
+| `react-pdf` | 10.4.1 | React 18/19, Next.js 15 | Must be `'use client'`; dynamic import with `ssr:false` in RSC parents |
+| `pdfjs-dist` | 5.7.284 | Peer dep of react-pdf 10.x | Worker must be configured via `import.meta.url` pattern; Next.js 15 has no special config requirement |
 
 ---
 
-## Confidence Assessment
+## Alternatives Considered
 
-| Area | Confidence | Notes |
-|------|------------|-------|
-| Recharts v3 via shadcn chart | HIGH | Official shadcn docs confirm Recharts v3; npm latest 3.8.1 verified |
-| TanStack Table v8 server-side pagination | HIGH | Official docs confirm `manualPagination`; npm latest 8.21.3 verified |
-| pdf-lib serverless compatibility | HIGH | Pure JS, no native deps; confirmed works in Vercel Functions by multiple sources |
-| @react-pdf/renderer avoidance | HIGH | GitHub issue #3074 (Feb 2025) confirms `PDFDocument is not a constructor` in Next.js 15; issue closed without fix |
-| ExcelJS multi-sheet + Buffer gotcha | HIGH | Issue #1032 open and unresolved; `writeBuffer()` → `ArrayBuffer` direct to `Response` workaround confirmed pattern |
-| decimal.js for KDV | HIGH | Wanago/NestJS money article explicitly recommends decimal.js with Drizzle numeric columns; npm 10.6.0 verified |
-| Drizzle numeric → string return | HIGH | Confirmed open bug/behaviour issues #570 and #1042 in Drizzle repo; by design |
-| Drizzle regular views for analytics | HIGH | Official Drizzle docs confirm `.existing()` view pattern; tested against Neon |
-| Neon materialized view deferral | MEDIUM | Based on serverless refresh-timing reasoning; no Neon-specific benchmark; revisit after v2 launch |
-| react-day-picker v10 shadcn range | HIGH | shadcn date-picker docs confirm react-day-picker as underlying engine; v10 alias confirmed |
+| Recommended | Alternative | Why Not |
+|-------------|-------------|---------|
+| `dxf-parser` 1.1.2 | `dxf` 5.3.1 (skymakerolof) | dxf is more actively maintained but optimized for rendering (SVG output); `dxf-parser` gives typed entity objects better suited for server-side geometry extraction |
+| `proj4` in JS | PostGIS `ST_Transform` | Requires verified EPSG:5254 in `spatial_ref_sys`; Neon coverage unverified; JS approach is architecturally simpler and doesn't require migration |
+| Hand-rolled Vitest eval | Braintrust / Langfuse | External service dependency before eval baseline is established; Vitest is already installed; add observability platform in v5.0 |
+| `react-pdf` 10.x | `@react-pdf/renderer` (already in stack) | `@react-pdf/renderer` generates PDFs; it cannot display them — different library for different direction of data flow |
+| `react-pdf` 10.x | iframe + `/api/serve-pdf` | Works but gives no page navigation, zoom, or annotation overlay for future use |
 
 ---
 
 ## Sources
 
-- shadcn chart docs — https://ui.shadcn.com/docs/components/radix/chart (Recharts v3 confirmed)
-- Recharts npm (Bundlephobia) — https://bundlephobia.com/package/recharts (50 kB gzipped)
-- PkgPulse Recharts vs Tremor vs Nivo — https://www.pkgpulse.com/guides/recharts-v3-vs-tremor-vs-nivo-react-charting-2026
-- TanStack Table v8 pagination docs — https://tanstack.com/table/v8/docs/guide/pagination
-- @react-pdf/renderer issue #3074 — https://github.com/diegomura/react-pdf/issues/3074 (broken in Next.js 15)
-- PDF4.dev Next.js PDF guide — https://pdf4.dev/blog/pdf-generation-nextjs (Playwright 300 MB limit)
-- pdf-lib GitHub — https://github.com/Hopding/pdf-lib (pure JS, fontkit embedding)
-- ExcelJS issue #1032 — https://github.com/exceljs/exceljs/issues/1032 (writeBuffer type mismatch)
-- Wanago money storage with Drizzle — https://wanago.io/2024/11/04/api-nestjs-drizzle-orm-postgresql-money/ (decimal.js recommendation)
-- Drizzle numeric string bug — https://github.com/drizzle-team/drizzle-orm/issues/570
-- Drizzle views docs — https://orm.drizzle.team/docs/views (refreshMaterializedView API)
-- shadcn date picker docs — https://ui.shadcn.com/docs/components/base/date-picker (react-day-picker v10)
-- react-day-picker v10 upgrade guide — https://daypicker.dev/upgrading
+- `dxf-parser` npm registry — version 1.1.2, last published 2022-06-16; pure JS confirmed
+- `dxf` npm registry — version 5.3.1, last published 2025-09-01
+- github.com/skymakerolof/dxf — LWPOLYLINE/POLYLINE entity support confirmed; `toPolylines()` API
+- github.com/gdsestimating/dxf-parser — entity type list, `parseSync()` API
+- medium.com/@supulkalhara7 — DXF → GeoJSON + proj4 reprojection pattern confirmed (dxf-parser + proj4 + EPSG:32644 → EPSG:4326)
+- `proj4` npm registry — version 2.20.8, published 22 days ago; 1036 dependents
+- epsg.io/5254 — TUREF/TM30 proj4 string verified
+- epsg.io/23035, epsg.io/23036 — ED50 UTM 35N/36N proj4 strings verified
+- postgis.net/docs/ST_LineLocatePoint.html — function signature and linear referencing pattern confirmed
+- postgis.net/docs/ST_Transform.html — `spatial_ref_sys` dependency confirmed
+- postgis.net/workshops/postgis-intro/linear_referencing.html — chainage pattern confirmed
+- ai-sdk.dev/docs/foundations/prompts — image content part format (URL, base64, buffer) verified
+- `react-pdf` npm registry — version 10.4.1; React 19 peer dep compatible
+- `pdfjs-dist` npm registry — version 5.7.284
+- github.com/wojtekmaj/react-pdf README — Next.js 15 App Router worker setup pattern
 
 ---
-*Stack research for: bayrak.ai v2.0 Operations Intelligence & Hakkediş — net-new library additions*
-*Researched: 2026-05-25*
+
+*Stack research for: bayrak.ai v4.0 document-driven route import, chainage as-built tracking, AI vision assist*
+*Researched: 2026-05-29*
