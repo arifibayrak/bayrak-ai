@@ -472,7 +472,7 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 13-01-PLAN.md — Brand spine: token slot override (industrial blue → slate + amber), Geist Sans/Mono via `geist` package, 7 brand primitives (BrandButton/Card/Heading/Badge/Empty/Logo/Table) + tests, BRAND.md, AppSidebar wordmark, app/icon.png + opengraph-image.tsx + not-found.tsx + error.tsx, nested meta.not_found + meta.error i18n keys (BRAND-01/02/03)
+- [x] 13-01-PLAN.md — Brand spine: token slot override (industrial blue → slate + amber), Geist Sans/Mono via `geist` package, 7 brand primitives (BrandButton/Card/Heading/Badge/Empty/Logo/Table) + tests, BRAND.md, AppSidebar wordmark, app/icon.png + opengraph-image.tsx + not-found.tsx + error.tsx, nested meta.not_found + meta.error i18n keys (BRAND-01/02/03)
 
 **Wave 2** *(blocked on Wave 1)*
 
@@ -507,4 +507,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 10. Hakkediş Billing | 4/4 | Complete    | 2026-05-28 |
 | 11. Exports | 7/7 | Complete    | 2026-05-28 |
 | 12. Submission-Driven Hakkediş | 4/4 | Complete    | 2026-05-28 |
-| 13. UX & Brand Pass | 0/5 | Not started | - |
+| 13. UX & Brand Pass | 1/5 | In Progress|  |
