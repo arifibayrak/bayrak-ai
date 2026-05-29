@@ -96,6 +96,8 @@ Surface count is modest: 12 page-level files across 9 surface groups, plus ~7 cr
 - **Phase gate:** Full test suite green + behavioral walkthrough on Phases 1–12 user flows (worker submit, auditor approve, hakkediş finalize, Phase 11 PDF/Excel export, Phase 12 live poll + traceability panel).
 
 ### Wave 0 Gaps
+> **NOTE (post-VALIDATION resolution):** Wave 0 Gaps below are SUPERSEDED by `13-VALIDATION.md §Wave 0 Requirements`. Plan 13-01 Task 3b uses the node-env pure-function vitest pattern established by Phase 12's `LivePeriodPoller.test.tsx` — call components as functions, inspect returned React element props/className. Do NOT install jsdom / @testing-library/react. The items listed here are kept for archival completeness only.
+
 - [ ] Add `"test": "vitest"` script to `package.json` (currently absent).
 - [ ] Create `vitest.config.ts` with React + jsdom environment.
 - [ ] Create `tests/setup.ts` + import in vitest config (jest-dom, @testing-library/react).
@@ -398,19 +400,22 @@ No other new dependencies are recommended. lucide-react (existing) and tw-animat
 | A4 | BRAND-01 is satisfied by `13-CONTEXT.md` as the brand reference (per its own preamble) | Phase Requirements | LOW — planner may opt to mirror to a top-level `BRAND.md` |
 | A5 | Mapbox map components (in projects/[id]/edit) do not require token-system swap | Per-Surface Inventory | MEDIUM — Mapbox uses its own style tokens; planner verifies map controls still read on slate canvas |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **OG image — dynamic `opengraph-image.tsx` (ImageResponse) vs static PNG?**
    - What we know: D-124 specifies wordmark center-left + tagline; both approaches work.
    - Recommendation: dynamic `opengraph-image.tsx` because it composes from the same token values (single source of truth for "amber" — if amber-500 shifts in v3.1, the OG auto-updates).
+   - **RESOLVED:** Plan 13-01 Task 3b ships `src/app/opengraph-image.tsx` as the dynamic Next.js `ImageResponse` variant. Confirmed in 13-01 Task 3b `<files>` list and `<verify>` grep gate `grep -q "ImageResponse" src/app/opengraph-image.tsx`.
 
 2. **Should `<BrandTable>` bake in compact density (thicker abstraction) or stay a thin wrapper?**
    - What we know: D-127 marks this as Claude's discretion. Phase 8–12 tables (hakkediş period detail, exports period picker) all use compact density; bake-in would DRY this.
    - Recommendation: thin wrapper for W1; promote to baked density only if W2 review shows 3+ tables repeating the same density classes.
+   - **RESOLVED:** Plan 13-01 Task 3a ships `<BrandTable>` as a thin wrapper around `@/components/ui/table` (re-exports `Table`, `TableHeader`, `TableBody`, etc. as `BrandTable.Root`, `BrandTable.Header`, etc.) with `text-sm` default only. Density bake-in deferred to a future phase if W2 review surfaces 3+ repetitions. Confirmed in 13-01 Task 3a `<action>` Step 1 BrandTable.tsx description.
 
 3. **Should we add an `error.tsx` per top-level surface, or a single `app/error.tsx`?**
    - What we know: no error.tsx exists today. Next.js supports both granularities.
    - Recommendation: ship one `app/error.tsx` + one `app/global-error.tsx` + one `app/not-found.tsx` in W1 with `<BrandEmpty>`. Per-surface error boundaries are deferred to a later phase unless a real need surfaces.
+   - **RESOLVED:** Plan 13-01 Task 3b ships one `src/app/error.tsx` + one `src/app/not-found.tsx` (single root error boundary + single root 404, both consuming `<BrandEmpty>`). Per-surface error boundaries deferred to a future phase. Confirmed in 13-01 Task 3b `<files>` list and `<verify>` grep gates on both files.
 
 ## Environment Availability
 
