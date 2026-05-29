@@ -468,21 +468,22 @@ Plans:
   3. Every existing dashboard surface (overview, project pages, people, analytics, hakkediş, exports, period detail) is re-skinned using the brand primitives — no functional regression vs v2.0
   4. A side-by-side before/after audit confirms each restyled surface against the brand reference; user accepts each surface visually
 
-**Plans**: 4 plans
+**Plans**: 5 plans
 Plans:
 **Wave 1**
 
-- [ ] 13-01-PLAN.md — Brand spine: token slot override (industrial blue → slate + amber), Geist Sans/Mono via `geist` package, 7 brand primitives (BrandButton/Card/Heading/Badge/Empty/Logo/Table) + tests, BRAND.md, AppSidebar wordmark, app/icon.png + opengraph-image.tsx + not-found.tsx + error.tsx (BRAND-01/02/03)
+- [ ] 13-01-PLAN.md — Brand spine: token slot override (industrial blue → slate + amber), Geist Sans/Mono via `geist` package, 7 brand primitives (BrandButton/Card/Heading/Badge/Empty/Logo/Table) + tests, BRAND.md, AppSidebar wordmark, app/icon.png + opengraph-image.tsx + not-found.tsx + error.tsx, nested meta.not_found + meta.error i18n keys (BRAND-01/02/03)
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 13-02-PLAN.md — Hakkediş + Exports re-skin: hakkediş hub, period detail (8-column line table + deduction summary frozen), PeriodDetailControls (draft-gate frozen), LivePeriodPoller (null-on-disabled + sr-only frozen), LineSubmissionsPanel (colSpan math frozen), exports hub 3-trigger surface (BRAND-02)
+- [ ] 13-02-PLAN.md — Hakkediş + Exports re-skin: hakkediş hub, period detail (8-column line table + deduction summary frozen), PeriodDetailControls (draft-gate frozen), LivePeriodPoller (null-on-disabled + sr-only frozen + ADDITIVE visible BrandBadge sibling), LineSubmissionsPanel (colSpan math frozen), exports hub 3-trigger surface (BRAND-02)
 
-**Wave 3** *(blocked on Wave 1)*
+**Wave 3** *(blocked on Wave 1 — 13-03a and 13-03b run in parallel)*
 
-- [ ] 13-03-PLAN.md — Analytics + People + Overview re-skin: overview command center (KpiCard refactored to compose BrandCard with D-87 contract preserved), analytics + OE scorecard, people directory + profile + activity timeline, leaderboard select + threshold settings, trend charts (token-bound), records list/detail, settings page (BRAND-02)
+- [ ] 13-03a-PLAN.md — Command-center re-skin: overview + analytics hub + OE scorecard + KpiCard refactor (composes BrandCard internally; D-87 contract preserved) + FilterBar + CurrencySelector + EVTableClient (BRAND-02)
+- [ ] 13-03b-PLAN.md — Directory + settings re-skin: people directory + per-person profile + ActivityTimeline + LeaderboardSortSelect + records list/detail + SubmissionDetailView (reverse-tabnabbing preserved) + ThresholdSettingsForm + TrendChartsClient (token-bound) + settings page (BRAND-02)
 
-**Wave 4** *(blocked on Wave 1 + Wave 2 + Wave 3)*
+**Wave 4** *(blocked on Wave 1 + Wave 2 + Wave 3a + Wave 3b)*
 
 - [ ] 13-04-PLAN.md — Projects + Auth + Marketing re-skin: projects list/detail/edit/new/BOQ template (SETUP-04 balance + GeoJSON + people-assignment preserved), auth signin (BrandLogo lg + magic-link form) + auth error, marketing landing root (`/`), end-of-phase blocking-human UAT (Manual UAT rows 4-7) (BRAND-02)
 **UI hint**: yes
@@ -506,4 +507,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 10. Hakkediş Billing | 4/4 | Complete    | 2026-05-28 |
 | 11. Exports | 7/7 | Complete    | 2026-05-28 |
 | 12. Submission-Driven Hakkediş | 4/4 | Complete    | 2026-05-28 |
-| 13. UX & Brand Pass | 0/TBD | Not started | - |
+| 13. UX & Brand Pass | 0/5 | Not started | - |
