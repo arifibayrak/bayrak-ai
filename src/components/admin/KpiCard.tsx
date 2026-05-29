@@ -2,15 +2,20 @@
  * KpiCard.tsx
  *
  * Server-compatible stat card for the Overview command center.
- * Uses shadcn <Card> with <CardHeader> and <CardContent>.
- * When drillHref is set, the stat number is wrapped in a <Link>.
+ * Phase 13 (Plan 13-03a): composes BrandCard internally (D-125 compact density,
+ * flat depth, rounded-md, no shadow). Phase 9 D-87 contract preserved byte-identical:
+ *   - valueColor ('default' | 'success' | 'destructive' | 'warning')
+ *   - alertBadge (ReactNode corner slot at top-right)
+ *
+ * Consumers (overview, scorecards, people profile) continue to use
+ * <KpiCard title=… value=… /> unchanged.
  *
  * Accessibility: stat uses <dl><dt><dd> definition-list semantics
  * (per UI-SPEC § KPI card anatomy).
  */
 
 import Link from 'next/link';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { BrandCard } from '@/components/brand';
 
 type ValueColor = 'default' | 'success' | 'destructive' | 'warning';
 
@@ -49,19 +54,19 @@ export function KpiCard({
   );
 
   return (
-    <Card className={alertBadge ? 'relative' : undefined}>
+    <BrandCard className={alertBadge ? 'relative' : undefined}>
       {alertBadge && (
         <span className="absolute top-2 right-2" aria-label="Alert: threshold exceeded">
           {alertBadge}
         </span>
       )}
-      <CardHeader className="flex flex-row items-center gap-2 pb-2 pt-4 px-4">
-        <span className="text-muted-foreground" aria-hidden="true">
-          {icon}
-        </span>
-        <span className="text-sm text-muted-foreground">{label}</span>
-      </CardHeader>
-      <CardContent className="px-4 pb-4">
+      <BrandCard.Body className="p-3">
+        <div className="flex flex-row items-center gap-2 pb-2">
+          <span className="text-muted-foreground" aria-hidden="true">
+            {icon}
+          </span>
+          <span className="text-sm text-muted-foreground">{label}</span>
+        </div>
         <dl>
           <dt className="sr-only">{label}</dt>
           <dd>
@@ -75,7 +80,7 @@ export function KpiCard({
           </dd>
         </dl>
         <p className="text-sm text-muted-foreground mt-1">{subLabel}</p>
-      </CardContent>
-    </Card>
+      </BrandCard.Body>
+    </BrandCard>
   );
 }

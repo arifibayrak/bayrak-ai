@@ -15,7 +15,7 @@
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
+import { BrandButton } from '@/components/brand';
 import {
   Select,
   SelectContent,
@@ -204,14 +204,14 @@ export function FilterBar({ projectOptions, personOptions, showStatus = false }:
 
       {/* Clear button */}
       <div className="flex flex-col justify-end">
-        <Button
+        <BrandButton
           variant="ghost"
           size="sm"
           onClick={clearFilters}
           aria-label={t('clear')}
         >
           {t('clear')}
-        </Button>
+        </BrandButton>
       </div>
     </div>
   );
