@@ -468,7 +468,23 @@ Plans:
   3. Every existing dashboard surface (overview, project pages, people, analytics, hakkediş, exports, period detail) is re-skinned using the brand primitives — no functional regression vs v2.0
   4. A side-by-side before/after audit confirms each restyled surface against the brand reference; user accepts each surface visually
 
-**Plans**: TBD (sized during /gsd:plan-phase 13 — likely after brand assets land)
+**Plans**: 4 plans
+Plans:
+**Wave 1**
+
+- [ ] 13-01-PLAN.md — Brand spine: token slot override (industrial blue → slate + amber), Geist Sans/Mono via `geist` package, 7 brand primitives (BrandButton/Card/Heading/Badge/Empty/Logo/Table) + tests, BRAND.md, AppSidebar wordmark, app/icon.png + opengraph-image.tsx + not-found.tsx + error.tsx (BRAND-01/02/03)
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 13-02-PLAN.md — Hakkediş + Exports re-skin: hakkediş hub, period detail (8-column line table + deduction summary frozen), PeriodDetailControls (draft-gate frozen), LivePeriodPoller (null-on-disabled + sr-only frozen), LineSubmissionsPanel (colSpan math frozen), exports hub 3-trigger surface (BRAND-02)
+
+**Wave 3** *(blocked on Wave 1)*
+
+- [ ] 13-03-PLAN.md — Analytics + People + Overview re-skin: overview command center (KpiCard refactored to compose BrandCard with D-87 contract preserved), analytics + OE scorecard, people directory + profile + activity timeline, leaderboard select + threshold settings, trend charts (token-bound), records list/detail, settings page (BRAND-02)
+
+**Wave 4** *(blocked on Wave 1 + Wave 2 + Wave 3)*
+
+- [ ] 13-04-PLAN.md — Projects + Auth + Marketing re-skin: projects list/detail/edit/new/BOQ template (SETUP-04 balance + GeoJSON + people-assignment preserved), auth signin (BrandLogo lg + magic-link form) + auth error, marketing landing root (`/`), end-of-phase blocking-human UAT (Manual UAT rows 4-7) (BRAND-02)
 **UI hint**: yes
 
 ## Progress
