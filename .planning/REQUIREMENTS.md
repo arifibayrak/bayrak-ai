@@ -127,7 +127,7 @@ Defined: 2026-05-28. Each maps to roadmap Phases 12–13.
 ### UX & Brand Pass
 
 - [ ] **BRAND-01**: A bayrak.ai brand reference (logos, color palette, typography, layout primitives) is checked into the repo or linked from a single source of truth, readable by both humans and downstream planners
-- [ ] **BRAND-02**: Every existing dashboard surface (overview, project pages, people, analytics, hakkediş, exports, period detail) is re-skinned to follow the brand reference; default shadcn/tailwind treatments replaced with bayrak.ai-branded equivalents
+- [x] **BRAND-02**: Every existing dashboard surface (overview, project pages, people, analytics, hakkediş, exports, period detail) is re-skinned to follow the brand reference; default shadcn/tailwind treatments replaced with bayrak.ai-branded equivalents
 - [ ] **BRAND-03**: New shared brand component primitives (logo, brand button variants, brand heading, brand empty-state) exist so future phases inherit the brand language by default instead of reaching for unbranded shadcn defaults
 
 ## Future Requirements (post-v3.0)

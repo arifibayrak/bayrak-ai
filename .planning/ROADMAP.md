@@ -476,7 +476,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 13-02-PLAN.md — Hakkediş + Exports re-skin: hakkediş hub, period detail (8-column line table + deduction summary frozen), PeriodDetailControls (draft-gate frozen), LivePeriodPoller (null-on-disabled + sr-only frozen + ADDITIVE visible BrandBadge sibling), LineSubmissionsPanel (colSpan math frozen), exports hub 3-trigger surface (BRAND-02)
+- [x] 13-02-PLAN.md — Hakkediş + Exports re-skin: hakkediş hub, period detail (8-column line table + deduction summary frozen), PeriodDetailControls (draft-gate frozen), LivePeriodPoller (null-on-disabled + sr-only frozen + ADDITIVE visible BrandBadge sibling), LineSubmissionsPanel (colSpan math frozen), exports hub 3-trigger surface (BRAND-02)
 
 **Wave 3** *(blocked on Wave 1 — 13-03a and 13-03b run in parallel)*
 
@@ -507,4 +507,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 10. Hakkediş Billing | 4/4 | Complete    | 2026-05-28 |
 | 11. Exports | 7/7 | Complete    | 2026-05-28 |
 | 12. Submission-Driven Hakkediş | 4/4 | Complete    | 2026-05-28 |
-| 13. UX & Brand Pass | 1/5 | In Progress|  |
+| 13. UX & Brand Pass | 2/5 | In Progress|  |
