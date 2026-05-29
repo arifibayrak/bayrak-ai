@@ -23,7 +23,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { PlusCircle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { BrandButton } from '@/components/brand';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -178,10 +178,10 @@ export function HakedisCreateDialog({ projectId }: HakedisCreateDialogProps) {
     }}>
       <DialogTrigger
         render={
-          <Button variant="default" size="default" aria-label={t('create_cta')}>
+          <BrandButton variant="primary" size="md" aria-label={t('create_cta')}>
             <PlusCircle className="h-4 w-4 mr-2" aria-hidden="true" />
             {t('create_cta')}
-          </Button>
+          </BrandButton>
         }
       />
 
@@ -374,24 +374,24 @@ export function HakedisCreateDialog({ projectId }: HakedisCreateDialogProps) {
             {/* Discard: "Vazgeç / Discard" */}
             <DialogClose
               render={
-                <Button
+                <BrandButton
                   type="button"
-                  variant="ghost"
+                  variant="outline"
                   onClick={handleDiscard}
                   disabled={submitting}
                 >
                   {t('form.discard')}
-                </Button>
+                </BrandButton>
               }
             />
             {/* Confirm: "Oluştur ve Hesapla / Create & Compute" */}
-            <Button
+            <BrandButton
               type="submit"
-              variant="default"
+              variant="primary"
               disabled={submitting}
             >
               {submitting ? '...' : t('form.create_compute')}
-            </Button>
+            </BrandButton>
           </DialogFooter>
         </form>
       </DialogContent>

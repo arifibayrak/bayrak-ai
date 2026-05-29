@@ -430,7 +430,8 @@
           "photo_alt": "Submission photo",
           "photo_view": "View",
           "polling_indicator": "Auto-refreshing every 30 seconds",
-          "polling_aria": "Live updates enabled — page refreshes automatically while this period is draft"
+          "polling_aria": "Live updates enabled — page refreshes automatically while this period is draft",
+          "polling_visible_label": "Live"
         },
         "finalize_dialog": {
           "title": "Finalize Period",

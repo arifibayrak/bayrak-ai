@@ -22,7 +22,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Lock } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { BrandButton } from '@/components/brand';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Dialog,
@@ -74,10 +74,10 @@ export function FinalizeDialog({ periodId }: FinalizeDialogProps) {
     >
       <DialogTrigger
         render={
-          <Button variant="default" size="sm">
+          <BrandButton variant="primary" size="sm">
             <Lock className="h-4 w-4 mr-1" aria-hidden="true" />
             {t('detail.finalize')}
-          </Button>
+          </BrandButton>
         }
       />
 
@@ -98,20 +98,20 @@ export function FinalizeDialog({ periodId }: FinalizeDialogProps) {
           {/* "Hayır, Geri Dön / No, Go Back" — dismiss without action */}
           <DialogClose
             render={
-              <Button type="button" variant="ghost" disabled={finalizing}>
+              <BrandButton type="button" variant="outline" disabled={finalizing}>
                 {t('finalize_dialog.cancel')}
-              </Button>
+              </BrandButton>
             }
           />
           {/* "Kesinleştir / Finalize Period" — primary (NOT destructive) */}
-          <Button
+          <BrandButton
             type="button"
-            variant="default"
+            variant="primary"
             disabled={finalizing}
             onClick={handleConfirm}
           >
             {finalizing ? '...' : t('finalize_dialog.confirm')}
-          </Button>
+          </BrandButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

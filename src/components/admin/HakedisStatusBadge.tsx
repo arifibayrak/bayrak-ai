@@ -4,11 +4,16 @@
  * HakedisStatusBadge.tsx
  *
  * Reusable status badge for hakkediş periods.
- * UI-SPEC Surface 1 / Status badge color map:
- *   draft      → amber
- *   finalized  → blue
- *   submitted  → violet
- *   paid       → emerald
+ *
+ * Phase 13 (Plan 13-02) brand pass: wraps BrandBadge from src/components/brand/
+ * with a semantic-variant mapping. The previous inline class palette is removed;
+ * BrandBadge owns the colour token cascade (D-121).
+ *
+ * Status → BrandBadge variant mapping:
+ *   draft      → warning  (orange — D-121 warning slot; amber is reserved for brand primary)
+ *   finalized  → info     (sky)
+ *   submitted  → primary  (amber — in-progress payment)
+ *   paid       → success  (emerald)
  *
  * Marked 'use client' so it can be used both in RSC (imported by server page)
  * and in client components (dialogs). useTranslations works in both contexts.
@@ -17,16 +22,18 @@
  */
 
 import { useTranslations } from 'next-intl';
-import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
+import { BrandBadge } from '@/components/brand';
 
 type HakedisStatus = 'draft' | 'finalized' | 'submitted' | 'paid';
 
-const STATUS_CLASS_MAP: Record<HakedisStatus, string> = {
-  draft: 'text-amber-600 bg-amber-50 border border-amber-200',
-  finalized: 'text-blue-700 bg-blue-50 border border-blue-200',
-  submitted: 'text-violet-700 bg-violet-50 border border-violet-200',
-  paid: 'text-emerald-700 bg-emerald-50 border border-emerald-200',
+const STATUS_VARIANT_MAP: Record<
+  HakedisStatus,
+  'warning' | 'info' | 'primary' | 'success'
+> = {
+  draft: 'warning',
+  finalized: 'info',
+  submitted: 'primary',
+  paid: 'success',
 };
 
 interface HakedisStatusBadgeProps {
@@ -38,12 +45,11 @@ export function HakedisStatusBadge({ status }: HakedisStatusBadgeProps) {
   const label = t(`status_${status}` as `status_${'draft' | 'finalized' | 'submitted' | 'paid'}`);
 
   return (
-    <Badge
-      variant="secondary"
-      className={cn(STATUS_CLASS_MAP[status])}
+    <BrandBadge
+      variant={STATUS_VARIANT_MAP[status]}
       aria-label={`Status: ${label}`}
     >
       {label}
-    </Badge>
+    </BrandBadge>
   );
 }

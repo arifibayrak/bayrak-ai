@@ -4,14 +4,7 @@ import { redirect } from 'next/navigation';
 import { getTranslations, getLocale } from 'next-intl/server';
 import { formatMoneyAmount } from '@/lib/format-money';
 import { FileX } from 'lucide-react';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { BrandCard, BrandHeading, BrandTable } from '@/components/brand';
 import { auth } from '@/lib/auth';
 import { getPeriodsByProject } from '@/actions/hakedis';
 import { getProjects } from '@/actions/projects';
@@ -84,11 +77,11 @@ export default async function HakedisPage({ searchParams }: Props) {
   }));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Heading row: title/subtitle left, Create CTA right */}
       <div className="flex items-center justify-between">
         <div className="space-y-1">
-          <h1 className="text-xl font-semibold">{t('heading')}</h1>
+          <BrandHeading as="h1" size="h1">{t('heading')}</BrandHeading>
           <p className="text-sm text-muted-foreground">{t('subtitle')}</p>
         </div>
         {selectedProjectId && (
@@ -111,96 +104,111 @@ export default async function HakedisPage({ searchParams }: Props) {
       {/* Period table or empty state */}
       {selectedProjectId && periods.length === 0 ? (
         /* Empty state (no periods for project) */
-        <div className="flex flex-col items-center gap-3 py-12 text-center">
-          <FileX className="h-8 w-8 text-muted-foreground" aria-hidden="true" />
-          <p className="text-sm font-semibold">{t('empty_heading')}</p>
-          <p className="text-sm text-muted-foreground">{t('empty_body')}</p>
-        </div>
+        <BrandCard>
+          <BrandCard.Body>
+            <div className="flex flex-col items-center gap-3 py-12 text-center">
+              <FileX className="h-8 w-8 text-muted-foreground" aria-hidden="true" />
+              <p className="text-sm font-semibold">{t('empty_heading')}</p>
+              <p className="text-sm text-muted-foreground">{t('empty_body')}</p>
+            </div>
+          </BrandCard.Body>
+        </BrandCard>
       ) : !selectedProjectId ? (
         /* No projects at all */
-        <div className="flex flex-col items-center gap-3 py-12 text-center">
-          <FileX className="h-8 w-8 text-muted-foreground" aria-hidden="true" />
-          <p className="text-sm font-semibold">{t('empty_heading')}</p>
-          <p className="text-sm text-muted-foreground">{t('empty_body')}</p>
-        </div>
+        <BrandCard>
+          <BrandCard.Body>
+            <div className="flex flex-col items-center gap-3 py-12 text-center">
+              <FileX className="h-8 w-8 text-muted-foreground" aria-hidden="true" />
+              <p className="text-sm font-semibold">{t('empty_heading')}</p>
+              <p className="text-sm text-muted-foreground">{t('empty_body')}</p>
+            </div>
+          </BrandCard.Body>
+        </BrandCard>
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead scope="col">{t('col_period')}</TableHead>
-              <TableHead scope="col" className="w-[140px]">{t('col_end_date')}</TableHead>
-              <TableHead scope="col" className="w-[80px]">{t('col_currency')}</TableHead>
-              <TableHead scope="col" className="w-[120px]">{t('col_status')}</TableHead>
-              <TableHead
-                scope="col"
-                className="w-[140px] text-right tabular-nums"
-              >
-                {t('col_net_payment')}
-              </TableHead>
-              <TableHead scope="col" className="w-[120px]">{t('col_actions')}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {periods.map((period) => (
-              <TableRow key={period.id}>
-                {/* Dönem — links to detail */}
-                <TableCell>
-                  <Link
-                    href={`/dashboard/hakedis/${period.id}`}
-                    className="font-medium hover:underline"
+        <BrandCard>
+          <BrandCard.Header>
+            <h2 className="text-sm font-semibold">{t('heading')}</h2>
+          </BrandCard.Header>
+          <BrandCard.Body className="p-0">
+            <BrandTable.Root>
+              <BrandTable.Header>
+                <BrandTable.Row>
+                  <BrandTable.Head scope="col">{t('col_period')}</BrandTable.Head>
+                  <BrandTable.Head scope="col" className="w-[140px]">{t('col_end_date')}</BrandTable.Head>
+                  <BrandTable.Head scope="col" className="w-[80px]">{t('col_currency')}</BrandTable.Head>
+                  <BrandTable.Head scope="col" className="w-[120px]">{t('col_status')}</BrandTable.Head>
+                  <BrandTable.Head
+                    scope="col"
+                    className="w-[140px] text-right tabular-nums"
                   >
-                    {period.periodNumber}
-                  </Link>
-                </TableCell>
+                    {t('col_net_payment')}
+                  </BrandTable.Head>
+                  <BrandTable.Head scope="col" className="w-[120px]">{t('col_actions')}</BrandTable.Head>
+                </BrandTable.Row>
+              </BrandTable.Header>
+              <BrandTable.Body>
+                {periods.map((period) => (
+                  <BrandTable.Row key={period.id}>
+                    {/* Dönem — links to detail */}
+                    <BrandTable.Cell>
+                      <Link
+                        href={`/dashboard/hakedis/${period.id}`}
+                        className="font-medium hover:underline"
+                      >
+                        {period.periodNumber}
+                      </Link>
+                    </BrandTable.Cell>
 
-                {/* Bitiş Tarihi — dd.MM.yyyy */}
-                <TableCell className="text-sm">
-                  {formatDateTR(period.periodEndDate)}
-                </TableCell>
+                    {/* Bitiş Tarihi — dd.MM.yyyy */}
+                    <BrandTable.Cell className="text-sm">
+                      {formatDateTR(period.periodEndDate)}
+                    </BrandTable.Cell>
 
-                {/* Para Birimi */}
-                <TableCell className="text-sm">
-                  {period.currencyCode}
-                </TableCell>
+                    {/* Para Birimi */}
+                    <BrandTable.Cell className="text-sm">
+                      {period.currencyCode}
+                    </BrandTable.Cell>
 
-                {/* Durum — status badge */}
-                <TableCell>
-                  <HakedisStatusBadge
-                    status={period.status as 'draft' | 'finalized' | 'submitted' | 'paid'}
-                  />
-                </TableCell>
-
-                {/* Net Ödeme — tabular-nums, right-aligned; "—" when null.
-                    Money math (CR-01): precision-safe via formatMoneyAmount
-                    (decimal.js round → BigInt locale grouping; no JS float). */}
-                <TableCell
-                  className="text-right tabular-nums text-sm"
-                  aria-label={`${t('col_net_payment')}: ${formatMoneyAmount(period.netByDisplay, locale)} ${period.currencyCode}`}
-                >
-                  {formatMoneyAmount(period.netByDisplay, locale)}
-                </TableCell>
-
-                {/* Actions: "Aç / Open Period" always + "Sil" only for draft */}
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <Link
-                      href={`/dashboard/hakedis/${period.id}`}
-                      className="text-sm text-primary hover:underline"
-                    >
-                      {t('open_link')}
-                    </Link>
-                    {period.status === 'draft' && (
-                      <DeletePeriodDialog
-                        periodId={period.id}
-                        periodNumber={period.periodNumber}
+                    {/* Durum — status badge */}
+                    <BrandTable.Cell>
+                      <HakedisStatusBadge
+                        status={period.status as 'draft' | 'finalized' | 'submitted' | 'paid'}
                       />
-                    )}
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+                    </BrandTable.Cell>
+
+                    {/* Net Ödeme — tabular-nums, right-aligned; "—" when null.
+                        Money math (CR-01): precision-safe via formatMoneyAmount
+                        (decimal.js round → BigInt locale grouping; no JS float). */}
+                    <BrandTable.Cell
+                      className="text-right tabular-nums text-sm"
+                      aria-label={`${t('col_net_payment')}: ${formatMoneyAmount(period.netByDisplay, locale)} ${period.currencyCode}`}
+                    >
+                      {formatMoneyAmount(period.netByDisplay, locale)}
+                    </BrandTable.Cell>
+
+                    {/* Actions: "Aç / Open Period" always + "Sil" only for draft */}
+                    <BrandTable.Cell>
+                      <div className="flex items-center gap-2">
+                        <Link
+                          href={`/dashboard/hakedis/${period.id}`}
+                          className="text-sm text-primary hover:underline"
+                        >
+                          {t('open_link')}
+                        </Link>
+                        {period.status === 'draft' && (
+                          <DeletePeriodDialog
+                            periodId={period.id}
+                            periodNumber={period.periodNumber}
+                          />
+                        )}
+                      </div>
+                    </BrandTable.Cell>
+                  </BrandTable.Row>
+                ))}
+              </BrandTable.Body>
+            </BrandTable.Root>
+          </BrandCard.Body>
+        </BrandCard>
       )}
     </div>
   );

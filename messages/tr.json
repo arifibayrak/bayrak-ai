@@ -430,7 +430,8 @@
           "photo_alt": "Kayıt fotoğrafı",
           "photo_view": "Görüntüle",
           "polling_indicator": "Her 30 saniyede bir otomatik yenileniyor",
-          "polling_aria": "Canlı güncellemeler etkin — bu dönem taslak halindeyken sayfa otomatik yenileniyor"
+          "polling_aria": "Canlı güncellemeler etkin — bu dönem taslak halindeyken sayfa otomatik yenileniyor",
+          "polling_visible_label": "Canlı"
         },
         "finalize_dialog": {
           "title": "Dönemi Kesinleştir",

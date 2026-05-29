@@ -29,7 +29,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Trash2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { BrandButton } from '@/components/brand';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Dialog,
@@ -79,14 +79,14 @@ export function DeletePeriodDialog({ periodId, periodNumber }: DeletePeriodDialo
     }}>
       <DialogTrigger
         render={
-          <Button
+          <BrandButton
             variant="destructive"
             size="sm"
             aria-label={`Delete period ${periodNumber}`}
           >
             <Trash2 className="h-4 w-4 mr-1" aria-hidden="true" />
             {t('delete_link')}
-          </Button>
+          </BrandButton>
         }
       />
 
@@ -108,24 +108,24 @@ export function DeletePeriodDialog({ periodId, periodNumber }: DeletePeriodDialo
           {/* "Hayır, Koru / No, Keep It" */}
           <DialogClose
             render={
-              <Button
+              <BrandButton
                 type="button"
-                variant="ghost"
+                variant="outline"
                 disabled={deleting}
               >
                 {t('delete_dialog.cancel')}
-              </Button>
+              </BrandButton>
             }
           />
           {/* "Evet, Sil / Yes, Delete" */}
-          <Button
+          <BrandButton
             type="button"
             variant="destructive"
             disabled={deleting}
             onClick={handleConfirm}
           >
             {deleting ? '...' : t('delete_dialog.confirm')}
-          </Button>
+          </BrandButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>
