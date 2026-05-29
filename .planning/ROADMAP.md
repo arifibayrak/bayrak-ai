@@ -53,7 +53,7 @@ Close two outstanding gaps surfaced at the end of v2.0: (1) connect the worker-s
 - Approved Telegram submissions are the only trigger for submission-driven hakkediş contribution — manual entries / Excel imports stay routed through the existing period flow
 
 - [x] **Phase 12: Submission-Driven Hakkediş** - Each approved Telegram work-application submission contributes to the in-progress hakkediş period in real time with full traceability back to the source submission(s), without breaking the existing v2.0 period-rollup model (completed 2026-05-28)
-- [ ] **Phase 13: UX & Brand Pass** - Check in the bayrak.ai brand reference, build shared brand component primitives, re-skin every existing dashboard surface so the product looks as deliberate as it works
+- [x] **Phase 13: UX & Brand Pass** - Check in the bayrak.ai brand reference, build shared brand component primitives, re-skin every existing dashboard surface so the product looks as deliberate as it works (completed 2026-05-29)
 
 ## Phase Details
 
@@ -485,7 +485,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 1 + Wave 2 + Wave 3a + Wave 3b)*
 
-- [ ] 13-04-PLAN.md — Projects + Auth + Marketing re-skin: projects list/detail/edit/new/BOQ template (SETUP-04 balance + GeoJSON + people-assignment preserved), auth signin (BrandLogo lg + magic-link form) + auth error, marketing landing root (`/`), end-of-phase blocking-human UAT (Manual UAT rows 4-7) (BRAND-02)
+- [x] 13-04-PLAN.md — Projects + Auth + Marketing re-skin: projects list/detail/edit/new/BOQ template (SETUP-04 balance + GeoJSON + people-assignment preserved), auth signin (BrandLogo lg + magic-link form) + auth error, marketing landing root (`/`), end-of-phase blocking-human UAT (Manual UAT rows 4-7) (BRAND-02)
 **UI hint**: yes
 
 ## Progress
@@ -507,4 +507,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 10. Hakkediş Billing | 4/4 | Complete    | 2026-05-28 |
 | 11. Exports | 7/7 | Complete    | 2026-05-28 |
 | 12. Submission-Driven Hakkediş | 4/4 | Complete    | 2026-05-28 |
-| 13. UX & Brand Pass | 4/5 | In Progress|  |
+| 13. UX & Brand Pass | 5/5 | Complete   | 2026-05-29 |

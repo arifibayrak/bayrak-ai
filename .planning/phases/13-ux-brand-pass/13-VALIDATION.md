@@ -1,10 +1,12 @@
 ---
 phase: 13
 slug: ux-brand-pass
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: complete
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-05-29
+revised: 2026-05-29
+uat_signed_off: 2026-05-29 (all 5 UAT blocks approved by user — A wave 4 visual / B TR↔EN / C LivePeriodPoller dual-element / D audit→hakkediş loop / E suite+build)
 ---
 
 # Phase 13 — Validation Strategy
