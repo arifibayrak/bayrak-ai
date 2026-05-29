@@ -15,14 +15,15 @@ export default async function AuthErrorPage({
   return <AuthErrorContent errorType={errorType} />;
 }
 
-// Client component for i18n translations
+// Server component — next-intl useTranslations is server-bound in next-intl v4
 function AuthErrorContent({ errorType }: { errorType?: string }) {
   const t = useTranslations('auth.signin');
 
-  // Auth.js sends AccessDenied for a failed signIn callback (allowlist block)
-  // Parsing preserved verbatim — only visual rendering changed
+  // Auth.js sends AccessDenied for a failed signIn callback (allowlist block).
+  // `Verification` (expired/used magic link) is a distinct remediation — request a
+  // new link — so it must NOT collapse into the allowlist-block message (CR-01).
   const isAccessDenied =
-    !errorType || errorType === 'AccessDenied' || errorType === 'Verification';
+    !errorType || errorType === 'AccessDenied';
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4 py-16">
@@ -30,7 +31,7 @@ function AuthErrorContent({ errorType }: { errorType?: string }) {
         <BrandEmpty
           icon={<TriangleAlert className="size-12 text-destructive" />}
           title={t('heading')}
-          description={isAccessDenied ? t('error_not_allowed') : t('error_not_allowed')}
+          description={isAccessDenied ? t('error_not_allowed') : t('error_link_invalid')}
           action={
             <BrandButton variant="outline" render={<Link href="/auth/signin" />}>
               {t('cta')}

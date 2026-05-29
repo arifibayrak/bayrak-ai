@@ -8,6 +8,7 @@
       "helper": "A sign-in link will be sent to your authorized email address.",
       "success": "Sign-in link sent. Check your inbox.",
       "error_not_allowed": "This email address is not authorized. Contact your administrator.",
+      "error_link_invalid": "This sign-in link is invalid or has expired. Request a new one.",
       "sending": "Sending..."
     }
   },

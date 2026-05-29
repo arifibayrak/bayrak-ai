@@ -8,6 +8,7 @@
       "helper": "Yetkili e-posta adresinize giriş bağlantısı gönderilecek.",
       "success": "Bağlantı e-postanıza gönderildi. Gelen kutunuzu kontrol edin.",
       "error_not_allowed": "Bu e-posta adresi yetkili değil. Yöneticinizle iletişime geçin.",
+      "error_link_invalid": "Bu giriş bağlantısı geçersiz veya süresi dolmuş. Yeni bir bağlantı isteyin.",
       "sending": "Gönderiliyor..."
     }
   },
