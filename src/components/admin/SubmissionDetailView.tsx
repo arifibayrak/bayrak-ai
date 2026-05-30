@@ -26,12 +26,14 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import {
   ImageOff,
   Sparkles,
   AlertCircle,
   MapPin,
+  ChevronLeft,
 } from 'lucide-react';
 import { BrandBadge, BrandCard } from '@/components/brand';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -70,11 +72,15 @@ function formatDate(iso: string | null): string {
 
 interface SubmissionDetailViewProps {
   submission: CanonicalSubmission;
+  /** When 'asbuilt', renders a back-link to the As-Built strip (CHN-05 drill-down return path). */
+  from?: string;
 }
 
-export function SubmissionDetailView({ submission }: SubmissionDetailViewProps) {
+export function SubmissionDetailView({ submission, from }: SubmissionDetailViewProps) {
   const t = useTranslations('dashboard.admin.detail');
+  const tRecords = useTranslations('dashboard.admin.records');
   const tStatus = useTranslations('dashboard.submissions');
+  const router = useRouter();
 
   const [lightboxOpen, setLightboxOpen] = useState(false);
 
@@ -89,6 +95,18 @@ export function SubmissionDetailView({ submission }: SubmissionDetailViewProps) 
 
   return (
     <div className="space-y-6">
+      {/* As-Built back-link — rendered only when navigated from the As-Built strip (CHN-05) */}
+      {from === 'asbuilt' && (
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <ChevronLeft className="size-4" aria-hidden="true" />
+          {tRecords('back_to_asbuilt')}
+        </button>
+      )}
+
       {/* Status badge */}
       <StatusBadge status={submission.status} label={statusLabel} />
 
@@ -192,11 +210,11 @@ export function SubmissionDetailView({ submission }: SubmissionDetailViewProps) 
               <dd className="text-sm tabular-nums">{formatDate(submission.submittedAt)}</dd>
             </div>
 
-            {/* Location
-                NOTE: CanonicalSubmission does not carry raw lat/lon. Only locationDistanceM
-                and locationMatch are available. The maps.google.com link pattern is planned
-                for when coordinates are exposed on the type; currently only distance is shown.
-                See SUMMARY.md for the full deviation note.
+            {/* Location — distance from route + optional Google Maps link.
+                Phase 15 (Plan 03): CanonicalSubmission now carries snappedLat/snappedLon
+                from ST_Y/ST_X of snapped_point. Google Maps link shown when both are non-null.
+                CRITICAL: lat first, lon second in the URL (?q=lat,lon) — no axis swap (Pitfall 5).
+                Security (T-15-03-TABNAB): target="_blank" uses rel="noopener noreferrer".
             */}
             <div>
               <dt className="text-sm font-semibold text-muted-foreground">{t('field_location')}</dt>
@@ -215,6 +233,18 @@ export function SubmissionDetailView({ submission }: SubmissionDetailViewProps) 
                   </span>
                 ) : (
                   '—'
+                )}
+                {/* Google Maps link — only when snapped coordinates are available (non-no_route submissions) */}
+                {submission.snappedLat != null && submission.snappedLon != null && (
+                  <a
+                    href={`https://www.google.com/maps?q=${submission.snappedLat},${submission.snappedLon}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-xs text-primary underline mt-1"
+                  >
+                    <MapPin className="size-3" aria-hidden="true" />
+                    {tRecords('view_on_map')}
+                  </a>
                 )}
               </dd>
             </div>

@@ -27,7 +27,7 @@ export const dynamic = 'force-dynamic';
 interface Props {
   params: Promise<{ id: string }>;
   searchParams: Promise<{
-    from?: string;
+    from?: string;   // 'asbuilt' triggers the As-Built back-link in SubmissionDetailView (CHN-05)
     to?: string;
     project?: string;
     person?: string;
@@ -74,10 +74,10 @@ export default async function SubmissionDetailPage({ params, searchParams }: Pro
       {/* Page heading */}
       <BrandHeading as="h1" size="h1">{t('heading')}</BrandHeading>
 
-      {/* Full submission detail view */}
+      {/* Full submission detail view — from='asbuilt' activates the CHN-05 back-link */}
       <BrandCard>
         <BrandCard.Body>
-          <SubmissionDetailView submission={submission} />
+          <SubmissionDetailView submission={submission} from={from} />
         </BrandCard.Body>
       </BrandCard>
     </div>

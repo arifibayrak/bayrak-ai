@@ -323,7 +323,9 @@
         "pagination": "Page {page} of {pages}",
         "pagination_page_only": "Page {page}",
         "empty": "No records match the current filters.",
-        "error_load": "Failed to load records. Please refresh the page."
+        "error_load": "Failed to load records. Please refresh the page.",
+        "view_on_map": "View on Map",
+        "back_to_asbuilt": "← Back to As-Built"
       },
       "detail": {
         "heading": "Submission Detail",

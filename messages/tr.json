@@ -323,7 +323,9 @@
         "pagination": "Sayfa {page} / {pages}",
         "pagination_page_only": "Sayfa {page}",
         "empty": "Filtrelerle eşleşen kayıt bulunamadı.",
-        "error_load": "Kayıtlar yüklenemedi. Sayfayı yenileyiniz."
+        "error_load": "Kayıtlar yüklenemedi. Sayfayı yenileyiniz.",
+        "view_on_map": "Haritada Gör",
+        "back_to_asbuilt": "← As-Built'e dön"
       },
       "detail": {
         "heading": "Kayıt Detayı",
