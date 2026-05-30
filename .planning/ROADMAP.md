@@ -538,7 +538,7 @@ Plans:
 
 **Wave 2** *(blocked on 14-02)*
 
-- [ ] 14-03-PLAN.md — [BLOCKING] apply 0010 + 0011 via `npx tsx src/db/migrate.ts` to BOTH Neon branches (dev + test) + DB-level verify
+- [x] 14-03-PLAN.md — [BLOCKING] apply 0010 + 0011 via `npx tsx src/db/migrate.ts` to BOTH Neon branches (dev + test) + DB-level verify
 
 **Wave 3** *(blocked on 14-01 + 14-03)*
 
@@ -608,6 +608,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 11. Exports | 7/7 | Complete    | 2026-05-28 |
 | 12. Submission-Driven Hakkediş | 4/4 | Complete    | 2026-05-28 |
 | 13. UX & Brand Pass | 5/5 | Complete    | 2026-05-29 |
-| 14. Schema Foundation + DXF Route Import | 2/6 | In Progress|  |
+| 14. Schema Foundation + DXF Route Import | 3/6 | In Progress|  |
 | 15. Chainage As-Built View + Approval Snapshot | 0/TBD | Not started | - |
 | 16. AI Vision Assist | 0/TBD | Not started | - |
