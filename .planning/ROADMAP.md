@@ -568,7 +568,29 @@ Plans:
   5. Office engineer can calibrate chainage by entering a numeric offset in metres; after saving, all user-facing displays (dashboard strip, Telegram notifications for new approvals, Excel/PDF exports) show the calibrated chainage — a direct spot-check confirms the same value appears across all three surfaces
   6. Office engineer can export the as-built breakdown to Excel (columns: Km Başlangıç, Km Bitiş, İş Adedi, Malzeme, Miktar, Birim, İşçi, Denetçi) and PDF consistent with the existing hakkediş export aesthetic; the exported file passes the same auth guard (401 on no session) as all other export route handlers
 
-**Plans**: TBD
+**Plans**: 7 plans (across 5 waves)
+Plans:
+**Wave 1**
+
+- [ ] 15-01-PLAN.md — Wave 0: formatChainage util + tests/chainage.test.ts scaffold + 3000m route fixture
+
+**Wave 2** *(blocked on 15-01)*
+
+- [ ] 15-02-PLAN.md — Chainage snapshot write in handleAuditDecision + calibrated Telegram line + backfill migration 0013 (authored)
+- [ ] 15-03-PLAN.md — Folded map-link: snapped lat/lon on CanonicalSubmission + Google Maps link + As-Built back-link (CHN-05)
+
+**Wave 3** *(blocked on 15-02)*
+
+- [ ] 15-04-PLAN.md — [BLOCKING] apply migration 0013 to BOTH Neon branches + backfill verify
+
+**Wave 4** *(blocked on 15-04)*
+
+- [ ] 15-05-PLAN.md — Backend: fetchChainageBucketsRaw (generate_series + 3-state + completion clamp) + getChainageBuckets/setChainageOffset
+
+**Wave 5** *(blocked on 15-05)*
+
+- [ ] 15-06-PLAN.md — Export: chainage Excel (8 cols) + PDF (DejaVu) + auth-guarded /api/exports/chainage route (CHN-07)
+- [ ] 15-07-PLAN.md — UI: As-Built tab (colour bar + table + granularity toggle + completion KPI + calibration form) + tab wire + i18n + end-of-phase UAT
 **UI hint**: yes
 
 ### Phase 16: AI Vision Assist
