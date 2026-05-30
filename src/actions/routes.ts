@@ -3,9 +3,13 @@
 /**
  * src/actions/routes.ts
  *
- * Server Actions for GeoJSON route upload/replace (D-07, SETUP-03).
- * Threat T-06-01: server-side zod validation before any DB write.
+ * Server Actions for route management (D-07, SETUP-03, RTE-01/03/04/05).
+ *
+ * Threat T-06-01: server-side validation before any DB write.
  * Threat T-06-04: auth-guarded — throws Unauthorized without a valid session.
+ * Threat T-14-AUTHZ: uploadDxf — auth() + CR-02 ownership check before writes.
+ * Threat T-14-SSRF: blobUrl validated to *.public.blob.vercel-storage.com before fetch.
+ * Threat T-14-SRCDOC-ATOM: routes upsert + route_source_documents INSERT in one db.transaction.
  *
  * The geometry is inserted ONLY via parameterized ST_GeomFromGeoJSON(${...})
  * — never via string concatenation (T-06-01 mitigation).
@@ -16,10 +20,16 @@ import { revalidatePath } from 'next/cache';
 import { db } from '@/db';
 import { routes } from '@/db/schema/routes';
 import { projects } from '@/db/schema/projects';
+import { routeSourceDocuments } from '@/db/schema/route-source-documents';
 import { validateLineStringGeoJSON } from '@/lib/geojson';
+import { parseDxfToLineString } from '@/lib/dxf-parser';
 import { auth } from '@/lib/auth';
 import { getDefaultTenantId } from '@/lib/tenant';
 import { logOfficeActivity } from '@/lib/log-office-activity';
+
+// ---------------------------------------------------------------------------
+// uploadRoute — GeoJSON LineString route upload (RTE-04: signature unchanged)
+// ---------------------------------------------------------------------------
 
 /**
  * uploadRoute — validate and insert/replace a GeoJSON LineString route.
@@ -29,6 +39,9 @@ import { logOfficeActivity } from '@/lib/log-office-activity';
  * Security (CR-02): verifies caller owns the target project before writing.
  * Pattern: onConflictDoUpdate on routes.projectId implements the replace flow (D-07).
  * Geometry: ST_GeomFromGeoJSON(${result.geojsonString}) — parameterized, no concatenation.
+ *
+ * Phase 14 (RTE-04): Added totalLengthM (ST_Length::geography) and geometryVersion
+ * to both the VALUES and the SET block — no signature or validation change.
  */
 export async function uploadRoute(projectId: string, fileContent: string) {
   const session = await auth();
@@ -51,17 +64,22 @@ export async function uploadRoute(projectId: string, fileContent: string) {
   // Insert geometry via ST_GeomFromGeoJSON.
   // Pass the geometry-only string (NOT the Feature wrapper — RESEARCH Pitfall 4).
   // onConflictDoUpdate on projectId implements replace (D-07): re-upload replaces old route.
+  // Phase 14 (RTE-04): totalLengthM and geometryVersion added to VALUES + SET.
   const [row] = await db.insert(routes).values({
     projectId,
     tenantId: getDefaultTenantId(),
     geom: sql`ST_GeomFromGeoJSON(${result.geojsonString})`,
     coordinateCount: result.count,
+    totalLengthM: sql`ST_Length(ST_GeomFromGeoJSON(${result.geojsonString})::geography)`,
+    geometryVersion: 1,
   }).onConflictDoUpdate({
     target: routes.projectId,
     set: {
       geom: sql`ST_GeomFromGeoJSON(${result.geojsonString})`,
       coordinateCount: result.count,
       uploadedAt: sql`now()`,
+      totalLengthM: sql`ST_Length(ST_GeomFromGeoJSON(${result.geojsonString})::geography)`,
+      geometryVersion: sql`COALESCE(${routes.geometryVersion}, 0) + 1`,
     },
   }).returning({ id: routes.id });
 
@@ -81,10 +99,161 @@ export async function uploadRoute(projectId: string, fileContent: string) {
   return { ok: true as const, count: result.count, id: row.id };
 }
 
+// ---------------------------------------------------------------------------
+// uploadDxf — DXF route upload (RTE-01/03/05, D-05)
+// ---------------------------------------------------------------------------
+
+type UploadDxfResult =
+  | { ok: true; count: number; id: string }
+  | { ok: false; error: string };
+
+/**
+ * uploadDxf — fetch a DXF from Vercel Blob, parse + reproject, upsert the route,
+ * and INSERT a new route_source_documents row (D-05 history — never overwrite).
+ *
+ * Security (T-14-AUTHZ): auth() + CR-02 ownership check before any write.
+ * Security (T-14-SSRF): blobUrl validated to https://*.public.blob.vercel-storage.com.
+ * Security (T-14-SRCDOC-ATOM): routes upsert + route_source_documents INSERT in one
+ *   db.transaction so the history row always reflects the geometry_version landed.
+ * Security (T-14-VERSION): geometry_version computed via MAX subquery (Pitfall 6 mitigation).
+ *
+ * @param projectId   — UUID of the project to upsert the route for
+ * @param blobUrl     — Vercel Blob public URL of the uploaded DXF file
+ * @param sourceCrs   — EPSG code, e.g. 5254 for TUREF/TM30
+ * @param sourceLayer — DXF layer name selected by the office engineer
+ */
+export async function uploadDxf(
+  projectId: string,
+  blobUrl: string,
+  sourceCrs: number,
+  sourceLayer: string,
+): Promise<UploadDxfResult> {
+  // Auth gate (T-14-AUTHZ)
+  const session = await auth();
+  if (!session) throw new Error('Unauthorized');
+
+  // CR-02: Verify project belongs to the active tenant before writing (IDOR mitigation).
+  const owned = await db
+    .select({ id: projects.id })
+    .from(projects)
+    .where(and(eq(projects.id, projectId), eq(projects.tenantId, getDefaultTenantId())))
+    .limit(1);
+  if (!owned.length) throw new Error('Not found');
+
+  // SSRF guard (T-14-SSRF): blobUrl must be https and host must end with
+  // .public.blob.vercel-storage.com — rejects any server-side redirect abuse.
+  let parsedUrl: URL;
+  try {
+    parsedUrl = new URL(blobUrl);
+  } catch {
+    return { ok: false, error: 'INVALID_BLOB_URL' };
+  }
+  if (
+    parsedUrl.protocol !== 'https:' ||
+    !parsedUrl.hostname.endsWith('.public.blob.vercel-storage.com')
+  ) {
+    return { ok: false, error: 'INVALID_BLOB_URL' };
+  }
+
+  // Fetch DXF text from blob (NEVER arrayBuffer — dxf-parser needs UTF-8 string; RESEARCH Pitfall 1)
+  const response = await fetch(blobUrl);
+  if (!response.ok) {
+    return { ok: false, error: `BLOB_FETCH_FAILED_${response.status}` };
+  }
+  const dxfText = await response.text();
+
+  // Parse + reproject (T-14-PARSE: errors returned as structured result, never thrown)
+  const parseResult = parseDxfToLineString(dxfText, sourceCrs, sourceLayer);
+  if (!parseResult.ok) {
+    return { ok: false, error: parseResult.error };
+  }
+
+  // Shared validation gate (same as uploadRoute — ensures WGS84 coordinate range)
+  const validation = validateLineStringGeoJSON(parseResult.geojsonString);
+  if (!validation.ok) {
+    return { ok: false, error: validation.error };
+  }
+
+  // Compute next geometry_version via MAX subquery (T-14-VERSION / Pitfall 6 mitigation)
+  const [existing] = await db
+    .select({ maxVersion: sql<number>`COALESCE(MAX(${routes.geometryVersion}), 0)` })
+    .from(routes)
+    .where(eq(routes.projectId, projectId));
+  const nextVersion = (existing?.maxVersion ?? 0) + 1;
+
+  // Atomic transaction: routes upsert + route_source_documents INSERT (T-14-SRCDOC-ATOM, D-05)
+  const [row] = await db.transaction(async (tx) => {
+    // Upsert routes row with new geometry + provenance columns
+    const upserted = await tx
+      .insert(routes)
+      .values({
+        projectId,
+        tenantId: getDefaultTenantId(),
+        geom: sql`ST_GeomFromGeoJSON(${validation.geojsonString})`,
+        coordinateCount: validation.count,
+        totalLengthM: sql`ST_Length(ST_GeomFromGeoJSON(${validation.geojsonString})::geography)`,
+        geometryVersion: nextVersion,
+        sourceBlobUrl: blobUrl,
+        sourceCrs: String(sourceCrs),
+        sourceLayer,
+      })
+      .onConflictDoUpdate({
+        target: routes.projectId,
+        set: {
+          geom: sql`ST_GeomFromGeoJSON(${validation.geojsonString})`,
+          coordinateCount: validation.count,
+          totalLengthM: sql`ST_Length(ST_GeomFromGeoJSON(${validation.geojsonString})::geography)`,
+          geometryVersion: nextVersion,
+          sourceBlobUrl: blobUrl,
+          sourceCrs: String(sourceCrs),
+          sourceLayer,
+          uploadedAt: sql`now()`,
+        },
+      })
+      .returning({ id: routes.id });
+
+    // D-05: INSERT a NEW row into route_source_documents — never upsert/overwrite.
+    // This preserves the full history of all source drawings for the project.
+    await tx.insert(routeSourceDocuments).values({
+      tenantId: getDefaultTenantId(),
+      projectId,
+      blobUrl,
+      docType: 'dxf',
+      sourceCrs: String(sourceCrs),
+      sourceLayer,
+      geometryVersion: nextVersion,
+    });
+
+    return upserted;
+  });
+
+  // Activity log (fire-and-forget — CR-04: skip if no userId)
+  if (session.user?.id) {
+    logOfficeActivity({
+      actorUserId: session.user.id,
+      actionType: 'dxf_route_uploaded',
+      entityType: 'project',
+      entityId: projectId,
+      projectId,
+      metadata: { coordinateCount: validation.count, geometryVersion: nextVersion, sourceCrs, sourceLayer },
+    });
+  }
+
+  revalidatePath(`/dashboard/projects/${projectId}`);
+  return { ok: true, count: validation.count, id: row.id };
+}
+
+// ---------------------------------------------------------------------------
+// getRoute — fetch saved route metadata (Phase 14: extended projection)
+// ---------------------------------------------------------------------------
+
 /**
  * getRoute — fetch the saved route metadata for a project, if any.
  * Returns null when no route has been uploaded yet.
  * CR-01: tenant-scoped to prevent cross-tenant reads.
+ *
+ * Phase 14 (RTE-05): Extended projection includes totalLengthM, sourceCrs,
+ * sourceLayer, geometryVersion, sourceBlobUrl.
  */
 export async function getRoute(projectId: string) {
   const session = await auth();
@@ -95,6 +264,12 @@ export async function getRoute(projectId: string) {
       id: routes.id,
       coordinateCount: routes.coordinateCount,
       uploadedAt: routes.uploadedAt,
+      // Phase 14 additions (RTE-05):
+      totalLengthM: routes.totalLengthM,
+      sourceCrs: routes.sourceCrs,
+      sourceLayer: routes.sourceLayer,
+      geometryVersion: routes.geometryVersion,
+      sourceBlobUrl: routes.sourceBlobUrl,
     })
     .from(routes)
     .where(
@@ -108,6 +283,10 @@ export async function getRoute(projectId: string) {
   return result[0] ?? null;
 }
 
+// ---------------------------------------------------------------------------
+// getRouteGeoJSON — fetch route geometry as GeoJSON (Phase 14: extended)
+// ---------------------------------------------------------------------------
+
 /**
  * getRouteGeoJSON — fetch the project route and return geometry as parsed GeoJSON.
  *
@@ -117,6 +296,9 @@ export async function getRoute(projectId: string) {
  * DASH-01: coordinates are [longitude, latitude] per GeoJSON spec.
  * CR-01: tenant-scoped to prevent cross-tenant reads.
  * CR-03: guarded JSON.parse — returns null when geomJson is null/undefined.
+ *
+ * Phase 14 (RTE-05): Extended projection includes totalLengthM, sourceCrs,
+ * sourceLayer, geometryVersion, sourceBlobUrl.
  */
 export async function getRouteGeoJSON(projectId: string) {
   const session = await auth();
@@ -128,6 +310,12 @@ export async function getRouteGeoJSON(projectId: string) {
       coordinateCount: routes.coordinateCount,
       uploadedAt: routes.uploadedAt,
       geomJson: sql`ST_AsGeoJSON(${routes.geom})`,
+      // Phase 14 additions (RTE-05):
+      totalLengthM: routes.totalLengthM,
+      sourceCrs: routes.sourceCrs,
+      sourceLayer: routes.sourceLayer,
+      geometryVersion: routes.geometryVersion,
+      sourceBlobUrl: routes.sourceBlobUrl,
     })
     .from(routes)
     .where(
