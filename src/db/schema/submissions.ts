@@ -2,7 +2,7 @@
 // status 'pending_audit' is the default — Phase 3 transitions to approved/rejected.
 // D-13 Guard 2: unique('submissions_flow_id_unique') prevents double-confirm inserts.
 // Phase 4 ready: geometry(location) column + GiST index for PostGIS nearest-segment.
-import { pgTable, uuid, text, numeric, boolean, timestamp, index, unique, geometry } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, numeric, integer, boolean, timestamp, index, unique, geometry } from 'drizzle-orm/pg-core';
 import { tenants } from './tenants';
 import { people } from './people';
 import { projects } from './projects';
@@ -52,6 +52,13 @@ export const submissions = pgTable('submissions', {
   decidedBy: uuid('decided_by').references(() => people.id),        // null until decided
   decidedAt: timestamp('decided_at', { withTimezone: true }),        // null until decided
   rejectionReason: text('rejection_reason'),                         // null unless rejected
+  // Phase 14: v4.0 chainage foundation — columns added here; values written at approval (Phase 15).
+  // All nullable — pre-Phase-14 rows have no chainage data. Do NOT write these from bot-audit.ts.
+  // chainage_m: the route chainage (in metres) at the snapped point, snapshotted at approval time.
+  chainageM: numeric('chainage_m', { precision: 10, scale: 2 }),
+  // routeGeometryVersion: ties the submission to the specific route version at approval time (D-04).
+  // Enables audit trail: if the route is re-imported, we know which geometry version was active.
+  routeGeometryVersion: integer('route_geometry_version'),
 }, (t) => [
   // D-13 Guard 2: named UNIQUE on flow_id prevents double-confirm duplicate inserts
   unique('submissions_flow_id_unique').on(t.flowId),

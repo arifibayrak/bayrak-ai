@@ -60,6 +60,8 @@ export async function truncateAllTables(db: Awaited<ReturnType<typeof getTestDb>
     "office_activity_log",   // references tenants + users + projects → before projects/users
     // Phase 3 tables (most dependent — references submissions/people/tenants)
     "audit_notifications",   // references submissions → must truncate before submissions
+    // Phase 16 AI flags (references submissions → must truncate before submissions)
+    "submission_ai_flags",   // references tenants, submissions → before submissions
     // Phase 2 tables (most dependent — references people/projects/boq_items/tenants)
     "submissions",
     "conversation_state",
@@ -69,6 +71,8 @@ export async function truncateAllTables(db: Awaited<ReturnType<typeof getTestDb>
     "people",
     "boq_items",
     "routes",
+    // Phase 14: D-05 source-drawing version history (references projects → before projects)
+    "route_source_documents", // references tenants, projects → before projects
     "projects",
     "tenants",
     // Auth.js tables
@@ -87,13 +91,15 @@ export async function truncateAllTables(db: Awaited<ReturnType<typeof getTestDb>
   // first; if it fails with "relation does not exist" (Postgres error code 42P01), we
   // progressively fall back to narrower table sets in migration-order (most recent phase first).
   //
+  // Phase 14 tables (migrations 0010/0011/0012) — added Plan 14-02, migrated in Plan 14-03
+  const phase14Tables = ["submission_ai_flags", "route_source_documents"];
   // Phase 9 tables (migration 0007) — added Plan 09-01, migrated in Plan 09-03
   const phase9Tables = ["tenant_settings"];
   // Phase 7 tables (migration 0004) — added Plan 07-01, migrated in Plan 07-02
   const phase7Tables = ["hakedis_period_lines", "hakedis_periods", "office_activity_log"];
   // Phase 3 table (migration 0003) — added Plan 03-01, migrated in Plan 03-02
   const phase3Tables = ["audit_notifications"];
-  const laterTables = new Set([...phase9Tables, ...phase7Tables, ...phase3Tables]);
+  const laterTables = new Set([...phase14Tables, ...phase9Tables, ...phase7Tables, ...phase3Tables]);
 
   const tableList = tables.map(t => `"${t}"`).join(', ');
   try {

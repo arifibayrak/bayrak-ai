@@ -26,6 +26,8 @@ export const OFFICE_ACTION_TYPES = [
   'hakedis_excel_exported',
   'submission_ledger_exported',
   'performance_summary_exported',
+  // Phase 14: DXF route import action (Plan 14-04 writes this via uploadDxf Server Action)
+  'dxf_route_uploaded',
 ] as const;
 
 export type OfficeActionType = (typeof OFFICE_ACTION_TYPES)[number];

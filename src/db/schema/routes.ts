@@ -1,7 +1,7 @@
 // CRITICAL: After `drizzle-kit generate`, open the generated migration SQL
 // and change geometry(point,4326) → geometry(LineString,4326) for the `geom` column.
 // Add this comment to the migration file to prevent silent regression.
-import { pgTable, uuid, integer, timestamp, customType, index } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, integer, numeric, text, timestamp, customType, index } from 'drizzle-orm/pg-core';
 import { projects } from './projects';
 import { tenants } from './tenants';
 
@@ -26,6 +26,19 @@ export const routes = pgTable('routes', {
   geom: geomLinestring('geom').notNull(),
   coordinateCount: integer('coordinate_count').notNull(),
   uploadedAt: timestamp('uploaded_at', { withTimezone: true }).defaultNow().notNull(),
+  // Phase 14: v4.0 schema foundation — provenance + length + versioning columns
+  // These columns are additive — existing uploadRoute still works unchanged.
+  // geometry_version: incremented on each re-import (D-04, D-05, RTE-05)
+  geometryVersion: integer('geometry_version').notNull().default(1),
+  totalLengthM: numeric('total_length_m', { precision: 12, scale: 2 }),
+  // sourceBlobUrl: convenience "latest" pointer to the uploaded drawing file.
+  // route_source_documents is the D-05 audit trail of record for all prior versions.
+  sourceBlobUrl: text('source_blob_url'),
+  sourceCrs: text('source_crs'),
+  sourceLayer: text('source_layer'),
+  // chainage_offset_m: user-configurable calibration offset applied at display time.
+  // All user-facing displays show: raw_chainage_m + offset (never store offset in submissions).
+  chainageOffsetM: numeric('chainage_offset_m', { precision: 12, scale: 2 }).default('0'),
 }, (t) => [
   // GiST index mandatory for spatial queries (Phase 4+)
   index('routes_geom_gist').using('gist', t.geom),

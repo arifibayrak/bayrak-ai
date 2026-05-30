@@ -18,3 +18,5 @@ export * from './hakedis-periods';     // references tenants, projects, users
 export * from './hakedis-period-lines'; // references tenants, hakedis-periods, boq-items
 export * from './hakedis-line-submissions'; // references tenants, hakedis-period-lines, submissions (D-119)
 export * from './tenant-settings';     // references tenants only (D-83 admin-configurable thresholds)
+export * from './ai-flags';            // references tenants, submissions (Phase 16 AI vision assist)
+export * from './route-source-documents'; // references tenants, projects (D-05 source-drawing version history)
