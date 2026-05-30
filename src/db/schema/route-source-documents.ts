@@ -38,6 +38,9 @@ export const routeSourceDocuments = pgTable('route_source_documents', {
 }, (t) => [
   // Composite index on (project_id, uploaded_at DESC) for the version history list query.
   // "Show all source drawings for this project, newest first."
-  index('route_source_documents_project_uploaded_idx').on(t.projectId, t.uploadedAt),
+  // WR-04: .desc() on uploadedAt aligns the schema with the applied DESC migration
+  // (0012). Without it, drizzle-kit defaults to ASC and a future regenerate would
+  // emit a spurious drift diff or replace the DESC index the newest-first query relies on.
+  index('route_source_documents_project_uploaded_idx').on(t.projectId, t.uploadedAt.desc()),
   // Note: NO unique on project_id — re-imports INSERT new rows (this IS the version history)
 ]);
