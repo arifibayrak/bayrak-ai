@@ -393,8 +393,8 @@ export async function getRouteSourceDocuments(
       sourceLayer: routeSourceDocuments.sourceLayer,
       geometryVersion: routeSourceDocuments.geometryVersion,
       uploadedAt: routeSourceDocuments.uploadedAt,
-      // Tenant scope: join via projects to enforce CR-01
-      projectTenantId: routeSourceDocuments.tenantId,
+      // WR-05: tenant scoping is enforced by the where clause below
+      // (eq(routeSourceDocuments.tenantId, getDefaultTenantId())), not a join.
     })
     .from(routeSourceDocuments)
     .where(
