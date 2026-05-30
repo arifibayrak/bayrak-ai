@@ -546,7 +546,7 @@ Plans:
 
 **Wave 4** *(blocked on 14-04)*
 
-- [ ] 14-05-PLAN.md — UI: DxfUpload state machine + satellite preview confirmation modal + PdfViewer + RouteTabClient/RouteTab integration + metadata card + Kaynak Belge (GeoJSON path unchanged)
+- [x] 14-05-PLAN.md — UI: DxfUpload state machine + satellite preview confirmation modal + PdfViewer + RouteTabClient/RouteTab integration + metadata card + Kaynak Belge (GeoJSON path unchanged)
 
 **Wave 5** *(blocked on 14-05)*
 
@@ -608,6 +608,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 11. Exports | 7/7 | Complete    | 2026-05-28 |
 | 12. Submission-Driven Hakkediş | 4/4 | Complete    | 2026-05-28 |
 | 13. UX & Brand Pass | 5/5 | Complete    | 2026-05-29 |
-| 14. Schema Foundation + DXF Route Import | 4/6 | In Progress|  |
+| 14. Schema Foundation + DXF Route Import | 5/6 | In Progress|  |
 | 15. Chainage As-Built View + Approval Snapshot | 0/TBD | Not started | - |
 | 16. AI Vision Assist | 0/TBD | Not started | - |
