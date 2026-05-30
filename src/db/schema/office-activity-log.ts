@@ -28,6 +28,9 @@ export const OFFICE_ACTION_TYPES = [
   'performance_summary_exported',
   // Phase 14: DXF route import action (Plan 14-04 writes this via uploadDxf Server Action)
   'dxf_route_uploaded',
+  // Phase 15: chainage calibration offset + export actions
+  'chainage_offset_set',
+  'chainage_exported',
 ] as const;
 
 export type OfficeActionType = (typeof OFFICE_ACTION_TYPES)[number];
