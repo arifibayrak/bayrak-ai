@@ -181,6 +181,7 @@ export function extractDxfLayers(dxfText: string): LayerInfo[] | null {
  *                             with >= 2 vertices
  *   COORDS_OUTSIDE_TURKEY   — a vertex reprojected outside Turkey bbox (T-14-VAL)
  *   TOO_FEW_VERTICES        — fewer than 2 vertices after filter/stitch
+ *   DXF_TOO_LARGE           — total vertex count exceeds MAX_VERTEX_COUNT (T-14-DOS)
  *
  * @param dxfText   — UTF-8 DXF text string (NOT a Buffer — RESEARCH Pitfall 1)
  * @param epsg      — EPSG code for the source CRS (must be in TURKEY_CRS)
@@ -243,7 +244,10 @@ export function parseDxfToLineString(
   // --- Step 4: DoS guard (T-14-DOS) ---
   const totalVertices = polylines.reduce((sum, p) => sum + p.vertices.length, 0);
   if (totalVertices > MAX_VERTEX_COUNT) {
-    return { ok: false, error: 'TOO_FEW_VERTICES' }; // overloaded: too-many becomes a fail
+    // WR-03: distinct code for the DoS cap — the previous TOO_FEW_VERTICES was
+    // the inverse of the real condition (too MANY vertices) and produced
+    // "select a layer with more points" guidance, sending the user in a loop.
+    return { ok: false, error: 'DXF_TOO_LARGE' };
   }
 
   // --- Step 5: Stitch multiple polylines into one ordered vertex list (D-03) ---

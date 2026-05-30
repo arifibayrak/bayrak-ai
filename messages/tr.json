@@ -116,6 +116,7 @@
       "error_dxf_parse": "DXF dosyası ayrıştırılamadı. Dosyanın geçerli bir DXF formatında olduğunu kontrol edin.",
       "error_dxf_out_of_turkey": "Koordinatlar Türkiye sınırları dışında. Koordinat sistemini kontrol edin.",
       "error_dxf_too_few_vertices": "Geçerli bir rota oluşturulamadı. En az 2 nokta içeren bir katman seçin.",
+      "error_dxf_too_large_geometry": "Bu çizimde içe aktarılamayacak kadar çok nokta var. Çoklu çizgiyi sadeleştirin veya tek bir güzergah katmanı seçip tekrar deneyin.",
       "error_dxf_no_layers": "DXF dosyasında geometri katmanı bulunamadı.",
       "error_blob_upload": "Dosya yüklenemedi. İnternet bağlantınızı kontrol edip tekrar deneyin.",
       "crs_5254": "TUREF / TM30 (EPSG:5254) — Türkiye modern standardı",

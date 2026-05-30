@@ -116,6 +116,7 @@
       "error_dxf_parse": "Could not parse DXF file. Verify the file is a valid DXF format.",
       "error_dxf_out_of_turkey": "Coordinates fall outside Turkey. Check the selected coordinate system.",
       "error_dxf_too_few_vertices": "Could not build a valid route. Select a layer with at least 2 points.",
+      "error_dxf_too_large_geometry": "This drawing has too many points to import. Simplify the polyline or select a single centerline layer, then try again.",
       "error_dxf_no_layers": "No geometry layers found in the DXF file.",
       "error_blob_upload": "File upload failed. Check your connection and try again.",
       "crs_5254": "TUREF / TM30 (EPSG:5254) — Modern Turkey standard",

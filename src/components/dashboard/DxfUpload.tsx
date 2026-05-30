@@ -913,6 +913,8 @@ function mapErrorCodeToMessage(
       return t('error_dxf_no_layers');
     case 'COORDS_OUTSIDE_TURKEY':
       return t('error_dxf_out_of_turkey');
+    case 'DXF_TOO_LARGE':
+      return t('error_dxf_too_large_geometry');
     case 'TOO_FEW_VERTICES':
     case 'NO_COMPATIBLE_GEOMETRY':
       return t('error_dxf_too_few_vertices');
