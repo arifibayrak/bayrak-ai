@@ -136,7 +136,7 @@ Defined: 2026-05-29. **Locked decisions:** DWG handled via engineer-exported DXF
 
 ### Route & Document Import
 
-- [ ] **RTE-01**: Office engineer can import a project route by uploading a DXF file (exported from AutoCAD/DWG), selecting the centerline layer and declaring the source coordinate system (e.g. TUREF/TM30, UTM 35N/36N); the route is parsed and reprojected to WGS84 before storage
+- [x] **RTE-01**: Office engineer can import a project route by uploading a DXF file (exported from AutoCAD/DWG), selecting the centerline layer and declaring the source coordinate system (e.g. TUREF/TM30, UTM 35N/36N); the route is parsed and reprojected to WGS84 before storage
 - [ ] **RTE-02**: Before saving an imported route, the engineer previews the reprojected route on a satellite basemap and must confirm it is correctly georeferenced
 - [ ] **RTE-03**: The original uploaded drawing/document (DXF, and PDF where provided) is stored and viewable alongside the map as a reference
 - [ ] **RTE-04**: The existing GeoJSON LineString upload path continues to work unchanged (DXF import is additive)
@@ -268,7 +268,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | BRAND-01 | Phase 13 | Complete |
 | BRAND-02 | Phase 13 | Complete |
 | BRAND-03 | Phase 13 | Complete |
-| RTE-01 | Phase 14 | Pending |
+| RTE-01 | Phase 14 | Complete |
 | RTE-02 | Phase 14 | Pending |
 | RTE-03 | Phase 14 | Pending |
 | RTE-04 | Phase 14 | Pending |
