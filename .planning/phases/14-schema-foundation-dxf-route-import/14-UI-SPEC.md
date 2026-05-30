@@ -1,7 +1,8 @@
 ---
 phase: 14
 slug: schema-foundation-dxf-route-import
-status: draft
+status: approved
+reviewed_at: 2026-05-30
 shadcn_initialized: true
 preset: b2fA
 created: 2026-05-30
@@ -51,7 +52,7 @@ Exceptions:
 - Card Header and Footer use `p-3` (12px) per D-125 compact density (pre-existing BrandCard.Header/.Footer pattern).
 - Map container height: 400px (fixed, matching existing MapView height in RouteTabClient).
 - Preview modal map container height: 480px (slightly taller — the satellite confirmation is the primary safety-net action; extra vertical space for the route to be clearly visible).
-- Touch targets on icon-only dialog close: minimum 44px per accessibility requirement.
+- Touch targets on icon-only dialog close: minimum 44px per accessibility requirement. The icon-only close button MUST declare `aria-label="Önizlemeyi kapat"` (EN: "Close preview") — it has no visible label.
 
 > Source: BRAND.md D-125; BrandCard.tsx compound; RouteTabClient.tsx pattern.
 
@@ -69,6 +70,8 @@ Exceptions:
 Tracking: headings carry `letter-spacing: -0.02em` (applied globally in globals.css `@layer base`).
 
 Note: Geist Mono is used exclusively for the total-length-km readout in the satellite preview and for numeric column values (coordinate counts, lengths). All other text uses Geist Sans. This is pre-established by BRAND.md D-122.
+
+Note (brand conformance): the 3 weights used here (400 / 500 / 600) are a subset of the 4-weight hierarchy authorized by BRAND.md D-122 (400 body, 500 emphasis, 600 semibold, 700 bold). This is intentional brand conformance, not an exception — do not collapse to 2 weights.
 
 > Source: BRAND.md D-122; globals.css @layer base; RouteTabClient.tsx `text-sm` / `font-medium`.
 
@@ -339,7 +342,7 @@ Parent RSC imports it as:
 const PdfViewer = dynamic(() => import('./PdfViewer'), { ssr: false });
 ```
 
-The PDF viewer is constrained to the BrandCard.Body width (100%) with `height: auto`. It renders page 1 on mount. Prev/Next buttons are BrandButton ghost sm with ChevronLeft / ChevronRight lucide icons (size-4). Current page display: "1 / {total}" in 12px muted Geist Sans.
+The PDF viewer is constrained to the BrandCard.Body width (100%) with `height: auto`. It renders page 1 on mount. Prev/Next buttons are BrandButton ghost sm with ChevronLeft / ChevronRight lucide icons (size-4). Each is icon-only and MUST declare an aria-label (`aria-label="Önceki sayfa"` / `aria-label="Sonraki sayfa"`). Current page display: "1 / {total}" in 12px muted Geist Sans.
 
 ---
 
