@@ -144,12 +144,12 @@ Defined: 2026-05-29. **Locked decisions:** DWG handled via engineer-exported DXF
 
 ### Chainage As-Built Tracking
 
-- [ ] **CHN-01**: Every point along the route has a kilometre/chainage value derived from cumulative length from the route start (km 0 = start)
+- [x] **CHN-01**: Every point along the route has a kilometre/chainage value derived from cumulative length from the route start (km 0 = start)
 - [ ] **CHN-02**: Office engineer can calibrate chainage by anchoring a known station value to a reference point, offsetting derived chainage to match the engineering drawing
-- [ ] **CHN-03**: Each approved submission's chainage is snapshotted at the moment of auditor approval (immutable as-built record); in-progress/pending work may show a live derived chainage
-- [ ] **CHN-04**: Office engineer can view a per-kilometre / per-segment as-built strip of the route showing, for each segment, status (not started / in progress / approved), what work was submitted, who the worker was, and who audited it
+- [x] **CHN-03**: Each approved submission's chainage is snapshotted at the moment of auditor approval (immutable as-built record); in-progress/pending work may show a live derived chainage
+- [x] **CHN-04**: Office engineer can view a per-kilometre / per-segment as-built strip of the route showing, for each segment, status (not started / in progress / approved), what work was submitted, who the worker was, and who audited it
 - [ ] **CHN-05**: Selecting a chainage segment drills down to the underlying submissions (linking to the canonical submission detail view)
-- [ ] **CHN-06**: Per-segment approved work feeds route completion % by chainage and the BOQ progress view
+- [x] **CHN-06**: Per-segment approved work feeds route completion % by chainage and the BOQ progress view
 - [ ] **CHN-07**: The per-kilometre as-built breakdown is exportable to Excel/PDF consistent with existing reports
 
 ### AI Vision Assist (activating v1 Phase 6)
@@ -273,12 +273,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | RTE-03 | Phase 14 | Complete |
 | RTE-04 | Phase 14 | Complete |
 | RTE-05 | Phase 14 | Complete |
-| CHN-01 | Phase 15 | Pending |
+| CHN-01 | Phase 15 | Complete |
 | CHN-02 | Phase 15 | Pending |
-| CHN-03 | Phase 15 | Pending |
-| CHN-04 | Phase 15 | Pending |
+| CHN-03 | Phase 15 | Complete |
+| CHN-04 | Phase 15 | Complete |
 | CHN-05 | Phase 15 | Pending |
-| CHN-06 | Phase 15 | Pending |
+| CHN-06 | Phase 15 | Complete |
 | CHN-07 | Phase 15 | Pending |
 | AI-01 | Phase 16 | Pending |
 | AI-02 | Phase 16 | Pending |

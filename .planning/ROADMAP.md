@@ -572,7 +572,7 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 15-01-PLAN.md — Wave 0: formatChainage util + tests/chainage.test.ts scaffold + 3000m route fixture
+- [x] 15-01-PLAN.md — Wave 0: formatChainage util + tests/chainage.test.ts scaffold + 3000m route fixture
 
 **Wave 2** *(blocked on 15-01)*
 
@@ -631,5 +631,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 12. Submission-Driven Hakkediş | 4/4 | Complete    | 2026-05-28 |
 | 13. UX & Brand Pass | 5/5 | Complete    | 2026-05-29 |
 | 14. Schema Foundation + DXF Route Import | 6/6 | Complete   | 2026-05-30 |
-| 15. Chainage As-Built View + Approval Snapshot | 0/TBD | Not started | - |
+| 15. Chainage As-Built View + Approval Snapshot | 1/7 | In Progress|  |
 | 16. AI Vision Assist | 0/TBD | Not started | - |
