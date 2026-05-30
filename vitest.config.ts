@@ -23,6 +23,13 @@ export default defineConfig({
     // causes TRUNCATE TABLE in one file to race with inserts in another, producing
     // FK violations. Run test files sequentially to ensure isolation.
     fileParallelism: false,
+    // Neon serverless test branch has variable latency, and the per-test TRUNCATE ... CASCADE
+    // hook takes an ACCESS EXCLUSIVE lock across the whole FK graph. Under full-suite load
+    // (serialized files) the default 5s test / 10s hook ceilings are too tight and flake on
+    // timeouts — especially after Phase 14 widened the CASCADE graph with two new FK tables.
+    // Give DB-backed hooks/tests real headroom; pure unit tests finish well under these anyway.
+    testTimeout: 20000,
+    hookTimeout: 30000,
   },
   resolve: {
     alias: {
