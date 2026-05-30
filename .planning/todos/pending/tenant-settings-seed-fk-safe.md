@@ -5,6 +5,7 @@ priority: medium
 created: 2026-05-27
 origin_phase: "09"
 area: db/migrations
+resolves_phase: 14
 ---
 
 # Make migration 0007 tenant_settings seed FK-safe

@@ -5,6 +5,7 @@ priority: low
 created: 2026-05-26
 origin_phase: "08"
 area: dashboard/records
+resolves_phase: 15
 ---
 
 # Add map / Google Maps link to submission detail page
