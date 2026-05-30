@@ -55,6 +55,29 @@ Close two outstanding gaps surfaced at the end of v2.0: (1) connect the worker-s
 - [x] **Phase 12: Submission-Driven Hakkediş** - Each approved Telegram work-application submission contributes to the in-progress hakkediş period in real time with full traceability back to the source submission(s), without breaking the existing v2.0 period-rollup model (completed 2026-05-28)
 - [x] **Phase 13: UX & Brand Pass** - Check in the bayrak.ai brand reference, build shared brand component primitives, re-skin every existing dashboard surface so the product looks as deliberate as it works (completed 2026-05-29)
 
+---
+
+## Milestone v4.0 — Document-Driven Route Import, Chainage As-Built Tracking & AI Vision Assist
+
+Turn the imported pipeline drawing into a living chainage-based as-built record — the office can see, for any kilometre of the route, what work happened, who did it, and who audited it — and ship the deferred AI vision assist so the auditor gets decision support at the point of approval.
+
+**Locked decisions carried into all v4.0 phases:**
+- DWG handled via engineer-exported DXF — no binary parser; source CRS declared explicitly per import (no auto-detect) and reprojected to WGS84 via `proj4` (JS-side, Node.js runtime only)
+- Mandatory satellite preview before any DB write — the critical safety net for CRS errors; no route save without engineer confirmation
+- Chainage is **snapshotted at auditor approval** in the same transaction as `status = 'approved'`; re-import never rewrites history; live derived chainage only for pending work
+- Route geometry is versioned (`geometry_version` on `routes`); re-import increments the version and warns the office engineer that existing chainage snapshots are unchanged
+- Chainage stored as `numeric(10,2)` (centimetre precision); all bucketing in Postgres `FLOOR()`; completion capped with `LEAST(..., 100.00)`
+- AI flags are advisory-only, async (never in the Telegram webhook critical path), and **eval-gated** — flags visible only after eval harness confirms precision ≥ 0.80 on the "anomaly" class
+- BOQ ingestion stays on the existing Excel importer — drawing-based BOQ extraction remains Out of Scope (saha ADR-0002)
+- All new schema changes via `npx tsx src/db/migrate.ts` applied to BOTH Neon branches (dev + test); geometry columns hand-edited to `geometry(LineString, 4326)`; GIST index hand-added
+- `tenant_id` on every new table insert; money/quantity math in Postgres `numeric`; no `after()` or `logOfficeActivity` from the bot path
+
+- [ ] **Phase 14: Schema Foundation + DXF Route Import** - Migrate schema (routes extended, submissions chainage columns, submission_ai_flags table), DXF parsing pipeline with CRS reprojection, satellite preview confirmation, and source document reference storage
+- [ ] **Phase 15: Chainage As-Built View + Approval Snapshot** - Approval path snapshots chainage_m at decision time, per-kilometre as-built strip view with drill-down, chainage calibration offset, route completion % KPI, and chainage Excel/PDF export
+- [ ] **Phase 16: AI Vision Assist** - Eval harness + labeled dataset first, then async Claude vision analysis wired to the approval path, advisory flag display on submission detail and as-built strip, perceptual-hash duplicate photo detection, and cron retry for stuck pending rows
+
+---
+
 ## Phase Details
 
 ### Phase 1: Foundation
@@ -488,10 +511,65 @@ Plans:
 - [x] 13-04-PLAN.md — Projects + Auth + Marketing re-skin: projects list/detail/edit/new/BOQ template (SETUP-04 balance + GeoJSON + people-assignment preserved), auth signin (BrandLogo lg + magic-link form) + auth error, marketing landing root (`/`), end-of-phase blocking-human UAT (Manual UAT rows 4-7) (BRAND-02)
 **UI hint**: yes
 
+---
+
+## Milestone v4.0 Phase Details
+
+### Phase 14: Schema Foundation + DXF Route Import
+
+**Goal**: The schema foundation for all v4.0 capabilities is in place and office engineers can import a pipeline route from a DXF file — with mandatory CRS declaration, satellite preview confirmation, and the original source document stored for reference — while the existing GeoJSON path continues to work unchanged
+**Depends on**: Phase 13
+**Requirements**: RTE-01, RTE-02, RTE-03, RTE-04, RTE-05
+**Success Criteria** (what must be TRUE):
+
+  1. Office engineer can upload a DXF file, select the centerline layer from a list of detected layers, and declare the source coordinate system (TUREF/TM30, UTM 35N/36N, ED50, or WGS84); the route is reprojected to WGS84 and displayed on the satellite basemap for confirmation before any database write occurs
+  2. If the engineer cancels the satellite preview, no route record is written; if they confirm, the reprojected route appears on the project map tab identical to a GeoJSON-uploaded route — and the existing GeoJSON upload path continues to work without any regression
+  3. Re-importing a route on a project that already has approved submissions shows a warning naming the number of existing approved submissions; after confirmation, the new route geometry is stored under an incremented `geometry_version`, and a direct database check confirms existing approved submissions' `chainage_m` values are unchanged
+  4. The original DXF (and PDF where provided) is accessible from the project route tab as a "Kaynak Belge" download link, and the declared CRS and layer name are shown in the route metadata card
+  5. A unit test for `reprojectToWGS84(5254, 600000, 4570000)` asserts output longitude is in [25.7, 44.8] and latitude is in [35.8, 42.2]; uploading a DXF with axis-swapped or out-of-Turkey coordinates is rejected with a clear error before any DB write
+  6. v1 core-loop capabilities (AUTH-01..04, SETUP-01..04, LOG-01..10, AUDIT-01..06, GEO-01..02, DASH-01..05, I18N-01..02) are moved from Active to Validated in PROJECT.md
+
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 15: Chainage As-Built View + Approval Snapshot
+
+**Goal**: Every approved submission carries an immutable chainage snapshot taken at the moment of auditor approval, and the office can view a per-kilometre as-built strip of the route showing what work was done at each segment, drill into the underlying submissions, see route completion %, and export the as-built record to Excel and PDF
+**Depends on**: Phase 14
+**Requirements**: CHN-01, CHN-02, CHN-03, CHN-04, CHN-05, CHN-06, CHN-07
+**Success Criteria** (what must be TRUE):
+
+  1. When an auditor approves a submission via Telegram, a direct database check confirms `submissions.chainage_m` is populated (non-NULL, `numeric(10,2)`) and `submissions.route_geometry_version` matches the current route version — without any additional action from the office
+  2. Office engineer can open the "As-Built" tab on a project and see a per-kilometre strip table with colour-coded status (not started / in progress / approved), work count, total quantity by BOQ item, worker names, and auditor names for each km bucket; chainages displayed in "km 2+347" Turkish convention
+  3. Clicking a row in the as-built strip opens the canonical submission detail page for that segment's submissions, and the back-link returns to the strip view
+  4. The project overview KPI shows route completion % by chainage (approved metres / total route length, clamped at 100%) — and a bucket with over-100% approved work shows 100%, not a value above it
+  5. Office engineer can calibrate chainage by entering a numeric offset in metres; after saving, all user-facing displays (dashboard strip, Telegram notifications for new approvals, Excel/PDF exports) show the calibrated chainage — a direct spot-check confirms the same value appears across all three surfaces
+  6. Office engineer can export the as-built breakdown to Excel (columns: Km Başlangıç, Km Bitiş, İş Adedi, Malzeme, Miktar, Birim, İşçi, Denetçi) and PDF consistent with the existing hakkediş export aesthetic; the exported file passes the same auth guard (401 on no session) as all other export route handlers
+
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 16: AI Vision Assist
+
+**Goal**: Photo and notes from every approved submission are analyzed asynchronously by Claude vision — anomaly flags and work classifications appear as advisory hints on the submission detail page and as amber indicators in the as-built strip — with the eval harness built first, so no flag is ever shown to an auditor before precision ≥ 0.80 is confirmed on the labeled reference dataset
+**Depends on**: Phase 14 (submission_ai_flags schema) and Phase 15 (as-built strip for flag indicators)
+**Requirements**: AI-01, AI-02, AI-03, AI-04, AI-05, AI-06
+**Success Criteria** (what must be TRUE):
+
+  1. The eval harness (`tests/ai-vision.test.ts`) runs against a labeled fixture dataset of real submission photos with ground-truth anomaly labels; the test suite reports precision ≥ 0.80 on the "anomaly" class before any flag UI is enabled — and a flag in the codebase confirms the eval gate is the single switch controlling flag display
+  2. After an auditor approves a submission via Telegram, Vercel function logs confirm the webhook response is sent before the AI analysis log line appears — proving vision runs off the critical path; the worker confirmation and auditor notification are never delayed by AI processing
+  3. When a submission has an `eval_passed = true` flag in `submission_ai_flags`, the submission detail page displays an `AiFlagCard` with the anomaly description in Turkish, a confidence badge (traffic-light color by score), and the auto-suggested BOQ material classification; when no eval-passed flag exists, the card is absent entirely
+  4. When two submissions share the same perceptual hash (near-duplicate photos), the second submission's AI flag record carries a "duplicate photo" advisory and the first analysis result is reused — no second Claude vision API call is made
+  5. An auditor can approve or reject a submission regardless of what the AI flag says — no code path connects `submission_ai_flags` to `submissions.status`; a grep of the codebase confirms this
+  6. A cron job at `/api/cron/ai-flags` picks up `submission_ai_flags` rows with `status = 'pending'` older than 5 minutes and retries the analysis; the cron is registered in `vercel.json` and protected by `CRON_SECRET`
+
+**Plans**: TBD
+**UI hint**: yes
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12 → 13
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12 → 13 → 14 → 15 → 16
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -508,3 +586,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 11. Exports | 7/7 | Complete    | 2026-05-28 |
 | 12. Submission-Driven Hakkediş | 4/4 | Complete    | 2026-05-28 |
 | 13. UX & Brand Pass | 5/5 | Complete    | 2026-05-29 |
+| 14. Schema Foundation + DXF Route Import | 0/TBD | Not started | - |
+| 15. Chainage As-Built View + Approval Snapshot | 0/TBD | Not started | - |
+| 16. AI Vision Assist | 0/TBD | Not started | - |

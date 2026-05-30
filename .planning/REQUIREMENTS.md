@@ -236,11 +236,6 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DASH-03 | Phase 5 | Complete |
 | DASH-04 | Phase 5 | Complete |
 | DASH-05 | Phase 5 | Complete |
-| AI-01 | Phase 6 | Pending |
-| AI-02 | Phase 6 | Pending |
-| AI-03 | Phase 6 | Pending |
-| AI-04 | Phase 6 | Pending |
-| AI-05 | Phase 6 | Pending |
 | COST-01 | Phase 7 | Complete |
 | COST-02 | Phase 7 | Complete |
 | COST-03 | Phase 7 | Complete |
@@ -267,14 +262,44 @@ Which phases cover which requirements. Updated during roadmap creation.
 | EXP-02 | Phase 11 | Complete |
 | EXP-03 | Phase 11 | Complete |
 | EXP-04 | Phase 11 | Complete |
+| SDH-01 | Phase 12 | Complete |
+| SDH-02 | Phase 12 | Complete |
+| SDH-03 | Phase 12 | Complete |
+| BRAND-01 | Phase 13 | Complete |
+| BRAND-02 | Phase 13 | Complete |
+| BRAND-03 | Phase 13 | Complete |
+| RTE-01 | Phase 14 | Pending |
+| RTE-02 | Phase 14 | Pending |
+| RTE-03 | Phase 14 | Pending |
+| RTE-04 | Phase 14 | Pending |
+| RTE-05 | Phase 14 | Pending |
+| CHN-01 | Phase 15 | Pending |
+| CHN-02 | Phase 15 | Pending |
+| CHN-03 | Phase 15 | Pending |
+| CHN-04 | Phase 15 | Pending |
+| CHN-05 | Phase 15 | Pending |
+| CHN-06 | Phase 15 | Pending |
+| CHN-07 | Phase 15 | Pending |
+| AI-01 | Phase 16 | Pending |
+| AI-02 | Phase 16 | Pending |
+| AI-03 | Phase 16 | Pending |
+| AI-04 | Phase 16 | Pending |
+| AI-05 | Phase 16 | Pending |
+| AI-06 | Phase 16 | Pending |
 
 **Coverage:**
-- v1 requirements: 38 total
+- v1 requirements: 38 total (AI-01..AI-05 now tracked in Phase 16; Phase 6 stub retired)
 - v1 mapped to phases: 38
 - v2.0 requirements: 26 total
 - v2.0 mapped to phases: 26
+- v3.0 requirements: 6 total
+- v3.0 mapped to phases: 6
+- v4.0 requirements: 18 total (RTE-01..05 + CHN-01..07 + AI-01..06; Bookkeeping is a task, not a REQ-ID)
+- v4.0 mapped to phases: 18
 - Unmapped: 0 ✓
+
+**Phase 6 note:** Phase 6 (AI Vision Assist) was a v1 stub for AI-01..AI-05 that was repeatedly deferred. In v4.0, AI-01..AI-05 are activated and AI-06 (perceptual hash) is added — all six requirements are now assigned to Phase 16. Phase 6 stub remains in ROADMAP.md as a historical record of the original v1 plan.
 
 ---
 *Requirements defined: 2026-05-23*
-*Last updated: 2026-05-26 — Phase 8/9 rescope: UX-03/04/05 + PERF-04 moved Phase 9 → Phase 8 (full admin experience layer); Phase 9 trimmed to scorecards/leaderboard/alerts (PERF-01/02/03/05/06)*
+*Last updated: 2026-05-30 — v4.0 requirements mapped: RTE-01..05 → Phase 14, CHN-01..07 → Phase 15, AI-01..06 → Phase 16; SDH-01..03 + BRAND-01..03 traceability rows added; AI-01..05 re-pointed from Phase 6 stub to Phase 16*
