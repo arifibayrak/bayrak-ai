@@ -787,19 +787,19 @@ await tx.update(sub2).set({
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Telegram notification for chainage at approval**
+1. **Telegram notification for chainage at approval** — **RESOLVED:** Plan 15-02 Task 2 adds the calibrated chainage line to the worker approval notification.
    - What we know: CONTEXT.md §Carried Forward says "applying consistently to Telegram notifications for NEW approvals." The current `MESSAGES.workerApproved` is a fixed string, not parameterized.
    - What's unclear: Should Phase 15 add a chainage line to the worker's approval notification message? This requires passing `chainageM + chainageOffsetM` to the message builder.
    - Recommendation: Include a task to add chainage to the worker notification. It requires: (a) fetching `chainageOffsetM` from `routes` in the post-commit block, (b) extending `MESSAGES.workerApproved` to accept an optional chainage param, (c) calling `formatChainage(chainageM + offsetM)`.
 
-2. **`getCanonicalSubmissions` coordinate extension impact**
+2. **`getCanonicalSubmissions` coordinate extension impact** — **RESOLVED:** Plan 15-03 Task 1 adds nullable `snappedLat`/`snappedLon` (additive, no breaking change).
    - What we know: `getCanonicalSubmissions` is used by analytics, export, and the detail page — all callers.
    - What's unclear: Adding `snappedLat` + `snappedLon` to the SELECT may increase row size marginally; does it affect any existing callers?
    - Recommendation: The columns are nullable and additive. All existing callers ignore unknown fields in TypeScript. No breaking change.
 
-3. **Backfill migration 0013 — what if `total_length_m` is NULL for some routes?**
+3. **Backfill migration 0013 — what if `total_length_m` is NULL for some routes?** — **RESOLVED:** Plan 15-04 Task 1 step 5 runs the post-apply COUNT verification and flags non-zero (route needs re-upload to populate total_length_m).
    - What we know: `total_length_m` was added in migration 0010 but only populated by `uploadRoute` calls AFTER Phase 14 was deployed. Pre-Phase-14 routes have `total_length_m IS NULL`.
    - What's unclear: Were any routes re-uploaded after Phase 14 deployment? If not, `total_length_m` may be NULL for the project route, making the backfill a no-op.
    - Recommendation: The backfill migration already guards with `AND r.total_length_m IS NOT NULL`. If `total_length_m` is NULL, those rows are left with `chainage_m IS NULL` and the phase-15 deployment of the approval snapshot path will populate them going forward. Add a verification step: `SELECT COUNT(*) FROM submissions WHERE status='approved' AND chainage_m IS NULL` — if non-zero after backfill, the route needs a re-upload to populate `total_length_m`.
