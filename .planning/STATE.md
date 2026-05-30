@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: Document-Driven Route Import, Chainage As-Built Tracking & AI Vision Assist
 status: verifying
-stopped_at: Phase 15 context gathered
-last_updated: "2026-05-30T22:01:01.242Z"
+stopped_at: Phase 15 UI-SPEC approved
+last_updated: "2026-05-30T22:14:40.339Z"
 last_activity: 2026-05-30
 progress:
   total_phases: 6
@@ -328,6 +328,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-05-30T22:01:01.231Z
-Stopped at: Phase 15 context gathered
-Resume file: .planning/phases/15-chainage-as-built-view-approval-snapshot/15-CONTEXT.md
+Last session: 2026-05-30T22:14:40.333Z
+Stopped at: Phase 15 UI-SPEC approved
+Resume file: .planning/phases/15-chainage-as-built-view-approval-snapshot/15-UI-SPEC.md
