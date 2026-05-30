@@ -1,7 +1,8 @@
 ---
 phase: 15
 slug: chainage-as-built-view-approval-snapshot
-status: draft
+status: approved
+reviewed_at: 2026-05-30
 shadcn_initialized: true
 preset: detected-from-components-json
 created: 2026-05-30
@@ -39,6 +40,7 @@ Declared values (all multiples of 4). No new tokens introduced — existing comp
 |-------|-------|-------------------|
 | xs | 4px (`p-1`) | Icon gaps inside chainage bar segments, badge padding |
 | sm | 8px (`p-2`) | Table cell horizontal padding, strip bar container padding |
+| (D-125) | 12px (`p-3`) | BRAND.md D-125 compact-density carry-over: KpiCard body + table-header padding — multiple of 4, existing primitive, not new in Phase 15 |
 | md | 16px (`p-4`) | Tab content section padding, card body default |
 | lg | 24px (`p-6`) | Tab header padding (sticky bar) |
 | xl | 32px | Vertical gap between KPI row and strip table |
@@ -91,7 +93,11 @@ The D-04 decision uses amber for "in-progress" status, which overlaps with the b
 - The chainage bar in-progress segment uses `bg-amber-300` (lighter than amber-500) to visually separate it from active-CTA amber. This creates sufficient contrast hierarchy: amber-500 = CTA / amber-300 = status.
 - Exact colour bar segment classes: `bg-emerald-400` (approved), `bg-amber-300` (in-progress), `bg-slate-200` (not-started).
 
-**Accent reserved for:** Granularity toggle active tab indicator, export button primary fill (Excel/PDF triggers), calibration save button, chainage bar in-progress segments (as amber-300, not amber-500).
+**Accent reserved for:** Granularity toggle active tab indicator, export button primary fill (Excel/PDF triggers), calibration save button.
+
+**Status colour override (non-accent):** the chainage bar in-progress segment uses `bg-amber-300` — deliberately lower-chroma than the reserved accent `amber-500` so it reads as status, not CTA. This is NOT part of the accent reservation; status colours (emerald-400 / amber-300 / slate-200) are a separate non-interactive palette.
+
+**Primary focal point:** the Route Completion % KpiCard (top-left of the KPI row) — largest typography (30px semibold) and highest semantic weight on the screen; the colour bar is the secondary at-a-glance element.
 
 ---
 
@@ -116,7 +122,7 @@ New components this phase — all in `src/components/dashboard/` unless noted. A
 ### ChainageOffsetForm.tsx (client component)
 - **Placement decision (Claude's Discretion, 15-CONTEXT.md):** Render inside the As-Built tab header area, in a `BrandCard` below the KPI row, above the colour bar. Title: "Chainage Kalibrasyonu" / "Chainage Calibration". This keeps calibration co-located with the data it affects, visible without navigating away.
 - Input: single numeric text input (`type="number" step="0.01"`), labelled "Offset (m)" with `text-xs text-muted-foreground` help text: "Km 0'dan itibaren ofset (metre)" / "Offset in metres from km 0". Width: `w-32` (128px).
-- Save button: `BrandButton variant="default" size="sm"` — "Kaydet" / "Save".
+- Save button: `BrandButton variant="default" size="sm"` — "Ofset Kaydet" / "Save Offset" (key `dashboard.asbuilt.calibration_save`).
 - Feedback: inline success toast (sonner/shadcn toast) "Kaydedildi" on success; error text below input on failure.
 - On save: calls `setChainageOffset` Server Action, which triggers `router.refresh()` to re-render the tab with calibrated values.
 
@@ -247,7 +253,7 @@ No new component needed — plain anchor with Tailwind classes.
 | Calibration card heading | Chainage Kalibrasyonu | Chainage Calibration | `dashboard.asbuilt.calibration_heading` |
 | Calibration input label | Ofset (metre) | Offset (metres) | `dashboard.asbuilt.calibration_label` |
 | Calibration help text | Km 0'dan itibaren ofset değeri | Offset from km 0 | `dashboard.asbuilt.calibration_help` |
-| Calibration save button | Kaydet | Save | `common.save` (existing) |
+| Calibration save button | Ofset Kaydet | Save Offset | `dashboard.asbuilt.calibration_save` (new) |
 | Calibration success toast | Kaydedildi | Saved | `common.saved` (existing) |
 | Granularity toggle label (sr-only) | Granülerlik seçin | Select granularity | `dashboard.asbuilt.granularity_label` |
 | Table col: km range | Km Aralığı | Km Range | `dashboard.asbuilt.col_km_range` |
@@ -263,7 +269,7 @@ No new component needed — plain anchor with Tailwind classes.
 | Status badge: not started | Başlanmadı | Not Started | `dashboard.asbuilt.status_not_started` |
 | Export Excel button | Excel İndir | Download Excel | `dashboard.asbuilt.export_excel` |
 | Export PDF button | PDF İndir | Download PDF | `dashboard.asbuilt.export_pdf` |
-| Primary CTA (save offset) | Kaydet | Save | reuse `common.save` |
+| Primary CTA (save offset) | Ofset Kaydet | Save Offset | new `dashboard.asbuilt.calibration_save` |
 | Empty state heading | Henüz kayıt yok | No records yet | `dashboard.asbuilt.empty_heading` |
 | Empty state body | Bu projede onaylanmış iş kaydı bulunmuyor. İlk onaydan sonra as-built görünümü burada gösterilecek. | No approved work records found for this project. The as-built view will appear after the first auditor approval. | `dashboard.asbuilt.empty_body` |
 | Error state | Güzergah verisi yüklenemedi. Sayfayı yenileyin. | Failed to load route data. Refresh the page. | `dashboard.asbuilt.error_body` |
