@@ -410,6 +410,9 @@ export async function handleAuditDecision(
     let approvedQuantity: string | number = 0;
     let boqItemId = '';
     const workerPersonId = submission.personId;
+    // Phase 15: chainage snapshot values captured from tx for worker notification (Task 2)
+    let capturedChainageM: string | null = null;
+    let capturedChainageOffsetM: string | null = null;
 
     try {
       await txDb.transaction(async (tx) => {
@@ -430,6 +433,9 @@ export async function handleAuditDecision(
             id: sub2.id,
             quantity: sub2.quantity,
             boqItemId: sub2.boqItemId,
+            // [Phase 15] needed for chainage snapshot computation
+            segmentFraction: sub2.segmentFraction,
+            projectId: sub2.projectId,
           });
 
         if (affected.length === 0) {
@@ -447,6 +453,44 @@ export async function handleAuditDecision(
             approvedQty: sql2`approved_qty + ${affected[0].quantity}`,
           })
           .where(eq2(boq2.id, affected[0].boqItemId));
+
+        // [Phase 15] CHN-03: write chainage_m + route_geometry_version immutably at approval
+        // T-15-02-WINDOW: both writes are inside the SAME transaction as the status flip —
+        // no window where status='approved' but chainage_m IS NULL (Pitfall 1).
+        // T-15-02-FLOAT: ROUND executed in Postgres via sql2 template, not JS float math.
+        // Pitfall 5: no auth(), logOfficeActivity, or after() — bot path has no Auth.js session.
+        if (affected[0].segmentFraction != null && affected[0].projectId) {
+          const { routes: rte } = await import('@/db/schema/routes');
+          const routeRows = await tx
+            .select({
+              totalLengthM: rte.totalLengthM,
+              geometryVersion: rte.geometryVersion,
+              chainageOffsetM: rte.chainageOffsetM,
+            })
+            .from(rte)
+            .where(eq2(rte.projectId, affected[0].projectId))
+            .limit(1);
+
+          const route = routeRows[0];
+
+          if (route?.totalLengthM != null) {
+            // Postgres-side ROUND — money-math discipline: never multiply numeric strings in JS
+            await tx
+              .update(sub2)
+              .set({
+                chainageM: sql2`ROUND(${affected[0].segmentFraction}::numeric * ${route.totalLengthM}::numeric, 2)`,
+                routeGeometryVersion: route.geometryVersion,
+              })
+              .where(eq2(sub2.id, submissionId));
+
+            // Capture for post-commit worker notification (Task 2)
+            // Re-derive in JS for display only — the stored value was computed by Postgres
+            const fracNum = Number(affected[0].segmentFraction);
+            const lenNum = Number(route.totalLengthM);
+            capturedChainageM = String(Math.round(fracNum * lenNum * 100) / 100);
+            capturedChainageOffsetM = route.chainageOffsetM != null ? String(route.chainageOffsetM) : '0';
+          }
+        }
       });
     } catch (err) {
       if (err instanceof AlreadyResolvedError) {
@@ -517,10 +561,18 @@ export async function handleAuditDecision(
 
       if (workerRows.length) {
         const { bot } = await import('@/lib/telegram');
+        // [Phase 15] Compute calibrated chainage label for worker notification (Open Question 1).
+        // formatChainage is a pure zero-import utility — safe to import here (no Auth.js dep).
+        // Pitfall 13: same calibrated value (raw + offset) as dashboard + export.
+        let chainageLabel: string | undefined;
+        if (capturedChainageM != null && capturedChainageOffsetM != null) {
+          const { formatChainage } = await import('@/lib/format-chainage');
+          chainageLabel = formatChainage(Number(capturedChainageM) + Number(capturedChainageOffsetM));
+        }
         try {
           await bot.api.sendMessage(
             Number(workerRows[0].telegramUserId),
-            MESSAGES.workerApproved
+            MESSAGES.workerApproved(chainageLabel)
           );
         } catch (notifyErr) {
           // D-40: best-effort — log and continue

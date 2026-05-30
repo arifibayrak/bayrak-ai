@@ -168,9 +168,15 @@ export const MESSAGES = {
   auditRejectedOutcome: (auditorName: string, reason: string) =>
     `❌ Reddedildi — ${auditorName}: ${reason}`,
 
-  /** AUDIT-04 / D-37: worker notification on approve */
-  workerApproved:
-    '✅ Kaydınız onaylandı.',
+  /** AUDIT-04 / D-37: worker notification on approve.
+   * @param chainageLabel - Optional calibrated chainage label (e.g. "km 2+347").
+   *   When provided, appends a Turkish location line to the notification.
+   *   When absent (no route / no segment_fraction), returns the original text unchanged.
+   *   This keeps all existing callers valid (zero-argument call still works). */
+  workerApproved: (chainageLabel?: string) =>
+    chainageLabel
+      ? `✅ Kaydınız onaylandı.\n📍 Konum: ${chainageLabel}`
+      : '✅ Kaydınız onaylandı.',
 
   /** AUDIT-05 / D-37: worker notification on reject */
   workerRejected: (reason: string) =>
