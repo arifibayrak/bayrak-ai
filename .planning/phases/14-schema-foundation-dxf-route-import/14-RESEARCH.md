@@ -987,22 +987,25 @@ geometryVersion: 1,
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **DXF fixture files for unit tests**
    - What we know: `parseDxfToLineString` unit tests require real DXF files in Turkish projected coordinates (TUREF/TM30 EPSG:5254).
    - What's unclear: No fixture DXF exists in the codebase. The research cannot synthesize a valid DXF binary.
    - Recommendation: Create a minimal synthetic DXF fixture as a test helper — a DXF text string with one LWPOLYLINE entity on layer "AXIS" with 3 vertices in valid TUREF/TM30 coordinates. This is a text format and can be hand-authored (or generated via a single AutoCAD export). Store in `tests/fixtures/sample-route-epsg5254.dxf`. Alternatively, generate it programmatically in the test setup using known coordinate values.
+   - **RESOLVED:** Plan 14-01 Task 2 hand-authors programmatic DXF text-string fixtures (`tests/fixtures/dxf.ts`) — no AutoCAD export needed.
 
 2. **`tables.layer.layers` exact property path**
    - What we know: `dxf.tables.layer` is the layer table from the dxf-parser README.
    - What's unclear: The exact nested property path (`layers` or the object directly) varies between dxf-parser versions.
    - Recommendation: Log `Object.keys(dxf.tables?.layer)` on the first parse in development and confirm the path before writing the layer extraction code. Guard with optional chaining throughout.
+   - **RESOLVED:** Plan 14-04 Task 1 guards `dxf.tables?.layer?.layers` with optional chaining throughout (no hard dependency on the exact path).
 
 3. **`onUploadCompleted` local development**
    - What we know: Vercel Blob's `onUploadCompleted` webhook does not fire in local dev without ngrok.
    - What's unclear: Whether `vercel dev` provides a tunneled URL automatically.
    - Recommendation: Keep all DB write logic in the `uploadDxf` Server Action (called after `upload()` returns on the client). Use `onUploadCompleted` only for logging. This design sidesteps the local dev limitation entirely.
+   - **RESOLVED:** Plan 14-04 places all DB writes in the `uploadDxf` Server Action; `onUploadCompleted` only logs — local-dev limitation sidestepped by design.
 
 ---
 
