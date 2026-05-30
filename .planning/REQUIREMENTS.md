@@ -163,7 +163,7 @@ Defined: 2026-05-29. **Locked decisions:** DWG handled via engineer-exported DXF
 
 ### Housekeeping
 
-- [ ] **Bookkeeping reconciliation**: Move already-built v1 core-loop capabilities from Active to Validated in PROJECT.md so the tracker reflects reality (roadmap task, not a testable REQ-ID)
+- [x] **Bookkeeping reconciliation**: Move already-built v1 core-loop capabilities from Active to Validated in PROJECT.md so the tracker reflects reality (roadmap task, not a testable REQ-ID) — *Done in Phase 14 Plan 06 (14-06).*
 
 ## Future Requirements (post-v4.0)
 
