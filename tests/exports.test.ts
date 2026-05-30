@@ -120,6 +120,8 @@ describe('EXP-01 submission ledger', () => {
       photoUrl: 'https://example.com/photo.jpg',
       notes: null,
       rejectionReason: null,
+      snappedLat: null,
+      snappedLon: null,
     };
     const buf = await buildSubmissionLedger([fakeRow]);
 
@@ -166,6 +168,8 @@ describe('EXP-01 submission ledger', () => {
         photoUrl: 'https://example.com/photo.jpg',
         notes: null,
         rejectionReason: null,
+        snappedLat: null,
+        snappedLon: null,
       },
       {
         id: 'sub-b',
@@ -190,6 +194,8 @@ describe('EXP-01 submission ledger', () => {
         photoUrl: 'https://example.com/photo.jpg',
         notes: null,
         rejectionReason: null,
+        snappedLat: null,
+        snappedLon: null,
       },
     ];
     const buf = await buildSubmissionLedger(formulaRows);

@@ -41,4 +41,11 @@ export type CanonicalSubmission = {
   photoUrl: string;
   notes: string | null;
   rejectionReason: string | null;
+  // [Phase 15 — folded todo submission-detail-map-link]
+  // snappedLat = ST_Y(snapped_point) = latitude (WGS84 stored lng-first via ST_MakePoint)
+  // snappedLon = ST_X(snapped_point) = longitude
+  // Null when snapped_point IS NULL (no_route submissions).
+  // Coordinates are floats — use Number(), NOT decimal.js (not money values).
+  snappedLat: number | null;  // ST_Y(snapped_point) = latitude; null when no snapped point
+  snappedLon: number | null;  // ST_X(snapped_point) = longitude; null when no snapped point
 };

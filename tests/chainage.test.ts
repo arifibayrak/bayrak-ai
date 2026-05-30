@@ -90,8 +90,47 @@ describe('completion clamp (CHN-06 over-completion)', () => {
 // ST_Y = lat, ST_X = lon (no axis swap); Google Maps link q=lat,lon
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Pure unit tests — maps link axis order (folded todo submission-detail-map-link)
+// Asserts that the SELECT aliases encode the correct WGS84 axis order:
+//   snapped_lat = ST_Y(snapped_point) = latitude
+//   snapped_lon = ST_X(snapped_point) = longitude
+// Google Maps ?q=lat,lon means snappedLat must come first in the URL.
+// This test reads the analytics source to enforce the naming contract at CI time.
+// ---------------------------------------------------------------------------
+
 describe('maps link (ST_Y=lat, ST_X=lon)', () => {
-  it.todo('maps link: ST_Y gives latitude, ST_X gives longitude (no axis swap)');
+  it('maps link: analytics SELECT uses ST_Y AS snapped_lat (latitude) and ST_X AS snapped_lon (longitude)', () => {
+    // Read the analytics file and assert the axis-order encoding by checking the
+    // column aliases appear in the correct order relative to ST_Y / ST_X.
+    // This is a static-edge test: deterministic, <100ms, catches future axis swaps.
+    const fs = require('fs');
+    const path = require('path');
+    const src = fs.readFileSync(
+      path.join(__dirname, '../src/actions/analytics.ts'),
+      'utf-8'
+    );
+    // ST_Y (latitude) must be aliased as snapped_lat
+    expect(src).toMatch(/ST_Y\(s\.snapped_point\)\s+AS\s+snapped_lat/);
+    // ST_X (longitude) must be aliased as snapped_lon
+    expect(src).toMatch(/ST_X\(s\.snapped_point\)\s+AS\s+snapped_lon/);
+    // Row mapper: snappedLat derives from snapped_lat (ST_Y), snappedLon from snapped_lon (ST_X)
+    expect(src).toMatch(/snappedLat:\s*r\.snapped_lat/);
+    expect(src).toMatch(/snappedLon:\s*r\.snapped_lon/);
+  });
+
+  it('maps link: SubmissionDetailView URL uses snappedLat before snappedLon (q=lat,lon)', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const src = fs.readFileSync(
+      path.join(__dirname, '../src/components/admin/SubmissionDetailView.tsx'),
+      'utf-8'
+    );
+    // The Google Maps URL must have lat first, lon second: ?q=${snappedLat},${snappedLon}
+    expect(src).toMatch(/google\.com\/maps\?q=\$\{submission\.snappedLat\},\$\{submission\.snappedLon\}/);
+    // rel="noopener noreferrer" must be present (T-15-03-TABNAB mitigation)
+    expect(src).toMatch(/rel="noopener noreferrer"/);
+  });
 });
 
 // ---------------------------------------------------------------------------

@@ -255,7 +255,13 @@ export async function getCanonicalSubmissions(
       s.location_distance_m,
       s.photo_url,
       s.notes,
-      s.rejection_reason
+      s.rejection_reason,
+      -- [Phase 15 — folded todo submission-detail-map-link]
+      -- Pitfall 5: ST_X = longitude, ST_Y = latitude (WGS84 stored lng-first via ST_MakePoint).
+      -- Google Maps ?q=lat,lon → snapped_lat = ST_Y, snapped_lon = ST_X.
+      -- Named semantically so columns cannot be silently swapped.
+      ST_Y(s.snapped_point)                                       AS snapped_lat,
+      ST_X(s.snapped_point)                                       AS snapped_lon
     FROM submissions s
     JOIN   projects  p   ON p.id = s.project_id
     JOIN   people    w   ON w.id = s.person_id
@@ -295,6 +301,10 @@ export async function getCanonicalSubmissions(
     photoUrl: String(r.photo_url),
     notes: r.notes != null ? String(r.notes) : null,
     rejectionReason: r.rejection_reason != null ? String(r.rejection_reason) : null,
+    // Coordinates: Number() is correct (not decimal.js — these are not money values).
+    // snapped_lat = ST_Y = latitude; snapped_lon = ST_X = longitude (Pitfall 5).
+    snappedLat: r.snapped_lat != null ? Number(r.snapped_lat) : null,
+    snappedLon: r.snapped_lon != null ? Number(r.snapped_lon) : null,
   }));
 }
 
