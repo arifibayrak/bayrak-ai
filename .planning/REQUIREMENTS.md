@@ -148,7 +148,7 @@ Defined: 2026-05-29. **Locked decisions:** DWG handled via engineer-exported DXF
 - [x] **CHN-02**: Office engineer can calibrate chainage by anchoring a known station value to a reference point, offsetting derived chainage to match the engineering drawing
 - [x] **CHN-03**: Each approved submission's chainage is snapshotted at the moment of auditor approval (immutable as-built record); in-progress/pending work may show a live derived chainage
 - [x] **CHN-04**: Office engineer can view a per-kilometre / per-segment as-built strip of the route showing, for each segment, status (not started / in progress / approved), what work was submitted, who the worker was, and who audited it
-- [ ] **CHN-05**: Selecting a chainage segment drills down to the underlying submissions (linking to the canonical submission detail view)
+- [x] **CHN-05**: Selecting a chainage segment drills down to the underlying submissions (linking to the canonical submission detail view)
 - [x] **CHN-06**: Per-segment approved work feeds route completion % by chainage and the BOQ progress view
 - [ ] **CHN-07**: The per-kilometre as-built breakdown is exportable to Excel/PDF consistent with existing reports
 
@@ -277,7 +277,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CHN-02 | Phase 15 | Complete |
 | CHN-03 | Phase 15 | Complete |
 | CHN-04 | Phase 15 | Complete |
-| CHN-05 | Phase 15 | Pending |
+| CHN-05 | Phase 15 | Complete |
 | CHN-06 | Phase 15 | Complete |
 | CHN-07 | Phase 15 | Pending |
 | AI-01 | Phase 16 | Pending |
