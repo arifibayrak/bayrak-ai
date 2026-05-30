@@ -17,6 +17,7 @@
 import { auth } from '@/lib/auth';
 import { db } from '@/db';
 import { routes } from '@/db/schema/routes';
+import { projects } from '@/db/schema/projects';
 import { submissions } from '@/db/schema/submissions';
 import { eq, and, count as dbCount } from 'drizzle-orm';
 import { getDefaultTenantId } from '@/lib/tenant';
@@ -53,6 +54,15 @@ export async function previewDxf(
   // Auth gate
   const session = await auth();
   if (!session) throw new Error('Unauthorized');
+
+  // CR-01 / CR-02 parity: verify the project belongs to the active tenant
+  // before any read or Blob fetch (IDOR mitigation — mirrors uploadDxf/uploadRoute).
+  const owned = await db
+    .select({ id: projects.id })
+    .from(projects)
+    .where(and(eq(projects.id, projectId), eq(projects.tenantId, getDefaultTenantId())))
+    .limit(1);
+  if (!owned.length) return { ok: false, error: 'NOT_FOUND' };
 
   // SSRF guard: blobUrl must be https and host must end with
   // .public.blob.vercel-storage.com
