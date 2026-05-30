@@ -72,7 +72,7 @@ Turn the imported pipeline drawing into a living chainage-based as-built record 
 - All new schema changes via `npx tsx src/db/migrate.ts` applied to BOTH Neon branches (dev + test); geometry columns hand-edited to `geometry(LineString, 4326)`; GIST index hand-added
 - `tenant_id` on every new table insert; money/quantity math in Postgres `numeric`; no `after()` or `logOfficeActivity` from the bot path
 
-- [ ] **Phase 14: Schema Foundation + DXF Route Import** - Migrate schema (routes extended, submissions chainage columns, submission_ai_flags table), DXF parsing pipeline with CRS reprojection, satellite preview confirmation, and source document reference storage
+- [x] **Phase 14: Schema Foundation + DXF Route Import** - Migrate schema (routes extended, submissions chainage columns, submission_ai_flags table), DXF parsing pipeline with CRS reprojection, satellite preview confirmation, and source document reference storage (completed 2026-05-30)
 - [ ] **Phase 15: Chainage As-Built View + Approval Snapshot** - Approval path snapshots chainage_m at decision time, per-kilometre as-built strip view with drill-down, chainage calibration offset, route completion % KPI, and chainage Excel/PDF export
 - [ ] **Phase 16: AI Vision Assist** - Eval harness + labeled dataset first, then async Claude vision analysis wired to the approval path, advisory flag display on submission detail and as-built strip, perceptual-hash duplicate photo detection, and cron retry for stuck pending rows
 
@@ -550,7 +550,7 @@ Plans:
 
 **Wave 5** *(blocked on 14-05)*
 
-- [ ] 14-06-PLAN.md — SC6 bookkeeping reconciliation: PROJECT.md Active→Validated for v1 capabilities + RTE-01..05 Done in REQUIREMENTS.md
+- [x] 14-06-PLAN.md — SC6 bookkeeping reconciliation: PROJECT.md Active→Validated for v1 capabilities + RTE-01..05 Done in REQUIREMENTS.md
 
 **UI hint**: yes
 
@@ -608,6 +608,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 11. Exports | 7/7 | Complete    | 2026-05-28 |
 | 12. Submission-Driven Hakkediş | 4/4 | Complete    | 2026-05-28 |
 | 13. UX & Brand Pass | 5/5 | Complete    | 2026-05-29 |
-| 14. Schema Foundation + DXF Route Import | 5/6 | In Progress|  |
+| 14. Schema Foundation + DXF Route Import | 6/6 | Complete   | 2026-05-30 |
 | 15. Chainage As-Built View + Approval Snapshot | 0/TBD | Not started | - |
 | 16. AI Vision Assist | 0/TBD | Not started | - |
