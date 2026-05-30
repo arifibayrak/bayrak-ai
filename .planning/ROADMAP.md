@@ -542,7 +542,7 @@ Plans:
 
 **Wave 3** *(blocked on 14-01 + 14-03)*
 
-- [ ] 14-04-PLAN.md — Backend pipeline: dxf-parser.ts impl (tests→GREEN) + uploadDxf + uploadRoute total_length_m/geometry_version patch + /api/dxf-upload Blob token route + i18n keys
+- [x] 14-04-PLAN.md — Backend pipeline: dxf-parser.ts impl (tests→GREEN) + uploadDxf + uploadRoute total_length_m/geometry_version patch + /api/dxf-upload Blob token route + i18n keys
 
 **Wave 4** *(blocked on 14-04)*
 
@@ -608,6 +608,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 11. Exports | 7/7 | Complete    | 2026-05-28 |
 | 12. Submission-Driven Hakkediş | 4/4 | Complete    | 2026-05-28 |
 | 13. UX & Brand Pass | 5/5 | Complete    | 2026-05-29 |
-| 14. Schema Foundation + DXF Route Import | 3/6 | In Progress|  |
+| 14. Schema Foundation + DXF Route Import | 4/6 | In Progress|  |
 | 15. Chainage As-Built View + Approval Snapshot | 0/TBD | Not started | - |
 | 16. AI Vision Assist | 0/TBD | Not started | - |
