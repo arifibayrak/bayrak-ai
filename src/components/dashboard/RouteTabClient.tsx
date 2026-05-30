@@ -24,6 +24,7 @@
 
 import { useState } from 'react';
 import dynamic from 'next/dynamic';
+import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { FileText, Download } from 'lucide-react';
 import { RouteUpload } from './RouteUpload';
@@ -91,6 +92,7 @@ export function RouteTabClient({
 }: RouteTabClientProps) {
   const t = useTranslations('dashboard.route');
   const tc = useTranslations('common');
+  const router = useRouter();
   const [savedRoute, setSavedRoute] = useState<ExistingRoute | null>(existingRoute);
   const [isReplacing, setIsReplacing] = useState(false);
   const [showAllVersions, setShowAllVersions] = useState(false);
@@ -103,7 +105,10 @@ export function RouteTabClient({
       id: routeId,
       coordinateCount: count,
       uploadedAt: new Date().toISOString(),
-      // New phase 14 fields are null until the page reloads with fresh server data
+      // Provisional placeholders — replaced almost immediately by the
+      // router.refresh() below, which re-runs the RSC and re-renders this
+      // component with the real provenance/version metadata and the updated
+      // Kaynak Belge history list.
       totalLengthM: null,
       sourceCrs: null,
       sourceLayer: null,
@@ -111,6 +116,11 @@ export function RouteTabClient({
       sourceBlobUrl: null,
     });
     setIsReplacing(false);
+    // WR-06: the action calls revalidatePath, but this client component holds
+    // stale all-null state in useState. router.refresh() re-fetches the RSC
+    // payload so CRS/length/version and the version-history list render the
+    // real just-uploaded data without requiring a full navigation/reload.
+    router.refresh();
   }
 
   // ── Kaynak Belge section ──────────────────────────────────────────────────────
