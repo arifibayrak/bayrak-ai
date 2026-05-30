@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: Document-Driven Route Import, Chainage As-Built Tracking & AI Vision Assist
 status: "Roadmap created; ready for `/gsd:plan-phase 14`"
-stopped_at: Phase 14 context gathered
-last_updated: "2026-05-30T00:21:57.809Z"
+stopped_at: Phase 14 UI-SPEC approved
+last_updated: "2026-05-30T00:33:09.308Z"
 last_activity: 2026-05-30 — v4.0 roadmap created (Phases 14–16)
 progress:
   total_phases: 6
@@ -325,6 +325,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-05-30T00:21:57.804Z
-Stopped at: Phase 14 context gathered
-Resume file: .planning/phases/14-schema-foundation-dxf-route-import/14-CONTEXT.md
+Last session: 2026-05-30T00:33:09.302Z
+Stopped at: Phase 14 UI-SPEC approved
+Resume file: .planning/phases/14-schema-foundation-dxf-route-import/14-UI-SPEC.md
