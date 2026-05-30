@@ -6,7 +6,9 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "migrate": "tsx src/db/migrate.ts",
+    "migrate:test": "dotenv -e .env.local -- sh -c 'DATABASE_URL=\"$TEST_DATABASE_URL\" tsx src/db/migrate.ts'"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.2",

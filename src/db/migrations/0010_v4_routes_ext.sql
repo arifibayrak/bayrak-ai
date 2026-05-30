@@ -12,7 +12,7 @@
 --      Do NOT edit 0007 (hash integrity — applied migration is immutable per Phase 09-03 decision).
 -- WARNING: Do NOT re-run drizzle-kit generate over this file — the partial index and hand-verified
 --          precision defaults will be lost. Apply only via `npx tsx src/db/migrate.ts` (D-49).
--- Note: --> statement-breakpoint separators are MANDATORY — neon-http cannot execute multiple
+-- Note: statement-breakpoint separators (-- > statement-breakpoint) are MANDATORY — neon-http cannot execute multiple
 --       DDL statements in a single prepared call (T-14-MULTISTMT mitigation, D-07-02 precedent).
 ALTER TABLE "routes" ADD COLUMN "geometry_version" integer NOT NULL DEFAULT 1;
 --> statement-breakpoint
