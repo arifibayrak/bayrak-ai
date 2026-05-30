@@ -15,7 +15,7 @@
  * — never via string concatenation (T-06-01 mitigation).
  */
 
-import { sql, eq, and } from 'drizzle-orm';
+import { sql, eq, and, desc } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { db } from '@/db';
 import { routes } from '@/db/schema/routes';
@@ -338,4 +338,74 @@ export async function getRouteGeoJSON(projectId: string) {
     uploadedAt: (uploadedAt as Date).toISOString(),
     geojson: JSON.parse(geomJson as string) as { type: 'LineString'; coordinates: [number, number][] },
   };
+}
+
+// ---------------------------------------------------------------------------
+// getRouteSourceDocuments — fetch source-document version history (D-05)
+// ---------------------------------------------------------------------------
+
+/**
+ * SourceDocument — client-serializable shape of a route_source_documents row.
+ * All Date fields serialized to ISO string for RSC→client boundary safety.
+ */
+export interface SourceDocument {
+  id: string;
+  blobUrl: string;
+  docType: string;
+  sourceCrs: string | null;
+  sourceLayer: string | null;
+  geometryVersion: number | null;
+  uploadedAt: string; // ISO-8601
+}
+
+/**
+ * getRouteSourceDocuments — return ALL source documents for a project, newest
+ * first (D-05: keep ALL prior source drawings as version history, never just
+ * the latest).
+ *
+ * Security (T-14-SRCDOC-READ): auth() guard + default-tenant scope mirrors getRoute.
+ * Only the project's own history rows are returned (no cross-project reads).
+ *
+ * @param projectId — UUID of the project
+ */
+export async function getRouteSourceDocuments(
+  projectId: string,
+): Promise<SourceDocument[]> {
+  const session = await auth();
+  if (!session) throw new Error('Unauthorized');
+
+  const rows = await db
+    .select({
+      id: routeSourceDocuments.id,
+      blobUrl: routeSourceDocuments.blobUrl,
+      docType: routeSourceDocuments.docType,
+      sourceCrs: routeSourceDocuments.sourceCrs,
+      sourceLayer: routeSourceDocuments.sourceLayer,
+      geometryVersion: routeSourceDocuments.geometryVersion,
+      uploadedAt: routeSourceDocuments.uploadedAt,
+      // Tenant scope: join via projects to enforce CR-01
+      projectTenantId: routeSourceDocuments.tenantId,
+    })
+    .from(routeSourceDocuments)
+    .where(
+      and(
+        eq(routeSourceDocuments.projectId, projectId),
+        eq(routeSourceDocuments.tenantId, getDefaultTenantId()), // CR-01 tenant scope
+      ),
+    )
+    .orderBy(desc(routeSourceDocuments.uploadedAt)); // newest first (D-05)
+
+  // Serialize Date → ISO string for RSC→client boundary safety
+  return rows.map((row) => ({
+    id: row.id,
+    blobUrl: row.blobUrl,
+    docType: row.docType,
+    sourceCrs: row.sourceCrs,
+    sourceLayer: row.sourceLayer,
+    geometryVersion: row.geometryVersion,
+    uploadedAt:
+      row.uploadedAt instanceof Date
+        ? row.uploadedAt.toISOString()
+        : String(row.uploadedAt),
+  }));
 }
