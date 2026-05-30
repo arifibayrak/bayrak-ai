@@ -115,7 +115,9 @@ type UploadDxfResult =
  * Security (T-14-SSRF): blobUrl validated to https://*.public.blob.vercel-storage.com.
  * Security (T-14-SRCDOC-ATOM): routes upsert + route_source_documents INSERT in one
  *   db.transaction so the history row always reflects the geometry_version landed.
- * Security (T-14-VERSION): geometry_version computed via MAX subquery (Pitfall 6 mitigation).
+ * Security (T-14-VERSION / WR-01): geometry_version derived atomically inside the
+ *   transaction via COALESCE(routes.geometry_version, 0) + 1 and read back via
+ *   RETURNING — no separate SELECT MAX() read-modify-write (Pitfall 6 mitigation).
  *
  * @param projectId   — UUID of the project to upsert the route for
  * @param blobUrl     — Vercel Blob public URL of the uploaded DXF file
@@ -174,16 +176,19 @@ export async function uploadDxf(
     return { ok: false, error: validation.error };
   }
 
-  // Compute next geometry_version via MAX subquery (T-14-VERSION / Pitfall 6 mitigation)
-  const [existing] = await db
-    .select({ maxVersion: sql<number>`COALESCE(MAX(${routes.geometryVersion}), 0)` })
-    .from(routes)
-    .where(eq(routes.projectId, projectId));
-  const nextVersion = (existing?.maxVersion ?? 0) + 1;
-
   // Atomic transaction: routes upsert + route_source_documents INSERT (T-14-SRCDOC-ATOM, D-05)
+  //
+  // WR-01: geometry_version is derived atomically from the route row itself
+  // (COALESCE(routes.geometry_version, 0) + 1 in the conflict SET, mirroring
+  // uploadRoute) and read back via RETURNING. This eliminates the previous
+  // non-atomic SELECT MAX() read-modify-write: two concurrent uploads can no
+  // longer both compute the same version and write duplicate history rows.
+  // The route_source_documents history row is tied to the version the DB
+  // actually landed, inside the same transaction.
   const [row] = await db.transaction(async (tx) => {
-    // Upsert routes row with new geometry + provenance columns
+    // Upsert routes row with new geometry + provenance columns.
+    // First import: geometry_version = 1. Re-import (conflict): increment the
+    // existing row's geometry_version atomically.
     const upserted = await tx
       .insert(routes)
       .values({
@@ -192,7 +197,7 @@ export async function uploadDxf(
         geom: sql`ST_GeomFromGeoJSON(${validation.geojsonString})`,
         coordinateCount: validation.count,
         totalLengthM: sql`ST_Length(ST_GeomFromGeoJSON(${validation.geojsonString})::geography)`,
-        geometryVersion: nextVersion,
+        geometryVersion: 1,
         sourceBlobUrl: blobUrl,
         sourceCrs: String(sourceCrs),
         sourceLayer,
@@ -203,14 +208,17 @@ export async function uploadDxf(
           geom: sql`ST_GeomFromGeoJSON(${validation.geojsonString})`,
           coordinateCount: validation.count,
           totalLengthM: sql`ST_Length(ST_GeomFromGeoJSON(${validation.geojsonString})::geography)`,
-          geometryVersion: nextVersion,
+          geometryVersion: sql`COALESCE(${routes.geometryVersion}, 0) + 1`,
           sourceBlobUrl: blobUrl,
           sourceCrs: String(sourceCrs),
           sourceLayer,
           uploadedAt: sql`now()`,
         },
       })
-      .returning({ id: routes.id });
+      .returning({ id: routes.id, geometryVersion: routes.geometryVersion });
+
+    // The version the DB actually landed — drives the history row + activity log.
+    const landedVersion = upserted[0].geometryVersion;
 
     // D-05: INSERT a NEW row into route_source_documents — never upsert/overwrite.
     // This preserves the full history of all source drawings for the project.
@@ -221,11 +229,13 @@ export async function uploadDxf(
       docType: 'dxf',
       sourceCrs: String(sourceCrs),
       sourceLayer,
-      geometryVersion: nextVersion,
+      geometryVersion: landedVersion,
     });
 
     return upserted;
   });
+
+  const landedVersion = row.geometryVersion;
 
   // Activity log (fire-and-forget — CR-04: skip if no userId)
   if (session.user?.id) {
@@ -235,7 +245,7 @@ export async function uploadDxf(
       entityType: 'project',
       entityId: projectId,
       projectId,
-      metadata: { coordinateCount: validation.count, geometryVersion: nextVersion, sourceCrs, sourceLayer },
+      metadata: { coordinateCount: validation.count, geometryVersion: landedVersion, sourceCrs, sourceLayer },
     });
   }
 
