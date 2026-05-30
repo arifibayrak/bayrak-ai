@@ -127,6 +127,7 @@ export async function previewDxf(
       and(
         eq(submissions.projectId, projectId),
         eq(submissions.status, 'approved'),
+        eq(submissions.tenantId, getDefaultTenantId()), // WR-02: tenant scope (defense-in-depth)
       ),
     );
 
