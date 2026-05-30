@@ -529,7 +529,29 @@ Plans:
   5. A unit test for `reprojectToWGS84(5254, 600000, 4570000)` asserts output longitude is in [25.7, 44.8] and latitude is in [35.8, 42.2]; uploading a DXF with axis-swapped or out-of-Turkey coordinates is rejected with a clear error before any DB write
   6. v1 core-loop capabilities (AUTH-01..04, SETUP-01..04, LOG-01..10, AUDIT-01..06, GEO-01..02, DASH-01..05, I18N-01..02) are moved from Active to Validated in PROJECT.md
 
-**Plans**: TBD
+**Plans**: 6 plans (across 5 waves)
+Plans:
+**Wave 1**
+
+- [ ] 14-01-PLAN.md — Wave 0: install dxf-parser/proj4/react-pdf + src/lib/crs.ts (7 Turkey EPSG, reprojectToWGS84, SC5) + DXF fixtures + full Nyquist test scaffold
+- [ ] 14-02-PLAN.md — Schema authoring: extend routes (6 cols) + submissions (2 cols) + new submission_ai_flags table + barrel/truncate/action-type + 0010/0011 migration SQL
+
+**Wave 2** *(blocked on 14-02)*
+
+- [ ] 14-03-PLAN.md — [BLOCKING] apply 0010 + 0011 via `npx tsx src/db/migrate.ts` to BOTH Neon branches (dev + test) + DB-level verify
+
+**Wave 3** *(blocked on 14-01 + 14-03)*
+
+- [ ] 14-04-PLAN.md — Backend pipeline: dxf-parser.ts impl (tests→GREEN) + uploadDxf + uploadRoute total_length_m/geometry_version patch + /api/dxf-upload Blob token route + i18n keys
+
+**Wave 4** *(blocked on 14-04)*
+
+- [ ] 14-05-PLAN.md — UI: DxfUpload state machine + satellite preview confirmation modal + PdfViewer + RouteTabClient/RouteTab integration + metadata card + Kaynak Belge (GeoJSON path unchanged)
+
+**Wave 5** *(blocked on 14-05)*
+
+- [ ] 14-06-PLAN.md — SC6 bookkeeping reconciliation: PROJECT.md Active→Validated for v1 capabilities + RTE-01..05 Done in REQUIREMENTS.md
+
 **UI hint**: yes
 
 ### Phase 15: Chainage As-Built View + Approval Snapshot
