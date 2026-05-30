@@ -145,7 +145,7 @@ Defined: 2026-05-29. **Locked decisions:** DWG handled via engineer-exported DXF
 ### Chainage As-Built Tracking
 
 - [x] **CHN-01**: Every point along the route has a kilometre/chainage value derived from cumulative length from the route start (km 0 = start)
-- [ ] **CHN-02**: Office engineer can calibrate chainage by anchoring a known station value to a reference point, offsetting derived chainage to match the engineering drawing
+- [x] **CHN-02**: Office engineer can calibrate chainage by anchoring a known station value to a reference point, offsetting derived chainage to match the engineering drawing
 - [x] **CHN-03**: Each approved submission's chainage is snapshotted at the moment of auditor approval (immutable as-built record); in-progress/pending work may show a live derived chainage
 - [x] **CHN-04**: Office engineer can view a per-kilometre / per-segment as-built strip of the route showing, for each segment, status (not started / in progress / approved), what work was submitted, who the worker was, and who audited it
 - [ ] **CHN-05**: Selecting a chainage segment drills down to the underlying submissions (linking to the canonical submission detail view)
@@ -274,7 +274,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | RTE-04 | Phase 14 | Complete |
 | RTE-05 | Phase 14 | Complete |
 | CHN-01 | Phase 15 | Complete |
-| CHN-02 | Phase 15 | Pending |
+| CHN-02 | Phase 15 | Complete |
 | CHN-03 | Phase 15 | Complete |
 | CHN-04 | Phase 15 | Complete |
 | CHN-05 | Phase 15 | Pending |

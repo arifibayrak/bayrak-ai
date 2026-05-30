@@ -576,7 +576,7 @@ Plans:
 
 **Wave 2** *(blocked on 15-01)*
 
-- [ ] 15-02-PLAN.md — Chainage snapshot write in handleAuditDecision + calibrated Telegram line + backfill migration 0013 (authored)
+- [x] 15-02-PLAN.md — Chainage snapshot write in handleAuditDecision + calibrated Telegram line + backfill migration 0013 (authored)
 - [ ] 15-03-PLAN.md — Folded map-link: snapped lat/lon on CanonicalSubmission + Google Maps link + As-Built back-link (CHN-05)
 
 **Wave 3** *(blocked on 15-02)*
@@ -631,5 +631,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 12. Submission-Driven Hakkediş | 4/4 | Complete    | 2026-05-28 |
 | 13. UX & Brand Pass | 5/5 | Complete    | 2026-05-29 |
 | 14. Schema Foundation + DXF Route Import | 6/6 | Complete   | 2026-05-30 |
-| 15. Chainage As-Built View + Approval Snapshot | 1/7 | In Progress|  |
+| 15. Chainage As-Built View + Approval Snapshot | 2/7 | In Progress|  |
 | 16. AI Vision Assist | 0/TBD | Not started | - |
