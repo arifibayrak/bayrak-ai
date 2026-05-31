@@ -31,7 +31,10 @@ export async function ChainageTab({ projectId }: ChainageTabProps) {
 
   // Approved km = buckets with approved status × 1000m default (from completionPct)
   const approvedBucketCount = buckets.filter(b => b.approvedCount > 0).length;
-  const approvedKm = totalLengthM > 0
+  // WR-03: guard on buckets.length directly — totalLengthM > 0 alone does not
+  // protect against an empty buckets array, which would make approvedBucketCount /
+  // buckets.length evaluate to 0/0 = NaN and render "NaN km".
+  const approvedKm = buckets.length > 0
     ? ((approvedBucketCount / buckets.length) * totalLengthM / 1000)
     : 0;
   const totalKm = totalLengthM / 1000;
