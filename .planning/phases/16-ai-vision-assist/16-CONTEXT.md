@@ -36,11 +36,12 @@ Asynchronously analyze every approved submission's photo + notes with Claude vis
 ### Carried Forward (locked by research/roadmap — do not revisit)
 - **Eval harness built FIRST**; precision ≥ 0.80 = the single gate controlling flag display (AI-05); `eval_passed = true` is the query/UI gate.
 - **Advisory-only:** no code path connects `submission_ai_flags` to `submissions.status` (AI-03; grep-verified in SC5).
-- **Async / off critical path (AI-04):** `enqueueAiFlag` inserts a `pending` row + fires `runAiAnalysis` as a detached promise AFTER the approval transaction commits; NEVER awaited in the Telegram webhook (webhook response sent before AI log line — SC2). Cron `/api/cron/ai-flags` retries `pending` rows older than 5 min, registered in `vercel.json`, protected by `CRON_SECRET` (SC6).
+- **Async / off critical path (AI-04):** `enqueueAiFlag` inserts a `pending` row + dispatches `runAiAnalysis` AFTER the approval transaction commits; NEVER awaited inline in the Telegram webhook (webhook response sent before AI log line — SC2). Cron `/api/cron/ai-flags` retries stale rows, registered in `vercel.json`, protected by `CRON_SECRET` (SC6).
+  - **OVERRIDE (2026-05-31, via cross-AI review REVIEWS.md #1):** A bare detached `.catch()` promise is unreliable on Vercel — the function may freeze/terminate once the webhook response flushes, so inline analysis may never run. Use Vercel's **`waitUntil`** (Fluid Compute graceful shutdown) to keep the function alive for the detached analysis instead of a bare promise. This supersedes the original "detached promise" wording in D-04. The cron is the explicit safety net and MUST reclaim stale `processing` rows (not just `pending`) so a mid-call death is recovered.
 - **`submission_ai_flags`** table already exists (Phase 14): status, scores, classification, `eval_passed` gate, `raw_response`.
 - **pHash duplicate detection (AI-06):** near-duplicate photos reuse the prior analysis — no second Claude vision call (SC4).
 - **UI:** `AiFlagCard` on the submission detail page (Turkish anomaly description + confidence badge + material suggestion; absent entirely when no eval-passed flag); amber indicator on the as-built strip (Phase 15).
-- **Pitfall 5:** the bot/webhook path has no Auth.js session — never `auth()`/`logOfficeActivity`/`after()` in `bot-audit.ts`; the enqueue is a best-effort post-commit call.
+- **Pitfall 5 (still in force):** the bot/webhook path has no Auth.js session — never `auth()`/`logOfficeActivity`/`after()` (from `next/server`) in `bot-audit.ts`; the enqueue is a best-effort post-commit call. The async OVERRIDE above uses Vercel's `waitUntil` (request-scoped, no auth) purely to keep the function alive for the detached analysis — it does NOT relax the no-auth/no-`logOfficeActivity` rule.
 
 ### Claude's Discretion
 - Exact Zod schema shape; pHash library/algorithm choice; the green/amber/red confidence cutoffs; the cron schedule interval; prompt wording.
