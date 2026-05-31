@@ -369,6 +369,57 @@ describeIfDb('chainage snapshot + bucket aggregation (CHN-03, CHN-04)', () => {
     expect(bucket1!.status).toBe('approved');
   });
 
+  // CR-01: end-of-route / out-of-range submissions must be clamped into the
+  // first/last bucket, NOT silently dropped by the LEFT JOIN.
+  it('getChainageBuckets: segment_fraction=1.0 (route end) is counted in the last bucket, not dropped', async () => {
+    const { sql } = await import('drizzle-orm');
+    const { projectId, tenantId, submissionAId } = CHAINAGE_FIXTURE_IDS;
+
+    // Force submission A to the exact route end: fraction=1.0 → 3000m → FLOOR(3000/1000)=3,
+    // which is outside generate_series(0,2). Pre-fix this row vanished.
+    await db.execute(sql`
+      UPDATE submissions
+      SET segment_fraction = 1.0,
+          chainage_m = 3000.00
+      WHERE id = ${submissionAId}
+    `);
+
+    const result = await fetchChainageBucketsRaw(projectId, 1000, tenantId);
+
+    // 3 buckets enumerated (0,1,2); submission A clamped into the last bucket (idx 2).
+    expect(result.buckets.length).toBe(3);
+    const lastBucket = result.buckets[result.buckets.length - 1];
+    expect(lastBucket.bucketIndex).toBe(2);
+    expect(lastBucket.approvedCount).toBeGreaterThanOrEqual(1);
+  });
+
+  it('getChainageBuckets: negative calibrated chainage (negative offset) is counted in the first bucket, not dropped', async () => {
+    const { sql } = await import('drizzle-orm');
+    const { projectId, tenantId, submissionAId } = CHAINAGE_FIXTURE_IDS;
+
+    // Submission A near route start (498m), then a large negative offset pushes the
+    // calibrated value below 0 → FLOOR((498 - 1000)/1000) = -1, outside the series.
+    await db.execute(sql`
+      UPDATE submissions s
+      SET chainage_m = ROUND(s.segment_fraction::numeric * 3000::numeric, 2)
+      WHERE s.id = ${submissionAId}
+    `);
+    await db.execute(sql`
+      UPDATE routes
+      SET chainage_offset_m = '-1000'
+      WHERE project_id = ${projectId}
+        AND tenant_id  = ${tenantId}
+    `);
+
+    const result = await fetchChainageBucketsRaw(projectId, 1000, tenantId);
+
+    // Submission A folds into the first bucket (idx 0) rather than disappearing.
+    expect(result.buckets.length).toBe(3);
+    const firstBucket = result.buckets[0];
+    expect(firstBucket.bucketIndex).toBe(0);
+    expect(firstBucket.approvedCount).toBeGreaterThanOrEqual(1);
+  });
+
   // CHN-07: chainage excel columns (plan 15-06)
   // Builds a workbook from fixture buckets and reads it back using 1-based numeric index.
   // NOTE: ExcelJS XLSX does NOT persist column keys — must use getCell(row, colIndex).

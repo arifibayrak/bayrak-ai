@@ -107,10 +107,22 @@ export async function fetchChainageBucketsRaw(
     ),
     sub_agg AS (
       SELECT
-        FLOOR((
-          COALESCE(s.chainage_m, s.segment_fraction * ${tlen})
-          + r.chainage_offset_m
-        ) / ${bsz})::int                                             AS bucket_idx,
+        -- CR-01: clamp the computed bucket into [0, nbuckets]. A submission whose
+        -- calibrated chainage lands AT/BEYOND totalLengthM (e.g. segment_fraction=1.0,
+        -- or a positive offset pushing it past the end) or BELOW 0 (negative offset)
+        -- otherwise computes a bucket_idx outside the generate_series range and is
+        -- silently dropped by the LEFT JOIN. LEAST/GREATEST folds it into the
+        -- first/last bucket so the work is counted, not lost.
+        LEAST(
+          GREATEST(
+            FLOOR((
+              COALESCE(s.chainage_m, s.segment_fraction * ${tlen})
+              + r.chainage_offset_m
+            ) / ${bsz})::int,
+            0
+          ),
+          ${nbuckets}
+        )                                                            AS bucket_idx,
 
         COUNT(*) FILTER (WHERE s.status = 'approved')               AS approved_count,
         COUNT(*) FILTER (WHERE s.status = 'pending_audit')          AS pending_count,
@@ -154,10 +166,18 @@ export async function fetchChainageBucketsRaw(
           OR (s.status = 'pending_audit' AND s.segment_fraction IS NOT NULL)
         )
 
-      GROUP BY FLOOR((
-        COALESCE(s.chainage_m, s.segment_fraction * ${tlen})
-        + r.chainage_offset_m
-      ) / ${bsz})::int
+      -- CR-01: GROUP BY must use the identical clamped expression as the SELECT
+      -- above, otherwise the grouping key and the projected bucket_idx diverge.
+      GROUP BY LEAST(
+        GREATEST(
+          FLOOR((
+            COALESCE(s.chainage_m, s.segment_fraction * ${tlen})
+            + r.chainage_offset_m
+          ) / ${bsz})::int,
+          0
+        ),
+        ${nbuckets}
+      )
     )
     SELECT
       ab.bucket_idx,
