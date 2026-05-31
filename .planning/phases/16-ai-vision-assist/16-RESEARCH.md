@@ -686,27 +686,31 @@ export async function GET(request: Request) {
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **`photoUrl` in the approval returning clause**
    - What we know: `handleAuditDecision` returns `id`, `quantity`, `boqItemId`, `segmentFraction`, `projectId` from the approval UPDATE. `photoUrl` is not returned.
    - What's unclear: Should `photoUrl` be added to `.returning()`, or should `enqueueAiFlag` do a separate SELECT?
    - Recommendation: Add `photoUrl: sub2.photoUrl` to the existing `.returning()` call — minimal change, no extra DB roundtrip, consistent with how `segmentFraction`/`projectId` were added in Phase 15.
+   - RESOLVED: Plan 03 (approval wiring) adds `photoUrl` to the `handleAuditDecision` `.returning()` clause and passes it to `enqueueAiFlag` — no separate SELECT.
 
 2. **Vercel plan tier for cron frequency**
    - What we know: Hobby = minimum 1 day; Pro = minimum 1 minute.
    - What's unclear: The project's current Vercel plan is not documented in planning artifacts.
    - Recommendation: Planner sets cron schedule conservatively as `0 * * * *` (hourly); executor confirms actual plan tier and adjusts if Pro allows `*/5 * * * *`.
+   - RESOLVED: Plan 03 sets the `/api/cron/ai-flags` schedule to `0 * * * *` (hourly, Hobby-safe default); executor may tighten to `*/5 * * * *` if the project is on Vercel Pro.
 
 3. **eval_passed bulk-set workflow**
    - What we know: After eval harness passes (precision ≥ 0.80), `eval_passed` must be set to `true` on qualifying existing DB rows so `AiFlagCard` starts rendering.
    - What's unclear: Is this a manual SQL script, a one-time migration, or a Server Action? Should it apply retroactively to all `done` rows, or only rows above a per-row confidence threshold?
    - Recommendation: One-time SQL script executed by the engineer after eval passes: `UPDATE submission_ai_flags SET eval_passed = true WHERE status = 'done' AND photo_anomaly_score >= 0.50`. The per-row threshold (0.50) aligns with D-03's display logic (all flags shown, confidence badge colored).
+   - RESOLVED: Plan 04 (eval gate) owns the `eval_passed` bulk-set as the one-time SQL/script run after precision ≥ 0.80, gating Plan 05's AiFlagCard display.
 
 4. **Zod v4 compatibility with `Output.object`**
    - What we know: The project uses `zod@^4.4.3`. AI SDK docs show `z.object()` usage. Previous phases hit Zod v4 API differences (e.g., `z.record()` requires 2 args, `z.enum()` error param changed).
    - What's unclear: Whether `Output.object({ schema: z.object({...}) })` works unchanged with Zod v4.
    - Recommendation: Planner flags this as a Wave 0 verification task: write a minimal `generateText` + `Output.object` + `z.object` call in a test context before building the full schema.
+   - RESOLVED: Plan 01 Task 3 smoke-tests `Output.object({ schema: z.object(...) })` with Zod v4 in `tests/ai-sdk-smoke.test.ts` before the full schema is built in Plan 02.
 
 ---
 
