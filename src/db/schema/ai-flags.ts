@@ -24,6 +24,13 @@ export const submissionAiFlags = pgTable('submission_ai_flags', {
   evalPassed: boolean('eval_passed'),
   // rawResponse: full Claude generateObject response stored for eval audit (AI-05)
   rawResponse: jsonb('raw_response'),
+  // phashHex: 64-char binary string from sharp-phash; null until runAiAnalysis runs (AI-06)
+  phashHex: text('phash_hex'),
+  // anomalyDetected: TRUE when ANY of the five D-01 signals fired (photo mismatch, quality,
+  // location, duplicate, classification). Multi-signal gate column (REVIEWS HIGH-3).
+  // Downstream gate/read/join key on THIS, not photoAnomalyScore alone.
+  // Set by runAiAnalysis; null until analysis runs.
+  anomalyDetected: boolean('anomaly_detected'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
