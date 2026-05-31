@@ -99,13 +99,18 @@ export async function GET(request: Request) {
   });
 
   // ── D-109 activity log (fire-and-forget — never await) ──────────────────
-  logOfficeActivity({
-    actorUserId: session.user!.id!,
-    actionType: 'chainage_exported',
-    entityType: 'chainage_export',
-    projectId: projectId || undefined,
-    metadata: { format, bucketSizeM },
-  });
+  // WR-06: mirror the setChainageOffset guard (src/actions/chainage.ts) — skip the
+  // log when session.user.id is absent rather than asserting with `!`. A JWT without
+  // an id claim would otherwise throw an FK violation inside the un-awaited promise.
+  if (session.user?.id) {
+    logOfficeActivity({
+      actorUserId: session.user.id,
+      actionType: 'chainage_exported',
+      entityType: 'chainage_export',
+      projectId: projectId || undefined,
+      metadata: { format, bucketSizeM },
+    });
+  }
 
   return response;
 }
