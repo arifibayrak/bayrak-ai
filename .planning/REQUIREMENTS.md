@@ -61,7 +61,7 @@ Requirements for the initial release. Each maps to roadmap phases.
 - [ ] **AI-01**: On submission, AI vision analyzes the photo and flags anomalies (photo content inconsistent with the claimed work or location)
 - [ ] **AI-02**: AI parses the worker's text notes to understand the work and auto-suggest the material / classification
 - [ ] **AI-03**: AI flags (vision, location, text) appear in the auditor's Telegram message and on the dashboard as advisory hints; they never block or auto-decide
-- [ ] **AI-04**: AI processing runs asynchronously and never delays the worker's confirmation or the auditor's notification
+- [x] **AI-04**: AI processing runs asynchronously and never delays the worker's confirmation or the auditor's notification
 - [ ] **AI-05**: AI outputs are validated against a reference dataset with defined acceptance criteria before being shown to auditors (eval harness)
 
 ### Localization
@@ -157,7 +157,7 @@ Defined: 2026-05-29. **Locked decisions:** DWG handled via engineer-exported DXF
 - [ ] **AI-01**: On submission, AI vision analyzes the photo and flags anomalies (photo content inconsistent with the claimed work or location)
 - [ ] **AI-02**: AI parses the worker's text notes to understand the work and auto-suggest the material / classification
 - [ ] **AI-03**: AI flags (vision, location, text) appear in the auditor's Telegram message and on the dashboard as advisory hints; they never block or auto-decide
-- [ ] **AI-04**: AI processing runs asynchronously and never delays the worker's confirmation or the auditor's notification
+- [x] **AI-04**: AI processing runs asynchronously and never delays the worker's confirmation or the auditor's notification
 - [ ] **AI-05**: AI outputs are validated against a reference dataset with defined acceptance criteria before being shown to auditors (eval harness)
 - [x] **AI-06**: Duplicate / near-duplicate submission photos are detected via a server-side perceptual-hash pre-filter and surfaced as an advisory flag
 
@@ -283,7 +283,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | AI-01 | Phase 16 | Pending |
 | AI-02 | Phase 16 | Pending |
 | AI-03 | Phase 16 | Pending |
-| AI-04 | Phase 16 | Pending |
+| AI-04 | Phase 16 | Complete |
 | AI-05 | Phase 16 | Pending |
 | AI-06 | Phase 16 | Complete |
 
