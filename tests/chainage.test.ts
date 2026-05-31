@@ -369,6 +369,52 @@ describeIfDb('chainage snapshot + bucket aggregation (CHN-03, CHN-04)', () => {
     expect(bucket1!.status).toBe('approved');
   });
 
-  // CHN-07: chainage excel columns (stub — full test in plan 15-06)
-  it.todo('chainage excel columns: 8 columns in order — Km Başlangıç, Km Bitiş, İş Adedi, Malzeme, Miktar, Birim, İşçi, Denetçi');
+  // CHN-07: chainage excel columns (plan 15-06)
+  // Builds a workbook from fixture buckets and reads it back using 1-based numeric index.
+  // NOTE: ExcelJS XLSX does NOT persist column keys — must use getCell(row, colIndex).
+  it('chainage excel columns: 8 columns in order — Km Başlangıç, Km Bitiş, İş Adedi, Malzeme, Miktar, Birim, İşçi, Denetçi', async () => {
+    const ExcelJS = (await import('exceljs')).default;
+    const { buildChainageLedger } = await import('../src/lib/chainage-excel');
+    const { ChainageBucket } = await import('../src/lib/chainage-data').then(() => ({}));
+
+    // Minimal fixture bucket — no DB required for this structural assertion
+    const fakeBucket = {
+      bucketIndex:       0,
+      bucketStart:       0,
+      bucketEnd:         1000,
+      status:            'approved' as const,
+      approvedCount:     1,
+      pendingCount:      0,
+      boqBreakdown:      [{ material: 'Boru', unit: 'm', quantity: '50.00' }],
+      workers:           ['Ali Veli'],
+      auditors:          ['Denetçi A'],
+      firstSubmissionId: null,
+    };
+
+    const buffer = await buildChainageLedger({ buckets: [fakeBucket] });
+
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(buffer);
+    const sheet = workbook.worksheets[0];
+
+    // Header row — columns 1–8 in order (1-based numeric index, keys not persisted)
+    expect(sheet.getCell(1, 1).value).toBe('Km Başlangıç');
+    expect(sheet.getCell(1, 2).value).toBe('Km Bitiş');
+    expect(sheet.getCell(1, 3).value).toBe('İş Adedi');
+    expect(sheet.getCell(1, 4).value).toBe('Malzeme');
+    expect(sheet.getCell(1, 5).value).toBe('Miktar');
+    expect(sheet.getCell(1, 6).value).toBe('Birim');
+    expect(sheet.getCell(1, 7).value).toBe('İşçi');
+    expect(sheet.getCell(1, 8).value).toBe('Denetçi');
+
+    // Data row — chainage format + content
+    expect(sheet.getCell(2, 1).value).toBe('km 0+000');
+    expect(sheet.getCell(2, 2).value).toBe('km 1+000');
+    expect(sheet.getCell(2, 3).value).toBe(1);     // approvedCount — numeric
+    expect(sheet.getCell(2, 4).value).toBe('Boru');
+    expect(sheet.getCell(2, 5).value).toBe('50.00');
+    expect(sheet.getCell(2, 6).value).toBe('m');
+    expect(sheet.getCell(2, 7).value).toBe('Ali Veli');
+    expect(sheet.getCell(2, 8).value).toBe('Denetçi A');
+  });
 });
