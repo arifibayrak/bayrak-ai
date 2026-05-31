@@ -585,7 +585,7 @@ Plans:
 
 **Wave 4** *(blocked on 15-04)*
 
-- [ ] 15-05-PLAN.md — Backend: fetchChainageBucketsRaw (generate_series + 3-state + completion clamp) + getChainageBuckets/setChainageOffset
+- [x] 15-05-PLAN.md — Backend: fetchChainageBucketsRaw (generate_series + 3-state + completion clamp) + getChainageBuckets/setChainageOffset
 
 **Wave 5** *(blocked on 15-05)*
 
@@ -631,5 +631,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 12. Submission-Driven Hakkediş | 4/4 | Complete    | 2026-05-28 |
 | 13. UX & Brand Pass | 5/5 | Complete    | 2026-05-29 |
 | 14. Schema Foundation + DXF Route Import | 6/6 | Complete   | 2026-05-30 |
-| 15. Chainage As-Built View + Approval Snapshot | 4/7 | In Progress|  |
+| 15. Chainage As-Built View + Approval Snapshot | 5/7 | In Progress|  |
 | 16. AI Vision Assist | 0/TBD | Not started | - |
