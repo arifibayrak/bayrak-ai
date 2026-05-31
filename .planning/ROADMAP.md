@@ -607,7 +607,12 @@ Plans:
   5. An auditor can approve or reject a submission regardless of what the AI flag says — no code path connects `submission_ai_flags` to `submissions.status`; a grep of the codebase confirms this
   6. A cron job at `/api/cron/ai-flags` picks up `submission_ai_flags` rows with `status = 'pending'` older than 5 minutes and retries the analysis; the cron is registered in `vercel.json` and protected by `CRON_SECRET`
 
-**Plans**: TBD
+**Plans**: 5 plans
+  - [ ] 16-01-PLAN.md — Schema (phash_hex) + BLOCKING migration + env + AI SDK v6/Zod v4 smoke (Wave 1)
+  - [ ] 16-02-PLAN.md — Vision core: runAiAnalysis + Output.object + pHash pre-filter + enqueueAiFlag (Wave 2)
+  - [ ] 16-03-PLAN.md — Async wiring: bot-audit enqueue + CRON_SECRET cron route + vercel.json (Wave 3)
+  - [ ] 16-04-PLAN.md — Eval gate: labeled fixtures + precision >= 0.80 run + advisory-only proof (Wave 3)
+  - [ ] 16-05-PLAN.md — UI: getSubmissionAiFlag + AiFlagCard + ChainageTable amber dot + i18n (Wave 4)
 **UI hint**: yes
 
 ## Progress
@@ -622,7 +627,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 3. Audit Loop | 5/5 | Complete   | 2026-05-24 |
 | 4. Spatial Layer | 4/4 | Complete    | 2026-05-24 |
 | 5. Dashboard & Map | 6/6 | Complete   | 2026-05-24 |
-| 6. AI Vision Assist | 0/TBD | Not started | - |
+| 6. AI Vision Assist | 0/5 | Planned | - |
 | 7. Data Foundation & Canonical Record | 5/5 | Complete   | 2026-05-26 |
 | 8. Admin Shell & Information Architecture | 6/6 | Complete   | 2026-05-26 |
 | 9. Performance Analytics & Scorecards | 6/6 | Complete   | 2026-05-27 |
@@ -632,4 +637,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 13. UX & Brand Pass | 5/5 | Complete    | 2026-05-29 |
 | 14. Schema Foundation + DXF Route Import | 6/6 | Complete   | 2026-05-30 |
 | 15. Chainage As-Built View + Approval Snapshot | 7/7 | Complete   | 2026-05-31 |
-| 16. AI Vision Assist | 0/TBD | Not started | - |
+| 16. AI Vision Assist | 0/5 | Planned | - |
