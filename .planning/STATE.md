@@ -4,8 +4,8 @@ milestone: v4.0
 milestone_name: Document-Driven Route Import, Chainage As-Built Tracking & AI Vision Assist
 status: executing
 stopped_at: Phase 16 UI-SPEC approved
-last_updated: "2026-05-31T12:32:25.913Z"
-last_activity: 2026-05-31 -- Phase 16 planning complete
+last_updated: "2026-05-31T17:36:54.468Z"
+last_activity: 2026-05-31
 progress:
   total_phases: 6
   completed_phases: 5
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-29)
 
 **Core value:** Every unit of field work flows through one trustworthy loop — worker submits → auditor approves on-site → central project data (BOQ + map) updates automatically
-**Current focus:** Phase 15 — Chainage As-Built View + Approval Snapshot
+**Current focus:** Phase 16 — ai-vision-assist
 
 ## Current Position
 
-Phase: 15 (Chainage As-Built View + Approval Snapshot) — EXECUTING
-Plan: 7 of 7
+Phase: 16 (ai-vision-assist) — EXECUTING
+Plan: 2 of 5
 Status: Ready to execute
-Last activity: 2026-05-31 -- Phase 16 planning complete
+Last activity: 2026-05-31
 
 ## Performance Metrics
 
@@ -329,6 +329,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-05-31T10:47:24.385Z
+Last session: 2026-05-31T17:36:54.461Z
 Stopped at: Phase 16 UI-SPEC approved
-Resume file: .planning/phases/16-ai-vision-assist/16-UI-SPEC.md
+Resume file: None

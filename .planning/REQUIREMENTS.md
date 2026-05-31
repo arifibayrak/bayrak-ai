@@ -159,7 +159,7 @@ Defined: 2026-05-29. **Locked decisions:** DWG handled via engineer-exported DXF
 - [ ] **AI-03**: AI flags (vision, location, text) appear in the auditor's Telegram message and on the dashboard as advisory hints; they never block or auto-decide
 - [ ] **AI-04**: AI processing runs asynchronously and never delays the worker's confirmation or the auditor's notification
 - [ ] **AI-05**: AI outputs are validated against a reference dataset with defined acceptance criteria before being shown to auditors (eval harness)
-- [ ] **AI-06**: Duplicate / near-duplicate submission photos are detected via a server-side perceptual-hash pre-filter and surfaced as an advisory flag
+- [x] **AI-06**: Duplicate / near-duplicate submission photos are detected via a server-side perceptual-hash pre-filter and surfaced as an advisory flag
 
 ### Housekeeping
 
@@ -285,7 +285,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | AI-03 | Phase 16 | Pending |
 | AI-04 | Phase 16 | Pending |
 | AI-05 | Phase 16 | Pending |
-| AI-06 | Phase 16 | Pending |
+| AI-06 | Phase 16 | Complete |
 
 **Coverage:**
 - v1 requirements: 38 total (AI-01..AI-05 now tracked in Phase 16; Phase 6 stub retired)
