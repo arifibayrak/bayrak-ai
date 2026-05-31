@@ -589,7 +589,7 @@ Plans:
 
 **Wave 5** *(blocked on 15-05)*
 
-- [ ] 15-06-PLAN.md — Export: chainage Excel (8 cols) + PDF (DejaVu) + auth-guarded /api/exports/chainage route (CHN-07)
+- [x] 15-06-PLAN.md — Export: chainage Excel (8 cols) + PDF (DejaVu) + auth-guarded /api/exports/chainage route (CHN-07)
 - [ ] 15-07-PLAN.md — UI: As-Built tab (colour bar + table + granularity toggle + completion KPI + calibration form) + tab wire + i18n + end-of-phase UAT
 **UI hint**: yes
 
@@ -631,5 +631,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 12. Submission-Driven Hakkediş | 4/4 | Complete    | 2026-05-28 |
 | 13. UX & Brand Pass | 5/5 | Complete    | 2026-05-29 |
 | 14. Schema Foundation + DXF Route Import | 6/6 | Complete   | 2026-05-30 |
-| 15. Chainage As-Built View + Approval Snapshot | 5/7 | In Progress|  |
+| 15. Chainage As-Built View + Approval Snapshot | 6/7 | In Progress|  |
 | 16. AI Vision Assist | 0/TBD | Not started | - |
