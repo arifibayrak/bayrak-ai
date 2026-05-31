@@ -413,6 +413,9 @@ export async function handleAuditDecision(
     // Phase 15: chainage snapshot values captured from tx for worker notification (Task 2)
     let capturedChainageM: string | null = null;
     let capturedChainageOffsetM: string | null = null;
+    // [Phase 16] AI-04: photoUrl captured from tx returning() — avoids extra DB read post-commit
+    // (RESEARCH Pitfall 3). Null-guarded before enqueueAiFlag call.
+    let capturedPhotoUrl: string | null = null;
 
     try {
       await txDb.transaction(async (tx) => {
@@ -436,6 +439,9 @@ export async function handleAuditDecision(
             // [Phase 15] needed for chainage snapshot computation
             segmentFraction: sub2.segmentFraction,
             projectId: sub2.projectId,
+            // [Phase 16] AI-04 / RESEARCH Pitfall 3: include photoUrl here so enqueueAiFlag
+            // receives it without an extra DB read after the transaction commits.
+            photoUrl: sub2.photoUrl,
           });
 
         if (affected.length === 0) {
@@ -445,6 +451,8 @@ export async function handleAuditDecision(
 
         approvedQuantity = affected[0].quantity;
         boqItemId = affected[0].boqItemId;
+        // [Phase 16] capture photoUrl from returning() for post-commit AI enqueue (Pitfall 3)
+        capturedPhotoUrl = affected[0].photoUrl ?? null;
 
         // D-27: increment approved_qty atomically (increment-only, never subtractive)
         await tx
@@ -549,6 +557,38 @@ export async function handleAuditDecision(
     } catch (hakErr) {
       // D-40 best-effort: log, do not throw. The approval is already committed.
       console.error('[handleAuditDecision] hakkediş recompute failed for submission', submissionId, ':', hakErr);
+    }
+
+    // [Phase 16] D-40 post-commit hook: AI flag enqueue (AI-04 / SC2).
+    // Calls enqueueAiFlag AFTER the approval TX commits — never inside the TX.
+    // enqueueAiFlag inserts a pending row then dispatches runAiAnalysis via
+    // Vercel waitUntil internally (CONTEXT OVERRIDE 2026-05-31). The function
+    // resolves immediately; the webhook response goes out BEFORE the AI analysis
+    // runs (SC2 — webhook responds before AI work).
+    //
+    // NOT awaited: enqueueAiFlag() is called and NOT awaited at the call site.
+    // The .catch() on the call-site promise covers any synchronous throw from
+    // enqueueAiFlag setup (e.g. lazy-import failure); the waitUntil dispatch
+    // inside enqueueAiFlag has its own .catch(log) for the async analysis.
+    //
+    // PITFALL 5 — HARD RULE: NO auth(), NO office-activity logging, NO after() here.
+    // This file runs in the Telegram webhook path which has NO Auth.js session.
+    // The waitUntil primitive lives inside enqueueAiFlag (ai-flag-queue.ts),
+    // NOT here — this file must stay session-free (Pitfall 5).
+    //
+    // Guard: only enqueue when affected[0].photoUrl is non-null (some legacy rows
+    // may lack a photoUrl). Skip silently — no error, no throw.
+    if (capturedPhotoUrl) {
+      try {
+        const { enqueueAiFlag } = await import('@/lib/ai-flag-queue');
+        enqueueAiFlag(submissionId, capturedPhotoUrl).catch((err) =>
+          console.error('[handleAuditDecision] AI flag enqueue error:', err),
+        );
+      } catch (aiFlagErr) {
+        // D-40 best-effort: log setup failure, do not throw.
+        // The approval is already committed; AI enqueue is advisory (AI-04).
+        console.error('[handleAuditDecision] AI flag enqueue setup failed for submission', submissionId, ':', aiFlagErr);
+      }
     }
 
     // CR-02: wrap the post-commit worker lookup + notification in try/catch.
