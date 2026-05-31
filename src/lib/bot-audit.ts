@@ -458,7 +458,7 @@ export async function handleAuditDecision(
         // T-15-02-WINDOW: both writes are inside the SAME transaction as the status flip —
         // no window where status='approved' but chainage_m IS NULL (Pitfall 1).
         // T-15-02-FLOAT: ROUND executed in Postgres via sql2 template, not JS float math.
-        // Pitfall 5: no auth(), logOfficeActivity, or after() — bot path has no Auth.js session.
+        // Pitfall 5: no auth(), no office-activity logging, or after() — bot path has no Auth.js session.
         if (affected[0].segmentFraction != null && affected[0].projectId) {
           const { routes: rte } = await import('@/db/schema/routes');
           const routeRows = await tx
