@@ -19,6 +19,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { getCanonicalSubmissions } from '@/actions/analytics';
+import { getSubmissionAiFlag } from '@/actions/ai-flags';
 import { SubmissionDetailView } from '@/components/admin/SubmissionDetailView';
 import { BrandCard, BrandHeading } from '@/components/brand';
 
@@ -46,6 +47,9 @@ export default async function SubmissionDetailPage({ params, searchParams }: Pro
   if (rows.length === 0) notFound();
 
   const submission = rows[0];
+
+  // Fetch AI flag — eval_passed-gated; returns null when no eval-passed flag exists (SC1, SC3)
+  const aiFlag = await getSubmissionAiFlag(submission.id);
 
   const t = await getTranslations('dashboard.admin.detail');
 
@@ -77,7 +81,7 @@ export default async function SubmissionDetailPage({ params, searchParams }: Pro
       {/* Full submission detail view — from='asbuilt' activates the CHN-05 back-link */}
       <BrandCard>
         <BrandCard.Body>
-          <SubmissionDetailView submission={submission} from={from} />
+          <SubmissionDetailView submission={submission} from={from} aiFlag={aiFlag} />
         </BrandCard.Body>
       </BrandCard>
     </div>

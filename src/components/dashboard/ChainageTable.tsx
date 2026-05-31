@@ -14,6 +14,7 @@ import { useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import { FileSpreadsheet, FileText } from 'lucide-react';
 import { BrandTable, BrandBadge, BrandButton } from '@/components/brand';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { getChainageBuckets } from '@/actions/chainage';
 import type { ChainageBucket } from '@/actions/chainage';
 import { formatChainage } from '@/lib/format-chainage';
@@ -34,6 +35,7 @@ const GRANULARITY_OPTIONS: { label: string; value: BucketSize }[] = [
 
 export function ChainageTable({ projectId, initialBuckets, totalLengthM }: ChainageTableProps) {
   const t = useTranslations('dashboard.asbuilt');
+  const tAi = useTranslations('dashboard.admin.ai_flags');
   const [bucketSizeM, setBucketSizeM] = useState<BucketSize>(1000);
   const [buckets, setBuckets] = useState<ChainageBucket[]>(initialBuckets);
   const [isPending, startTransition] = useTransition();
@@ -137,6 +139,9 @@ export function ChainageTable({ projectId, initialBuckets, totalLengthM }: Chain
               <BrandTable.Head className="font-semibold">{t('col_worker')}</BrandTable.Head>
               <BrandTable.Head className="font-semibold">{t('col_auditor')}</BrandTable.Head>
               <BrandTable.Head className="font-semibold">{t('col_detail')}</BrandTable.Head>
+              <BrandTable.Head className="font-semibold w-6">
+                <span className="sr-only">{tAi('col_ai_flag')}</span>
+              </BrandTable.Head>
             </BrandTable.Row>
           </BrandTable.Header>
           <BrandTable.Body>
@@ -209,6 +214,23 @@ export function ChainageTable({ projectId, initialBuckets, totalLengthM }: Chain
                       >
                         {t('detail_link')}
                       </a>
+                    ) : null}
+                  </BrandTable.Cell>
+                  <BrandTable.Cell>
+                    {bucket.hasAiFlag ? (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <span
+                              className="inline-block size-2 rounded-full bg-amber-500"
+                              aria-hidden="true"
+                            />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {tAi('strip_indicator_tooltip')}
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     ) : null}
                   </BrandTable.Cell>
                 </BrandTable.Row>

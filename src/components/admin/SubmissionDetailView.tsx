@@ -30,15 +30,16 @@ import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import {
   ImageOff,
-  Sparkles,
   AlertCircle,
   MapPin,
   ChevronLeft,
 } from 'lucide-react';
 import { BrandBadge, BrandCard } from '@/components/brand';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { AiFlagCard } from '@/components/brand/AiFlagCard';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import type { CanonicalSubmission } from '@/lib/types/canonical-submission';
+import type { SubmissionAiFlag } from '@/actions/ai-flags';
 
 // ── Status badge (reuses D-61 StatusBadge color logic) ───────────────────────
 
@@ -74,9 +75,11 @@ interface SubmissionDetailViewProps {
   submission: CanonicalSubmission;
   /** When 'asbuilt', renders a back-link to the As-Built strip (CHN-05 drill-down return path). */
   from?: string;
+  /** AI flag for this submission — eval_passed-gated; null/undefined when no flag exists. */
+  aiFlag?: SubmissionAiFlag | null;
 }
 
-export function SubmissionDetailView({ submission, from }: SubmissionDetailViewProps) {
+export function SubmissionDetailView({ submission, from, aiFlag }: SubmissionDetailViewProps) {
   const t = useTranslations('dashboard.admin.detail');
   const tRecords = useTranslations('dashboard.admin.records');
   const tStatus = useTranslations('dashboard.submissions');
@@ -280,15 +283,8 @@ export function SubmissionDetailView({ submission, from }: SubmissionDetailViewP
             )}
           </dl>
 
-          {/* AI flags slot — always rendered as inert placeholder (Phase 6 deferred, D-71) */}
-          <Alert variant="default" className="bg-muted/50 border-muted">
-            <Sparkles className="h-4 w-4" aria-hidden="true" />
-            <AlertTitle className="text-sm font-semibold">{t('ai_slot_label')}</AlertTitle>
-            <AlertDescription className="text-sm">
-              {/* ai_slot_body is the key asserted by the plan's verification step */}
-              {t('ai_slot_body')}
-            </AlertDescription>
-          </Alert>
+          {/* AI flags — rendered only when eval_passed = true row exists (SC3) */}
+          <AiFlagCard flag={aiFlag ?? null} />
           </BrandCard.Body>
         </BrandCard>
       </div>

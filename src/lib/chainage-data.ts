@@ -37,6 +37,8 @@ export type ChainageBucket = {
   workers: string[];
   auditors: string[];
   firstSubmissionId: string | null;
+  /** True when at least one submission in this bucket has an eval_passed=true AI flag (Phase 16 SC3). */
+  hasAiFlag: boolean;
 };
 
 export type ChainageBucketsResult = {
@@ -178,6 +180,45 @@ export async function fetchChainageBucketsRaw(
         ),
         ${nbuckets}
       )
+    ),
+    -- AI flag indicator per bucket (Phase 16 SC3 amber strip).
+    -- LEFT JOIN on submission_ai_flags WHERE eval_passed = true.
+    -- Uses the same clamped FLOOR expression as sub_agg (CR-01 invariant).
+    ai_flag_agg AS (
+      SELECT
+        LEAST(
+          GREATEST(
+            FLOOR((
+              COALESCE(s.chainage_m, s.segment_fraction * ${tlen})
+              + r.chainage_offset_m
+            ) / ${bsz})::int,
+            0
+          ),
+          ${nbuckets}
+        )                                                            AS bucket_idx,
+        COUNT(af.id)                                                 AS ai_flag_count
+      FROM submissions s
+      JOIN routes r ON r.project_id = s.project_id
+                   AND r.tenant_id  = ${tenantId}
+      JOIN submission_ai_flags af ON af.submission_id = s.id
+                                  AND af.eval_passed = true
+      WHERE s.project_id = ${projectId}
+        AND s.tenant_id  = ${tenantId}
+        AND s.status IN ('approved', 'pending_audit')
+        AND (
+              s.chainage_m     IS NOT NULL
+          OR (s.status = 'pending_audit' AND s.segment_fraction IS NOT NULL)
+        )
+      GROUP BY LEAST(
+        GREATEST(
+          FLOOR((
+            COALESCE(s.chainage_m, s.segment_fraction * ${tlen})
+            + r.chainage_offset_m
+          ) / ${bsz})::int,
+          0
+        ),
+        ${nbuckets}
+      )
     )
     SELECT
       ab.bucket_idx,
@@ -194,9 +235,11 @@ export async function fetchChainageBucketsRaw(
       sa.boq_rows,
       sa.worker_names,
       sa.auditor_names,
-      COALESCE(sa.first_approved_id, sa.first_pending_id) AS first_submission_id
+      COALESCE(sa.first_approved_id, sa.first_pending_id) AS first_submission_id,
+      COALESCE(af.ai_flag_count, 0) > 0                   AS has_ai_flag
     FROM all_buckets ab
     LEFT JOIN sub_agg sa ON sa.bucket_idx = ab.bucket_idx
+    LEFT JOIN ai_flag_agg af ON af.bucket_idx = ab.bucket_idx
     ORDER BY ab.bucket_idx
   `);
 
@@ -246,6 +289,7 @@ export async function fetchChainageBucketsRaw(
       workers,
       auditors,
       firstSubmissionId: r.first_submission_id != null ? String(r.first_submission_id) : null,
+      hasAiFlag:         r.has_ai_flag === true,
     };
   });
 

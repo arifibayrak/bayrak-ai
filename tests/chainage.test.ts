@@ -439,6 +439,7 @@ describeIfDb('chainage snapshot + bucket aggregation (CHN-03, CHN-04)', () => {
       workers:           ['Ali Veli'],
       auditors:          ['Denetçi A'],
       firstSubmissionId: null,
+      hasAiFlag:         false,
     };
 
     const buffer = await buildChainageLedger({ buckets: [fakeBucket] });
