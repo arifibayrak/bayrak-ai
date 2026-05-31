@@ -21,7 +21,7 @@ import { formatChainage } from '@/lib/format-chainage';
 interface ChainageTableProps {
   projectId: string;
   initialBuckets: ChainageBucket[];
-  totalLengthM: number;
+  totalLengthM?: number; // reserved for future use; colour bar uses bucket count proportions
 }
 
 type BucketSize = 100 | 500 | 1000;

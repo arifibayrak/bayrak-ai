@@ -7,6 +7,7 @@ import { BoqTab } from '@/components/dashboard/BoqTab';
 import { RouteTab } from '@/components/dashboard/RouteTab';
 import { PeopleTab } from '@/components/dashboard/PeopleTab';
 import { KayitlarTab } from '@/components/dashboard/KayitlarTab';
+import { ChainageTab } from '@/components/dashboard/ChainageTab';
 import { RefreshOnFocus } from '@/components/dashboard/RefreshOnFocus';
 import { getProject } from '@/actions/projects';
 import { getPendingPeople, getActivePeople } from '@/actions/people';
@@ -44,7 +45,8 @@ export default async function ProjectDetailPage({ params, searchParams }: Props)
   const activeTab =
     tab === 'rota'     ? 'rota'     :
     tab === 'kayitlar' ? 'kayitlar' :
-    tab === 'personel' ? 'personel' : 'boq';
+    tab === 'personel' ? 'personel' :
+    tab === 'asbuilt'  ? 'asbuilt'  : 'boq';
 
   return (
     <div className="space-y-0">
@@ -89,6 +91,11 @@ export default async function ProjectDetailPage({ params, searchParams }: Props)
                 {peopleT('active_title')}
               </Link>
             </TabsTrigger>
+            <TabsTrigger value="asbuilt">
+              <Link href={`/dashboard/projects/${id}?tab=asbuilt`} className="contents" prefetch={false}>
+                {t('tab_asbuilt')}
+              </Link>
+            </TabsTrigger>
           </TabsList>
         </div>
 
@@ -125,6 +132,14 @@ export default async function ProjectDetailPage({ params, searchParams }: Props)
                 activePeople={activePeople}
                 projects={projects}
               />
+            </BrandCard.Body>
+          </BrandCard>
+        </TabsContent>
+
+        <TabsContent value="asbuilt" className="pt-12">
+          <BrandCard>
+            <BrandCard.Body>
+              <ChainageTab projectId={id} />
             </BrandCard.Body>
           </BrandCard>
         </TabsContent>

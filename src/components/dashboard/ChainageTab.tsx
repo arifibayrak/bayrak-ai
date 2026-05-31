@@ -13,7 +13,6 @@ export const dynamic = 'force-dynamic';
 import { getTranslations } from 'next-intl/server';
 import { MapPin, Route } from 'lucide-react';
 import { getChainageBuckets } from '@/actions/chainage';
-import { getRoute } from '@/actions/routes';
 import { KpiCard } from '@/components/admin/KpiCard';
 import { BrandEmpty } from '@/components/brand';
 import { ChainageTable } from './ChainageTable';
@@ -26,10 +25,7 @@ interface ChainageTabProps {
 export async function ChainageTab({ projectId }: ChainageTabProps) {
   const t = await getTranslations('dashboard.asbuilt');
 
-  const [chainageResult, route] = await Promise.all([
-    getChainageBuckets(projectId, 1000),
-    getRoute(projectId),
-  ]);
+  const chainageResult = await getChainageBuckets(projectId, 1000);
 
   const { buckets, totalLengthM, chainageOffsetM, completionPct } = chainageResult;
 
