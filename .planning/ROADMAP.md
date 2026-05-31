@@ -74,7 +74,7 @@ Turn the imported pipeline drawing into a living chainage-based as-built record 
 
 - [x] **Phase 14: Schema Foundation + DXF Route Import** - Migrate schema (routes extended, submissions chainage columns, submission_ai_flags table), DXF parsing pipeline with CRS reprojection, satellite preview confirmation, and source document reference storage (completed 2026-05-30)
 - [x] **Phase 15: Chainage As-Built View + Approval Snapshot** - Approval path snapshots chainage_m at decision time, per-kilometre as-built strip view with drill-down, chainage calibration offset, route completion % KPI, and chainage Excel/PDF export (completed 2026-05-31)
-- [ ] **Phase 16: AI Vision Assist** - Eval harness + labeled dataset first, then async Claude vision analysis wired to the approval path, advisory flag display on submission detail and as-built strip, perceptual-hash duplicate photo detection, and cron retry for stuck pending rows
+- [x] **Phase 16: AI Vision Assist** - Eval harness + labeled dataset first, then async Claude vision analysis wired to the approval path, advisory flag display on submission detail and as-built strip, perceptual-hash duplicate photo detection, and cron retry for stuck pending rows (completed 2026-05-31)
 
 ---
 
@@ -611,8 +611,8 @@ Plans:
   - [x] 16-01-PLAN.md — Schema (phash_hex) + BLOCKING migration + env + AI SDK v6/Zod v4 smoke (Wave 1)
   - [x] 16-02-PLAN.md — Vision core: runAiAnalysis + Output.object + pHash pre-filter + enqueueAiFlag (Wave 2)
   - [x] 16-03-PLAN.md — Async wiring: bot-audit enqueue + CRON_SECRET cron route + vercel.json (Wave 3)
-  - [ ] 16-04-PLAN.md — Eval gate: labeled fixtures + precision >= 0.80 run + advisory-only proof (Wave 3)
-  - [ ] 16-05-PLAN.md — UI: getSubmissionAiFlag + AiFlagCard + ChainageTable amber dot + i18n (Wave 4)
+  - [x] 16-04-PLAN.md — Eval gate: labeled fixtures + precision >= 0.80 run + advisory-only proof (Wave 3)
+  - [x] 16-05-PLAN.md — UI: getSubmissionAiFlag + AiFlagCard + ChainageTable amber dot + i18n (Wave 4)
 **UI hint**: yes
 
 ## Progress
@@ -637,4 +637,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 13. UX & Brand Pass | 5/5 | Complete    | 2026-05-29 |
 | 14. Schema Foundation + DXF Route Import | 6/6 | Complete   | 2026-05-30 |
 | 15. Chainage As-Built View + Approval Snapshot | 7/7 | Complete   | 2026-05-31 |
-| 16. AI Vision Assist | 3/5 | In Progress|  |
+| 16. AI Vision Assist | 5/5 | Complete   | 2026-05-31 |
