@@ -377,6 +377,16 @@
         "exports_heading": "Exports",
         "exports_body": "This section is under construction and will be available in a future phase."
       },
+      "ai_flags": {
+        "card_heading": "AI Assessment",
+        "advisory_badge": "Advisory",
+        "suggested_classification_label": "Suggested Classification:",
+        "confidence_high": "High Confidence",
+        "confidence_medium": "Medium Confidence",
+        "confidence_low": "Low Confidence",
+        "strip_indicator_tooltip": "AI advisory on this segment",
+        "col_ai_flag": "AI Advisory"
+      },
       "exports": {
         "heading": "Exports",
         "subtitle": "Download your project data in Excel and PDF format.",

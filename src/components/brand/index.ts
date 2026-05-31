@@ -14,3 +14,4 @@ export type { BrandEmptyProps } from "./BrandEmpty";
 export { BrandLogo } from "./BrandLogo";
 export type { BrandLogoProps, BrandLogoSize } from "./BrandLogo";
 export { BrandTable } from "./BrandTable";
+export { AiFlagCard } from "./AiFlagCard";

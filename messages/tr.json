@@ -377,6 +377,16 @@
         "exports_heading": "Dışa Aktarma",
         "exports_body": "Bu bölüm yapım aşamasındadır ve ileride hazır olacaktır."
       },
+      "ai_flags": {
+        "card_heading": "AI Değerlendirmesi",
+        "advisory_badge": "Tavsiye Niteliğinde",
+        "suggested_classification_label": "Önerilen Sınıflandırma:",
+        "confidence_high": "Yüksek Güven",
+        "confidence_medium": "Orta Güven",
+        "confidence_low": "Düşük Güven",
+        "strip_indicator_tooltip": "Bu segmentte AI tavsiyesi var",
+        "col_ai_flag": "AI Tavsiyesi"
+      },
       "exports": {
         "heading": "Dışa Aktarma",
         "subtitle": "Proje verilerinizi Excel ve PDF formatında indirin.",
