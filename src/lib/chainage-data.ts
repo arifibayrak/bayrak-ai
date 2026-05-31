@@ -181,6 +181,12 @@ export async function fetchChainageBucketsRaw(
     )
     SELECT
       ab.bucket_idx,
+      -- WR-01: bucket_start/bucket_end describe the CALIBRATED frame, identical to
+      -- the value the bot reports to the worker. The submission was bucketed on its
+      -- calibrated chainage (raw + chainage_offset_m, applied inside FLOOR above), so
+      -- a calibrated value X always lies within [bucket_idx*size, (bucket_idx+1)*size).
+      -- The displayed km range therefore already includes the offset — it is NOT raw
+      -- stationing. Dashboard, bot notification, and export all use this one frame.
       ab.bucket_idx * ${bsz}                              AS bucket_start,
       (ab.bucket_idx + 1) * ${bsz}                       AS bucket_end,
       COALESCE(sa.approved_count, 0)                      AS approved_count,
