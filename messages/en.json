@@ -31,7 +31,8 @@
       "description_label": "Description",
       "save_changes": "Save Changes",
       "name_required": "Project name is required.",
-      "subtitle": "Manage all your sites from one place."
+      "subtitle": "Manage all your sites from one place.",
+      "tab_asbuilt": "As-Built"
     },
     "boq": {
       "title": "Bill of Quantities",
@@ -523,6 +524,33 @@
       "remove_assignment": "Remove Assignment",
       "remove_assignment_confirm": "Are you sure you want to remove {personName}'s assignment?",
       "remove_assignment_cta": "Yes, Remove"
+    },
+    "asbuilt": {
+      "kpi_completion_label": "Route Completion",
+      "kpi_completion_sublabel": "Approved / Total segments",
+      "kpi_approved_km_label": "Approved Route",
+      "kpi_total_km_label": "Total Route",
+      "calibration_heading": "Chainage Calibration",
+      "calibration_label": "Offset (metres)",
+      "calibration_help": "Offset from km 0",
+      "calibration_save": "Save Offset",
+      "granularity_label": "Select granularity",
+      "col_km_range": "Km Range",
+      "col_status": "Status",
+      "col_work_count": "Work Count",
+      "col_material_qty": "Material / Qty",
+      "col_worker": "Worker",
+      "col_auditor": "Auditor",
+      "col_detail": "Detail",
+      "detail_link": "Detail →",
+      "status_approved": "Approved",
+      "status_in_progress": "In Progress",
+      "status_not_started": "Not Started",
+      "export_excel": "Download Excel",
+      "export_pdf": "Download PDF",
+      "empty_heading": "No records yet",
+      "empty_body": "No approved work records found for this project. The as-built view will appear after the first auditor approval.",
+      "error_body": "Failed to load route data. Refresh the page."
     }
   },
   "landing": {
@@ -582,6 +610,7 @@
     "confirm": "Confirm",
     "back": "Back",
     "loading": "Loading...",
+    "saved": "Saved",
     "error_generic": "Could not save. Check your connection and try again.",
     "yes_delete": "Yes, Delete",
     "yes_remove": "Yes, Remove",

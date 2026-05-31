@@ -31,7 +31,8 @@
       "description_label": "Açıklama",
       "save_changes": "Değişiklikleri Kaydet",
       "name_required": "Proje adı zorunludur.",
-      "subtitle": "Tüm sahalarınızı tek yerden yönetin."
+      "subtitle": "Tüm sahalarınızı tek yerden yönetin.",
+      "tab_asbuilt": "As-Built"
     },
     "boq": {
       "title": "Metraj Kalemleri",
@@ -523,6 +524,33 @@
       "remove_assignment": "Görevi Kaldır",
       "remove_assignment_confirm": "'{personName}' kişisinin proje atamasını kaldırmak istediğinize emin misiniz?",
       "remove_assignment_cta": "Evet, Kaldır"
+    },
+    "asbuilt": {
+      "kpi_completion_label": "Güzergah Tamamlanma",
+      "kpi_completion_sublabel": "Onaylı segment / Toplam segment",
+      "kpi_approved_km_label": "Onaylı Güzergah",
+      "kpi_total_km_label": "Toplam Güzergah",
+      "calibration_heading": "Chainage Kalibrasyonu",
+      "calibration_label": "Ofset (metre)",
+      "calibration_help": "Km 0'dan itibaren ofset değeri",
+      "calibration_save": "Ofset Kaydet",
+      "granularity_label": "Granülerlik seçin",
+      "col_km_range": "Km Aralığı",
+      "col_status": "Durum",
+      "col_work_count": "İş Adedi",
+      "col_material_qty": "Malzeme / Miktar",
+      "col_worker": "İşçi",
+      "col_auditor": "Denetçi",
+      "col_detail": "Detay",
+      "detail_link": "Detay →",
+      "status_approved": "Onaylı",
+      "status_in_progress": "Devam Ediyor",
+      "status_not_started": "Başlanmadı",
+      "export_excel": "Excel İndir",
+      "export_pdf": "PDF İndir",
+      "empty_heading": "Henüz kayıt yok",
+      "empty_body": "Bu projede onaylanmış iş kaydı bulunmuyor. İlk onaydan sonra as-built görünümü burada gösterilecek.",
+      "error_body": "Güzergah verisi yüklenemedi. Sayfayı yenileyin."
     }
   },
   "landing": {
@@ -582,6 +610,7 @@
     "confirm": "Onayla",
     "back": "Geri",
     "loading": "Yükleniyor...",
+    "saved": "Kaydedildi",
     "error_generic": "Kaydedilemedi. Bağlantınızı kontrol edin ve tekrar deneyin.",
     "yes_delete": "Evet, Sil",
     "yes_remove": "Evet, Kaldır",
