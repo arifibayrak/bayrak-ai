@@ -61,9 +61,12 @@ describeIfAiEval(
         // 2. AI_GATEWAY_API_KEY is resolved — an auth error means the key is not configured.
         const schema = z.object({ ok: z.boolean() });
 
-        let result: Awaited<ReturnType<typeof generateText<never, ReturnType<typeof Output.object<typeof schema>>>>>;
+        // Let TS infer the result type (mirrors src/lib/ai-vision.ts, which is
+        // tsc-clean). An explicit generic annotation on generateText mistyped
+        // `output` as the Zod schema rather than its inferred shape.
+        let output: z.infer<typeof schema> | undefined;
         try {
-          result = await generateText({
+          const result = await generateText({
             model: 'anthropic/claude-sonnet-4.6',
             output: Output.object({ schema }),
             messages: [
@@ -73,6 +76,7 @@ describeIfAiEval(
               },
             ],
           });
+          output = result.output;
         } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : String(err);
           throw new Error(
@@ -81,9 +85,9 @@ describeIfAiEval(
           );
         }
 
-        // The v6 runtime contract: result.output must be defined and match the schema
-        expect(result.output).toBeDefined();
-        expect(typeof result.output.ok).toBe('boolean');
+        // The v6 runtime contract: output must be defined and match the schema
+        expect(output).toBeDefined();
+        expect(typeof output!.ok).toBe('boolean');
         // ok should be true since we asked for it, but we just verify it's a boolean
       },
       30_000, // 30s timeout for real API call
