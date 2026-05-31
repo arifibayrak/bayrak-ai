@@ -375,7 +375,6 @@ describeIfDb('chainage snapshot + bucket aggregation (CHN-03, CHN-04)', () => {
   it('chainage excel columns: 8 columns in order — Km Başlangıç, Km Bitiş, İş Adedi, Malzeme, Miktar, Birim, İşçi, Denetçi', async () => {
     const ExcelJS = (await import('exceljs')).default;
     const { buildChainageLedger } = await import('../src/lib/chainage-excel');
-    const { ChainageBucket } = await import('../src/lib/chainage-data').then(() => ({}));
 
     // Minimal fixture bucket — no DB required for this structural assertion
     const fakeBucket = {
@@ -394,7 +393,8 @@ describeIfDb('chainage snapshot + bucket aggregation (CHN-03, CHN-04)', () => {
     const buffer = await buildChainageLedger({ buckets: [fakeBucket] });
 
     const workbook = new ExcelJS.Workbook();
-    await workbook.xlsx.load(buffer);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await workbook.xlsx.load(buffer as any);
     const sheet = workbook.worksheets[0];
 
     // Header row — columns 1–8 in order (1-based numeric index, keys not persisted)
