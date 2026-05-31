@@ -475,19 +475,20 @@ export async function handleAuditDecision(
 
           if (route?.totalLengthM != null) {
             // Postgres-side ROUND — money-math discipline: never multiply numeric strings in JS
-            await tx
+            const updatedRows = await tx
               .update(sub2)
               .set({
                 chainageM: sql2`ROUND(${affected[0].segmentFraction}::numeric * ${route.totalLengthM}::numeric, 2)`,
                 routeGeometryVersion: route.geometryVersion,
               })
-              .where(eq2(sub2.id, submissionId));
+              .where(eq2(sub2.id, submissionId))
+              .returning({ chainageM: sub2.chainageM });
 
-            // Capture for post-commit worker notification (Task 2)
-            // Re-derive in JS for display only — the stored value was computed by Postgres
-            const fracNum = Number(affected[0].segmentFraction);
-            const lenNum = Number(route.totalLengthM);
-            capturedChainageM = String(Math.round(fracNum * lenNum * 100) / 100);
+            // WR-02: Capture the EXACT Postgres-computed chainage_m for the worker
+            // notification. Re-deriving via JS float math (Number(frac) * Number(len))
+            // could diverge from the persisted/exported value by 0.01 m at the 0.005
+            // rounding boundary. Use the returned numeric string verbatim.
+            capturedChainageM = updatedRows[0]?.chainageM ?? null;
             capturedChainageOffsetM = route.chainageOffsetM != null ? String(route.chainageOffsetM) : '0';
           }
         }
