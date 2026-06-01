@@ -47,10 +47,17 @@ export function LeaderboardSortSelect({
     router.push(`?${params.toString()}`);
   }
 
+  // base-ui resolves the trigger label from `items` without opening the popup
+  // (its <Select.Item>s live in an unmounted Portal) — otherwise the trigger
+  // renders the raw value (e.g. "value") instead of the option label.
+  const items: Record<string, string> = Object.fromEntries(
+    options.map((o) => [o.value, o.label]),
+  );
+
   return (
     <div className="flex items-center gap-2">
       <span className="text-sm text-muted-foreground whitespace-nowrap">{label}</span>
-      <Select value={currentValue} onValueChange={handleChange}>
+      <Select items={items} value={currentValue} onValueChange={handleChange}>
         <SelectTrigger className="w-[200px]" aria-label={label}>
           <SelectValue />
         </SelectTrigger>

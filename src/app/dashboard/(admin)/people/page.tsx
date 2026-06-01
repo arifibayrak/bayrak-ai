@@ -19,7 +19,8 @@
 
 import { Suspense } from 'react';
 import Link from 'next/link';
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, getLocale } from 'next-intl/server';
+import { formatMoneySymbol } from '@/lib/format-money';
 import { ArrowDown, ArrowUp, Users } from 'lucide-react';
 import {
   BrandBadge,
@@ -66,6 +67,7 @@ export default async function PeoplePage({ searchParams }: Props) {
 
   const t = await getTranslations('dashboard.admin.people');
   const tLeaderboard = await getTranslations('dashboard.admin.leaderboard');
+  const locale = await getLocale();
 
   // CR-01 (09-REVIEW): fetch tenant settings to get auditSlaHours for the SLA breach rate column.
   // Fetch settings first, then run remaining queries in parallel — one extra serial step but
@@ -205,12 +207,12 @@ export default async function PeoplePage({ searchParams }: Props) {
                     {rankedWorkers.map((w) => {
                       const total =
                         w.submissionsApproved + w.submissionsRejected + w.submissionsPending;
-                      // Display first available currency value or "—"
-                      const currencies = Object.keys(w.valueContributedByCurrency);
-                      const valueDisplay =
-                        currencies.length > 0
-                          ? w.valueContributedByCurrency[currencies[0]]
-                          : '—';
+                      // Earned value (approved work × unit price), shown as money
+                      // with the currency symbol and two decimals (e.g. ₺175.525,00).
+                      const valueCurrency = Object.keys(w.valueContributedByCurrency)[0];
+                      const valueDisplay = valueCurrency
+                        ? formatMoneySymbol(w.valueContributedByCurrency[valueCurrency], valueCurrency, locale)
+                        : '—';
 
                       return (
                         <BrandTable.Row key={w.personId}>
