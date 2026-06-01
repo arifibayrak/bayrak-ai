@@ -20,12 +20,15 @@ export async function TopNav({ userEmail }: { userEmail: string }) {
   const tAdmin = await getTranslations('dashboard.admin.nav');
 
   return (
-    <header className="sticky top-0 z-40 h-14 bg-card/80 backdrop-blur-md supports-[backdrop-filter]:bg-card/70 border-b border-border">
+    <header className="sticky top-0 z-40 h-14 bg-card border-b border-border">
       <div className="max-w-5xl mx-auto px-6 h-full flex items-center justify-between">
         {/* Left: mobile hamburger + wordmark */}
         <div className="flex items-center gap-2">
-          <SidebarTrigger className="md:hidden" aria-label={tAdmin('open_nav')} />
-          <span className="text-xl font-bold tracking-tight">{t('wordmark')}</span>
+          <SidebarTrigger
+            className="md:hidden text-foreground hover:bg-secondary focus-visible:ring-2 focus-visible:ring-ring"
+            aria-label={tAdmin('open_nav')}
+          />
+          <span className="text-xl font-bold tracking-tight text-foreground">{t('wordmark')}</span>
         </div>
 
         {/* Right: language toggle + settings gear + user email + sign out */}
@@ -35,7 +38,7 @@ export async function TopNav({ userEmail }: { userEmail: string }) {
           {/* Settings gear icon (D-86) — navigates to /dashboard/settings; no sidebar item */}
           <Link
             href="/dashboard/settings"
-            className="text-muted-foreground hover:text-foreground ml-2"
+            className="text-muted-foreground hover:text-foreground ml-2 focus-visible:ring-2 focus-visible:ring-ring rounded-sm outline-none"
             aria-label={tAdmin('settings_aria_label')}
           >
             <Settings className="h-5 w-5" aria-hidden="true" />
@@ -53,7 +56,7 @@ export async function TopNav({ userEmail }: { userEmail: string }) {
               await signOut({ redirectTo: '/auth/signin' });
             }}
           >
-            <Button type="submit" variant="ghost" size="sm">
+            <Button type="submit" variant="ghost" size="sm" className="text-foreground focus-visible:ring-ring">
               {t('sign_out')}
             </Button>
           </form>

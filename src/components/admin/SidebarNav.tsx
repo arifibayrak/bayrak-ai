@@ -11,6 +11,7 @@ import {
   FileText,
   Download,
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import {
   SidebarMenu,
   SidebarMenuButton,
@@ -30,6 +31,7 @@ const NAV_ITEMS = [
  * SidebarNav — 'use client' nav component with usePathname active detection.
  * 6 items (D-74: /dashboard/records has NO nav item).
  * Active detection: exact match for leaf routes, startsWith for routes with sub-pages.
+ * Active style: amber left-accent bar (2px) + amber text/icon (Field-Industrial 260601-kj4).
  * Uses render prop pattern (Base UI SidebarMenuButton) instead of asChild.
  */
 export function SidebarNav() {
@@ -44,9 +46,17 @@ export function SidebarNav() {
             ? pathname === item.href
             : pathname.startsWith(item.href);
           return (
-            <SidebarMenuItem key={item.key}>
+            <SidebarMenuItem
+              key={item.key}
+              className={cn(
+                isActive && 'border-l-2 border-l-primary pl-0',
+              )}
+            >
               <SidebarMenuButton
                 isActive={isActive}
+                className={cn(
+                  isActive && 'text-primary [&_svg]:text-primary',
+                )}
                 render={
                   <Link
                     href={item.href}
