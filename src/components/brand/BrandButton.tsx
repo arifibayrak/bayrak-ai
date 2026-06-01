@@ -56,9 +56,16 @@ export function BrandButton({
   className,
   ...rest
 }: BrandButtonProps) {
+  // When rendered polymorphically as a non-<button> element (e.g. render={<Link/>}),
+  // Base UI requires nativeButton={false} — otherwise it warns that native button
+  // semantics are dropped. Default it off whenever `render` is provided, but let an
+  // explicit caller-supplied nativeButton win.
+  const nativeButton =
+    rest.render != null ? (rest.nativeButton ?? false) : rest.nativeButton;
   return (
     <Button
       {...rest}
+      nativeButton={nativeButton}
       className={cn(brandButtonVariants({ variant, size }), className)}
     />
   );
