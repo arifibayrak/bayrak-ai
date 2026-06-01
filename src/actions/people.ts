@@ -10,6 +10,7 @@ import { people } from '@/db/schema/people';
 import { pendingPeople } from '@/db/schema/pending-people';
 import { assignments } from '@/db/schema/assignments';
 import { logOfficeActivity } from '@/lib/log-office-activity';
+import { UUID_LIKE } from '@/lib/utils';
 
 // ─── Transaction-capable DB helper ───────────────────────────────────────────
 //
@@ -47,14 +48,14 @@ const roleSchema = z.enum(['worker', 'auditor'], {
 const approvePendingSchema = z.object({
   displayName: z.string().min(1, 'Enter a name before approving.'),
   role: roleSchema,
-  projectId: z.string().uuid('Invalid project ID.'),
+  projectId: z.string().regex(UUID_LIKE, 'Invalid project ID.'),
 });
 
 const addManualPersonSchema = z.object({
   displayName: z.string().min(1, 'Display name is required.'),
   role: roleSchema,
   telegramUserId: z.number().int().positive('Telegram user ID must be a positive integer.'),
-  projectId: z.string().uuid('Invalid project ID.'),
+  projectId: z.string().regex(UUID_LIKE, 'Invalid project ID.'),
 });
 
 // ─── approvePending ────────────────────────────────────────────────────────────

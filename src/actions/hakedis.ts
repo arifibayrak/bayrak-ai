@@ -29,6 +29,7 @@ import { auth } from '@/lib/auth';
 import { getDefaultTenantId } from '@/lib/tenant';
 import { logOfficeActivity } from '@/lib/log-office-activity';
 import { ALLOWED_CURRENCIES } from '@/lib/currencies';
+import { UUID_LIKE } from '@/lib/utils';
 import type { HakedisStatus } from '@/db/schema/hakedis-periods';
 
 // ── Validation schemas ────────────────────────────────────────────────────────
@@ -38,7 +39,7 @@ import type { HakedisStatus } from '@/db/schema/hakedis-periods';
  * Rates arrive as 0-1 fractions (form converts % → fraction before calling).
  */
 const createPeriodSchema = z.object({
-  projectId: z.string().uuid(),
+  projectId: z.string().regex(UUID_LIKE, 'Invalid project ID.'),
   periodNumber: z.string().min(1).max(50).optional(),
   periodStartDate: z.string().optional(),
   periodEndDate: z.string().min(1),
