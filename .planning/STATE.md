@@ -4,7 +4,7 @@ milestone: v4.0
 milestone_name: Document-Driven Route Import, Chainage As-Built Tracking & AI Vision Assist
 status: executing
 stopped_at: Phase 16 UI-SPEC approved
-last_updated: "2026-05-31T19:11:07.603Z"
+last_updated: "2026-06-01T11:53:55.870Z"
 last_activity: 2026-05-31
 progress:
   total_phases: 6
