@@ -160,14 +160,14 @@ export async function saveState(
   db: any,
   telegramUserId: bigint,
   step: string,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   data: Record<string, unknown>,
   personId: string,
   flowId?: string
 ): Promise<void> {
   const { conversationState } = await import('@/db/schema/conversation-state');
   // CR-05: combine both imports into one destructuring to reduce dynamic import calls (also fixes IN-01)
-  const { eq, sql } = await import('drizzle-orm');
+  const { sql } = await import('drizzle-orm');
 
   const now = new Date();
   const resolvedFlowId = flowId ?? sql`gen_random_uuid()`;
@@ -1156,7 +1156,6 @@ export async function handleStepNotes(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   db: any
 ): Promise<void> {
-  const { MESSAGES } = await import('@/lib/bot-messages');
   const { STEPS } = await import('@/lib/bot-fsm');
 
   const telegramUserId = ctx.from?.id;

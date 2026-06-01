@@ -60,7 +60,7 @@ describe('Turkish decimal normalization (Pitfall-4 guard)', () => {
  *
  * Source: STATE.md [Phase 01-02b] + tests/telegram-webhook.test.ts lines 198-212.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 export async function setupBotForTest(): Promise<any> {
   const { bot } = await import('@/lib/telegram');
 
@@ -84,7 +84,7 @@ export async function setupBotForTest(): Promise<any> {
 
   // Intercept ALL outbound Telegram API calls (ctx.reply, sendMessage, etc.)
   // api.config.use transformer is the correct grammY intercept mechanism.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   bot.api.config.use((_prev, _method, _payload, _signal) =>
     Promise.resolve({ ok: true, result: {} as any })
   );
@@ -230,7 +230,7 @@ describe('keyboard builders', () => {
 
 describe('idempotency (D-13 Guard 1)', () => {
   // Spy to detect if downstream handler body ran
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   let handlerSpy: (...args: any[]) => any;
 
   // Mocked DB insert chain for processedUpdates
@@ -284,7 +284,7 @@ describe('idempotency (D-13 Guard 1)', () => {
     const replies: string[] = [];
 
     // Override the transformer to capture replies for this test
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     bot.api.config.use(async (_prev: any, method: any, payload: any) => {
       if (method === 'sendMessage') {
         handlerSpy((payload as { text: string }).text);
@@ -306,7 +306,7 @@ describe('idempotency (D-13 Guard 1)', () => {
     const bot = await setupBotForTest();
     const replies: string[] = [];
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     bot.api.config.use(async (_prev: any, method: any, payload: any) => {
       if (method === 'sendMessage') {
         handlerSpy((payload as { text: string }).text);
@@ -336,7 +336,7 @@ describe('idempotency (D-13 Guard 1)', () => {
     const bot = await setupBotForTest();
 
     const replies: string[] = [];
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     bot.api.config.use(async (_prev: any, method: any, payload: any) => {
       if (method === 'sendMessage' && 'text' in payload) {
         replies.push((payload as { text: string }).text);
@@ -398,7 +398,7 @@ describe('unregistered user (identity guard)', () => {
     const replies: string[] = [];
 
     // Override transformer to capture replies
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     bot.api.config.use(async (_prev: any, method: any, payload: any) => {
       if (method === 'sendMessage') {
         replies.push((payload as { text: string }).text);
@@ -432,7 +432,7 @@ describe('unregistered user (identity guard)', () => {
 describe('/start + cancel', () => {
   // DB mock helpers reused across tests in this group
   let mockReturningProcessed: ReturnType<typeof vi.fn>;
-  let mockValuesProcessed: ReturnType<typeof vi.fn>;
+  let _mockValuesProcessed: ReturnType<typeof vi.fn>;
   let mockOnConflictDoNothingProcessed: ReturnType<typeof vi.fn>;
 
   /** Build a /start update for the given userId */
@@ -473,7 +473,7 @@ describe('/start + cancel', () => {
     // Idempotency insert always succeeds (first delivery)
     mockReturningProcessed = vi.fn().mockResolvedValue([{ id: BigInt(1) }]);
     mockOnConflictDoNothingProcessed = vi.fn().mockReturnValue({ returning: mockReturningProcessed });
-    mockValuesProcessed = vi.fn().mockReturnValue({ onConflictDoNothing: mockOnConflictDoNothingProcessed });
+    _mockValuesProcessed = vi.fn().mockReturnValue({ onConflictDoNothing: mockOnConflictDoNothingProcessed });
   });
 
   afterEach(() => {
@@ -540,7 +540,7 @@ describe('/start + cancel', () => {
     const bot = await setupBotForTest();
     const replies: Array<{ text: string; replyMarkup?: unknown }> = [];
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     bot.api.config.use(async (_prev: any, method: any, payload: any) => {
       if (method === 'sendMessage') {
         replies.push({ text: payload.text, replyMarkup: payload.reply_markup });
@@ -626,7 +626,7 @@ describe('/start + cancel', () => {
     const bot = await setupBotForTest();
     const replies: Array<{ text: string; replyMarkup?: unknown }> = [];
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     bot.api.config.use(async (_prev: any, method: any, payload: any) => {
       if (method === 'sendMessage') {
         replies.push({ text: payload.text, replyMarkup: payload.reply_markup });
@@ -677,7 +677,7 @@ describe('/start + cancel', () => {
     const bot = await setupBotForTest();
     const replies: string[] = [];
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     bot.api.config.use(async (_prev: any, method: any, payload: any) => {
       if (method === 'sendMessage') {
         replies.push(payload.text);
@@ -764,7 +764,7 @@ describe('cold-start resume (SC5) + TTL (D-22)', () => {
     const bot = await setupBotForTest();
     const replies: string[] = [];
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     bot.api.config.use(async (_prev: any, method: any, payload: any) => {
       if (method === 'sendMessage') replies.push(payload.text);
       return Promise.resolve({ ok: true, result: {} as never });
@@ -801,7 +801,7 @@ describe('cold-start resume (SC5) + TTL (D-22)', () => {
     const bot = await setupBotForTest();
     const replies: string[] = [];
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     bot.api.config.use(async (_prev: any, method: any, payload: any) => {
       if (method === 'sendMessage') replies.push(payload.text);
       return Promise.resolve({ ok: true, result: {} as never });
@@ -826,7 +826,7 @@ describe('cold-start resume (SC5) + TTL (D-22)', () => {
     const bot = await setupBotForTest();
     const replies: string[] = [];
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     bot.api.config.use(async (_prev: any, method: any, payload: any) => {
       if (method === 'sendMessage') replies.push(payload.text);
       return Promise.resolve({ ok: true, result: {} as never });
@@ -890,7 +890,7 @@ describe('project + boq selection', () => {
   }
 
   /** Build a db mock that routes by selectCallCount */
-  function buildSelectionDbMock(opts: {
+  function _buildSelectionDbMock(opts: {
     workerProjects: Array<{ id: string; name: string }>;
     projectBoqItems: Array<{
       id: string; material: string; unit: string; plannedQty: string; approvedQty: string;
@@ -1025,7 +1025,7 @@ describe('project + boq selection', () => {
     const bot = await setupBotForTest();
     const replies: Array<{ text?: string; replyMarkup?: unknown; method: string }> = [];
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     bot.api.config.use(async (_prev: any, method: any, payload: any) => {
       replies.push({ method, text: payload?.text, replyMarkup: payload?.reply_markup });
       return Promise.resolve({ ok: true, result: {} as never });
@@ -1098,13 +1098,13 @@ describe('project + boq selection', () => {
 
     const bot = await setupBotForTest();
     const updateCalls: ReturnType<typeof vi.fn>[] = [];
-    let savedStep: string | null = null;
+    const savedStep: string | null = null;
 
     // Intercept update calls to detect if step was advanced
     const dbModule = await import('@/db').catch(() => null);
     void dbModule; // unused
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     bot.api.config.use(async (_prev: any, method: any, payload: any) => {
       if (method === 'sendMessage' || method === 'answerCallbackQuery') {
         updateCalls.push(payload);
@@ -1116,7 +1116,6 @@ describe('project + boq selection', () => {
 
     // The step should NOT have advanced — saveState update must NOT have been called
     // with 'boq' step. We verify by checking that any reply is a reprompt, not a BOQ keyboard.
-    const textReplies = updateCalls.filter((p: unknown) => (p as { text?: string }).text);
     // If there's a reply, it should be a reprompt (project keyboard or chooseProject message)
     // The key assertion: NO boq:select keyboard was sent
     const allPayloads = JSON.stringify(updateCalls);
@@ -1177,7 +1176,7 @@ describe('project + boq selection', () => {
     const bot = await setupBotForTest();
     const replies: string[] = [];
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     bot.api.config.use(async (_prev: any, method: any, payload: any) => {
       if (method === 'sendMessage' && payload?.text) {
         replies.push(payload.text);
@@ -1244,7 +1243,7 @@ describe('project + boq selection', () => {
     const bot = await setupBotForTest();
     const replies: Array<{ text?: string; replyMarkup?: unknown }> = [];
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     bot.api.config.use(async (_prev: any, method: any, payload: any) => {
       if (method === 'sendMessage') {
         replies.push({ text: payload.text, replyMarkup: payload.reply_markup });
@@ -1329,7 +1328,7 @@ describe('photo + location enforcement', () => {
     const bot = await setupBotForTest();
     const replies: string[] = [];
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     bot.api.config.use(async (_prev: any, method: any, payload: any) => {
       if (method === 'sendMessage' && payload?.text) replies.push(payload.text);
       return Promise.resolve({ ok: true, result: {} as never });
@@ -1352,7 +1351,7 @@ describe('photo + location enforcement', () => {
     const bot = await setupBotForTest();
     const replies: string[] = [];
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     bot.api.config.use(async (_prev: any, method: any, payload: any) => {
       if (method === 'sendMessage' && payload?.text) replies.push(payload.text);
       return Promise.resolve({ ok: true, result: {} as never });
@@ -1385,7 +1384,7 @@ describe('photo + location enforcement', () => {
     const bot = await setupBotForTest();
     const replies: string[] = [];
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     bot.api.config.use(async (_prev: any, method: any, payload: any) => {
       if (method === 'sendMessage' && payload?.text) replies.push(payload.text);
       return Promise.resolve({ ok: true, result: {} as never });
@@ -1404,7 +1403,7 @@ describe('photo + location enforcement', () => {
     const bot = await setupBotForTest();
     const replies: string[] = [];
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     bot.api.config.use(async (_prev: any, method: any, payload: any) => {
       if (method === 'sendMessage' && payload?.text) replies.push(payload.text);
       return Promise.resolve({ ok: true, result: {} as never });
@@ -1496,7 +1495,7 @@ describe('quantity + notes', () => {
     const savedData: unknown[] = [];
 
     // Capture update set call to verify quantity saved
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     bot.api.config.use(async (_prev: any, method: any, payload: any) => {
       if (method === 'sendMessage' && payload?.text) savedData.push(payload.text);
       return Promise.resolve({ ok: true, result: {} as never });
@@ -1511,7 +1510,7 @@ describe('quantity + notes', () => {
   it('LOG-06: Turkish comma decimal "25,5" is stored as 25.5 (Pitfall 4 critical)', async () => {
     vi.doMock('@/db', () => ({ db: buildQuantityStateDbMock('quantity') }));
 
-    const bot = await setupBotForTest();
+    const _bot = await setupBotForTest();
     let capturedUpdateData: Record<string, unknown> | null = null;
 
     // CR-05: saveState now uses insert().values().onConflictDoUpdate() instead of update().set().
@@ -1554,7 +1553,7 @@ describe('quantity + notes', () => {
     const bot2 = await setupBotForTest();
     const replies: string[] = [];
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     bot2.api.config.use(async (_prev: any, method: any, payload: any) => {
       if (method === 'sendMessage' && payload?.text) replies.push(payload.text);
       return Promise.resolve({ ok: true, result: {} as never });
@@ -1564,7 +1563,7 @@ describe('quantity + notes', () => {
 
     // Verify the upsert was called with quantity = 25.5 (not 25)
     expect(capturedUpdateData).not.toBeNull();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const savedQty = (capturedUpdateData as any)?.data?.quantity;
     expect(savedQty).toBe(25.5);
   });
@@ -1575,7 +1574,7 @@ describe('quantity + notes', () => {
     const bot = await setupBotForTest();
     const replies: string[] = [];
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     bot.api.config.use(async (_prev: any, method: any, payload: any) => {
       if (method === 'sendMessage' && payload?.text) replies.push(payload.text);
       return Promise.resolve({ ok: true, result: {} as never });
@@ -1628,7 +1627,7 @@ describe('quantity + notes', () => {
 
     const bot3 = await setupBotForTest();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     bot3.api.config.use(async (_prev: any, method: any, payload: any) => {
       if (method === 'sendMessage' && payload?.text) replies.push(payload.text);
       return Promise.resolve({ ok: true, result: {} as never });
@@ -1656,11 +1655,11 @@ describe('quantity + notes', () => {
     // Verify null notes saved in data (from onConflictDoUpdate set argument)
     // set = { currentStep, data, updatedAt } — notes lives at capturedData.data.notes
     expect(capturedData).not.toBeNull();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const savedNotes = (capturedData as any)?.data?.notes;
     expect(savedNotes).toBeNull();
     // Should have advanced to confirm step
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const savedStep = (capturedData as any)?.currentStep;
     expect(savedStep).toBe('confirm');
     void bot;
@@ -1707,7 +1706,7 @@ describe('quantity + notes', () => {
 
     const bot4 = await setupBotForTest();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     bot4.api.config.use(async (_prev: any, _method: any, _payload: any) => {
       return Promise.resolve({ ok: true, result: {} as never });
     });
@@ -1717,11 +1716,11 @@ describe('quantity + notes', () => {
     // Verify notes saved in data (from onConflictDoUpdate set argument)
     // set = { currentStep, data, updatedAt } — notes lives at capturedData.data.notes
     expect(capturedData).not.toBeNull();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const savedNotes = (capturedData as any)?.data?.notes;
     expect(savedNotes).toBe('Boru döşeme tamamlandı');
     // Should have advanced to confirm step
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const savedStep = (capturedData as any)?.currentStep;
     expect(savedStep).toBe('confirm');
     void bot;
@@ -1830,7 +1829,7 @@ describe('submission insert (unit)', () => {
     const bot = await setupBotForTest();
     const sentMethods: Array<{ method: string; payload: unknown }> = [];
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     bot.api.config.use(async (_prev: any, method: any, payload: any) => {
       sentMethods.push({ method, payload });
       return Promise.resolve({ ok: true, result: {} as never });
@@ -1923,7 +1922,7 @@ describe('submission insert (unit)', () => {
     const sentMethods: Array<{ method: string; payload: unknown }> = [];
 
     // eslint-disable name of greeting to detect auto-loop
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     bot.api.config.use(async (_prev: any, method: any, payload: any) => {
       sentMethods.push({ method, payload });
       return Promise.resolve({ ok: true, result: {} as never });
@@ -2043,7 +2042,7 @@ describe('confirm summary + edit (D-16)', () => {
     const bot = await setupBotForTest();
     const sentMethods: Array<{ method: string; payload: unknown }> = [];
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     bot.api.config.use(async (_prev: any, method: any, payload: any) => {
       sentMethods.push({ method, payload });
       return Promise.resolve({ ok: true, result: {} as never });
@@ -2105,7 +2104,7 @@ describe('confirm summary + edit (D-16)', () => {
 
     const bot2 = await setupBotForTest();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     bot2.api.config.use(async (_prev: any, _method: any, _payload: any) => {
       return Promise.resolve({ ok: true, result: {} as never });
     });
@@ -2133,9 +2132,9 @@ describe('confirm summary + edit (D-16)', () => {
     // saveState should have been called with currentStep='quantity' and editReturnStep='confirm'
     // (captured from onConflictDoUpdate set argument)
     expect(capturedUpdateData).not.toBeNull();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     expect((capturedUpdateData as any)?.currentStep).toBe('quantity');
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     expect((capturedUpdateData as any)?.data?.editReturnStep).toBe('confirm');
     void bot;
   });
@@ -2182,7 +2181,7 @@ describe('confirm summary + edit (D-16)', () => {
     const bot = await setupBotForTest();
     const sentMethods: Array<{ method: string; payload: unknown }> = [];
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     bot.api.config.use(async (_prev: any, method: any, payload: any) => {
       sentMethods.push({ method, payload });
       return Promise.resolve({ ok: true, result: {} as never });
@@ -2228,11 +2227,11 @@ describeIfDb('submission persistence & idempotency (SC4)', () => {
     // neon + Pool exports (not the partial mock from submission insert unit tests).
     // vi.doMock with importActual replaces any prior factory for this module key.
     vi.doMock('@neondatabase/serverless', async () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       return await vi.importActual<any>('@neondatabase/serverless');
     });
     vi.doMock('drizzle-orm/neon-serverless', async () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       return await vi.importActual<any>('drizzle-orm/neon-serverless');
     });
 
@@ -2566,7 +2565,7 @@ describe('flow:resume rebuilds inline keyboard (CR-01)', () => {
     const bot = await setupBotForTest();
     const sentMethods: Array<{ method: string; payload: unknown }> = [];
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     bot.api.config.use(async (_prev: any, method: any, payload: any) => {
       sentMethods.push({ method, payload });
       return Promise.resolve({ ok: true, result: {} as never });
@@ -2631,7 +2630,7 @@ describe('flow:resume rebuilds inline keyboard (CR-01)', () => {
     const bot = await setupBotForTest();
     const sentMethods: Array<{ method: string; payload: unknown }> = [];
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     bot.api.config.use(async (_prev: any, method: any, payload: any) => {
       sentMethods.push({ method, payload });
       return Promise.resolve({ ok: true, result: {} as never });
@@ -2712,7 +2711,7 @@ describe('quantity validation — Infinity + ambiguous decimal (CR-02 + WR-02)',
     const bot = await setupBotForTest();
     const replies: string[] = [];
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     bot.api.config.use(async (_prev: any, method: any, payload: any) => {
       if (method === 'sendMessage' && payload?.text) replies.push(payload.text);
       return Promise.resolve({ ok: true, result: {} as never });
@@ -2733,7 +2732,7 @@ describe('quantity validation — Infinity + ambiguous decimal (CR-02 + WR-02)',
     const bot = await setupBotForTest();
     const replies: string[] = [];
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     bot.api.config.use(async (_prev: any, method: any, payload: any) => {
       if (method === 'sendMessage' && payload?.text) replies.push(payload.text);
       return Promise.resolve({ ok: true, result: {} as never });
@@ -2754,7 +2753,7 @@ describe('quantity validation — Infinity + ambiguous decimal (CR-02 + WR-02)',
     const bot = await setupBotForTest();
     const replies: string[] = [];
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     bot.api.config.use(async (_prev: any, method: any, payload: any) => {
       if (method === 'sendMessage' && payload?.text) replies.push(payload.text);
       return Promise.resolve({ ok: true, result: {} as never });
@@ -2806,7 +2805,7 @@ describe('quantity validation — Infinity + ambiguous decimal (CR-02 + WR-02)',
     }));
 
     const bot = await setupBotForTest();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     bot.api.config.use(async (_prev: any, _method: any, _payload: any) =>
       Promise.resolve({ ok: true, result: {} as never })
     );
@@ -2818,7 +2817,7 @@ describe('quantity validation — Infinity + ambiguous decimal (CR-02 + WR-02)',
     }});
 
     expect(capturedData).not.toBeNull();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     expect((capturedData as any)?.data?.quantity).toBe(25.5);
   });
 });
@@ -2902,7 +2901,7 @@ describe('confirm summary shows names not UUIDs (WR-03)', () => {
     const bot = await setupBotForTest();
     const sentMethods: Array<{ method: string; payload: unknown }> = [];
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     bot.api.config.use(async (_prev: any, method: any, payload: any) => {
       sentMethods.push({ method, payload });
       return Promise.resolve({ ok: true, result: {} as never });

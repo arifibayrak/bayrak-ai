@@ -98,7 +98,6 @@ describeIfDb('BOQ Server Actions (DB)', () => {
 
     // Seed project
     const { projects } = await import('@/db/schema/projects');
-    const { sql } = await import('drizzle-orm');
     const [project] = await db
       .insert(projects)
       .values({
@@ -262,7 +261,7 @@ describeIfDb('BOQ Server Actions (DB)', () => {
 
   it('throws Unauthorized when auth() returns null', async () => {
     const { auth } = await import('@/lib/auth');
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     vi.mocked(auth).mockResolvedValueOnce(null as any);
 
     const { addBoqItem } = await import('@/actions/boq');

@@ -214,7 +214,7 @@ describeIfDb('/start handler — pending_people upsert idempotency (AUTH-02)', (
     // ctx.reply() (and any other bot.api call) doesn't hit real Telegram servers.
     // Transformers are the official grammY intercept mechanism (api.config.use).
     // Returning { ok: true, result: {} } satisfies the Bot API response shape.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     bot.api.config.use((_prev, _method, _payload, _signal) =>
       Promise.resolve({ ok: true, result: {} as any })
     );

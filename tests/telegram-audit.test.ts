@@ -42,7 +42,7 @@ import { describeIfDb, getTestDb, truncateAllTables } from './fixtures/db';
  * Installs api.config.use transformer to intercept ALL outbound Telegram API calls.
  * (vi.spyOn on api.sendMessage does NOT work — grammY uses a raw Proxy dispatch.)
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 async function setupBotForTest(): Promise<any> {
   const { bot } = await import('@/lib/telegram');
 
@@ -51,7 +51,7 @@ async function setupBotForTest(): Promise<any> {
   // in all module reset scenarios. We define it as an own property on the instance instead.
   // This matches the behavior of vi.spyOn(bot, 'init').mockResolvedValue() but works reliably
   // across module resets.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   (bot as any).init = vi.fn().mockResolvedValue(undefined);
 
   bot.botInfo = {
@@ -69,7 +69,7 @@ async function setupBotForTest(): Promise<any> {
     allows_users_to_create_topics: false,
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   bot.api.config.use((_prev: any, _method: any, _payload: any, _signal: any) =>
     Promise.resolve({ ok: true, result: {} as any })
   );
@@ -218,7 +218,7 @@ describe('AUDIT-01: fanOutToAuditors fan-out behaviors', () => {
     // and leaks a partial mock (missing api.config) into AUDIT-03+ tests' setupBotForTest() calls.
     const bot = await setupBotForTest();
     const sentPhotos: Array<{ chatId: number | string; photo: unknown; opts: unknown }> = [];
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     bot.api.config.use(async (prev: any, method: any, payload: any, signal: any) => {
       if (method === 'sendPhoto') {
         const chatId = (payload as { chat_id: number | string }).chat_id;
@@ -348,7 +348,7 @@ describe('AUDIT-01: fanOutToAuditors fan-out behaviors', () => {
     // Avoid vi.doMock('@/lib/telegram', ...) to prevent factory leakage into AUDIT-03+.
     const bot = await setupBotForTest();
     let sendCallCount = 0;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     bot.api.config.use(async (_prev: any, method: any, payload: any) => {
       if (method === 'sendPhoto') {
         sendCallCount++;
@@ -388,11 +388,11 @@ describe('AUDIT-02: buildAuditKeyboard callback_data lengths', () => {
     const rows = kb.inline_keyboard;
     // Expect [✅ Onayla, ❌ Reddet] buttons on the first row
     expect(rows.length).toBeGreaterThan(0);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const approveBtn = rows[0].find((b: any) =>
       (b as { callback_data?: string }).callback_data?.startsWith('audit:approve:')
     ) as { callback_data: string } | undefined;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const rejectBtn = rows[0].find((b: any) =>
       (b as { callback_data?: string }).callback_data?.startsWith('audit:reject:')
     ) as { callback_data: string } | undefined;
@@ -407,7 +407,7 @@ describe('AUDIT-02: buildAuditKeyboard callback_data lengths', () => {
     const { buildAuditKeyboard } = await import('@/lib/bot-keyboards');
     const submissionId = '550e8400-e29b-41d4-a716-446655440000';
     const kb = buildAuditKeyboard(submissionId);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const approveBtn = kb.inline_keyboard[0].find((b: any) =>
       (b as { callback_data?: string }).callback_data?.startsWith('audit:approve:')
     ) as { callback_data: string } | undefined;
@@ -443,7 +443,7 @@ describe('AUDIT-03: unauthorized auditor tap → no-op', () => {
     const bot = await setupBotForTest();
     const callbackMethods: string[] = [];
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     bot.api.config.use(async (_prev: any, method: any, _payload: any) => {
       callbackMethods.push(method);
       return Promise.resolve({ ok: true, result: {} as any });
@@ -584,7 +584,7 @@ describeIfDb('AUDIT-04 SC3 — duplicate decision: second tap returns already-re
     vi.resetModules();
     const bot2 = await setupBotForTest();
     const toastMessages: string[] = [];
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     bot2.api.config.use(async (_prev: any, method: any, payload: any) => {
       if (method === 'answerCallbackQuery' && (payload as { text?: string }).text) {
         toastMessages.push((payload as { text: string }).text);
@@ -662,7 +662,7 @@ describeIfDb('AUDIT-06 SC5 — double-tap race: first wins, second gets toast', 
     const [bot1, bot2] = await Promise.all([setupBotForTest(), setupBotForTest()]);
 
     const toastMessages: string[] = [];
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const captureTransformer = async (_prev: any, method: any, payload: any) => {
       if (method === 'answerCallbackQuery' && (payload as { text?: string }).text) {
         toastMessages.push((payload as { text: string }).text);
@@ -741,7 +741,6 @@ describe('AUDIT-06 / T-3-DUP: duplicate update_id callback_query is de-duped by 
 
   it('duplicate callback_query update_id (replayed) is de-duped by processed_updates fence — no second decision', async () => {
     const bot = await setupBotForTest();
-    const { db } = await import('@/db');
     const submissionId = '550e8400-e29b-41d4-a716-446655440000';
 
     // First delivery — processed_updates insert returns a row (new)
@@ -933,7 +932,7 @@ describeIfDb('CR-01: de-assigned auditor cannot commit a rejection after assignm
     vi.resetModules();
     const bot2 = await setupBotForTest();
     const replies: string[] = [];
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     bot2.api.config.use(async (_prev: any, method: any, payload: any) => {
       if ((method === 'sendMessage' || method === 'answerCallbackQuery') && (payload as { text?: string }).text) {
         replies.push((payload as { text: string }).text);

@@ -33,7 +33,7 @@ const GRANULARITY_OPTIONS: { label: string; value: BucketSize }[] = [
   { label: '100 m',  value: 100  },
 ];
 
-export function ChainageTable({ projectId, initialBuckets, totalLengthM }: ChainageTableProps) {
+export function ChainageTable({ projectId, initialBuckets }: ChainageTableProps) {
   const t = useTranslations('dashboard.asbuilt');
   const tAi = useTranslations('dashboard.admin.ai_flags');
   const [bucketSizeM, setBucketSizeM] = useState<BucketSize>(1000);

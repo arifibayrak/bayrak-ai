@@ -21,7 +21,7 @@
  * without calling a 'use server' action (Pitfall 6, 15-RESEARCH.md).
  */
 
-import { sql, eq, and } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { db } from '@/db';
 import { routes } from '@/db/schema/routes';

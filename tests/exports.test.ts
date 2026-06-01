@@ -77,7 +77,7 @@ describe('EXP-01 submission ledger', () => {
       buffer.byteOffset,
       buffer.byteOffset + buffer.byteLength,
     );
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     await workbook.xlsx.load(arrayBuffer as any);
     const sheet = workbook.worksheets[0];
     expect(sheet).toBeDefined();
@@ -127,7 +127,7 @@ describe('EXP-01 submission ledger', () => {
 
     const workbook = new ExcelJS.Workbook();
     const arrayBuffer = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     await workbook.xlsx.load(arrayBuffer as any);
     const sheet = workbook.worksheets[0];
 
@@ -202,7 +202,7 @@ describe('EXP-01 submission ledger', () => {
 
     const workbook = new ExcelJS.Workbook();
     const arrayBuffer = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     await workbook.xlsx.load(arrayBuffer as any);
     const sheet = workbook.worksheets[0];
 
@@ -277,7 +277,7 @@ describeIfDb('EXP-01 tenant scope', () => {
 
     const arrayBuf = await res.arrayBuffer();
     const wb = new ExcelJS.Workbook();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     await wb.xlsx.load(arrayBuf as any);
     const sheet = wb.worksheets[0];
 
@@ -349,7 +349,7 @@ describeIfDb('EXP-01 row count', () => {
 
     const arrayBuf = await res.arrayBuffer();
     const wb = new ExcelJS.Workbook();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     await wb.xlsx.load(arrayBuf as any);
     const sheet = wb.worksheets[0];
 
@@ -521,7 +521,7 @@ describe('EXP-02 hakedis Excel — buildHakedisExcel unit', () => {
 
     const workbook = new ExcelJS.Workbook();
     const arrayBuffer = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     await workbook.xlsx.load(arrayBuffer as any);
 
     expect(workbook.worksheets.map((s) => s.name)).toEqual([
@@ -543,7 +543,7 @@ describe('EXP-02 hakedis Excel — buildHakedisExcel unit', () => {
 
     const workbook = new ExcelJS.Workbook();
     const arrayBuffer = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     await workbook.xlsx.load(arrayBuffer as any);
 
     const sheet3 = workbook.worksheets[2];
@@ -578,7 +578,7 @@ describe('EXP-02 hakedis Excel — buildHakedisExcel unit', () => {
 
     const workbook = new ExcelJS.Workbook();
     const arrayBuffer = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     await workbook.xlsx.load(arrayBuffer as any);
 
     // Yeşil Defter (sheet[0]) — column 1 is Malzeme/Material
@@ -620,7 +620,7 @@ describe('EXP-03 performance summary', () => {
 
     const workbook = new ExcelJS.Workbook();
     const arrayBuffer = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     await workbook.xlsx.load(arrayBuffer as any);
 
     expect(workbook.worksheets).toHaveLength(2);
@@ -647,7 +647,7 @@ describe('EXP-03 performance summary', () => {
 
     const workbook = new ExcelJS.Workbook();
     const arrayBuffer = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     await workbook.xlsx.load(arrayBuffer as any);
     const sheet = workbook.worksheets[0];
 
@@ -677,7 +677,7 @@ describe('EXP-03 performance summary', () => {
 
     const workbook = new ExcelJS.Workbook();
     const arrayBuffer = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     await workbook.xlsx.load(arrayBuffer as any);
     const sheet = workbook.worksheets[0];
 
@@ -714,7 +714,7 @@ describe('EXP-03 performance summary', () => {
 
     const workbook = new ExcelJS.Workbook();
     const arrayBuffer = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     await workbook.xlsx.load(arrayBuffer as any);
     const sheet = workbook.worksheets[0];
 
@@ -750,7 +750,7 @@ describe('EXP-03 performance summary', () => {
 
     const workbook = new ExcelJS.Workbook();
     const arrayBuffer = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     await workbook.xlsx.load(arrayBuffer as any);
 
     // Workers sheet — Personel column is column 1
@@ -770,7 +770,7 @@ describe('EXP-03 performance summary', () => {
 
     const workbook = new ExcelJS.Workbook();
     const arrayBuffer = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     await workbook.xlsx.load(arrayBuffer as any);
 
     for (const sheet of workbook.worksheets) {
@@ -848,7 +848,7 @@ describeIfDb('EXP-03 Workers tab row count', () => {
 
     const arrayBuf = await res.arrayBuffer();
     const wb = new ExcelJS.Workbook();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     await wb.xlsx.load(arrayBuf as any);
     const workersSheet = wb.worksheets[0];
     expect(workersSheet.name).toBe('Workers - Personel');
@@ -971,7 +971,7 @@ describeIfDb('EXP-02 hakedis Excel route — DB integration', () => {
 
     const arrayBuf = await res.arrayBuffer();
     const wb = new ExcelJS.Workbook();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     await wb.xlsx.load(arrayBuf as any);
     const hesapOzeti = wb.worksheets[2];
     expect(hesapOzeti.name).toBe('Hesap Özeti');
@@ -999,7 +999,7 @@ describeIfDb('EXP-02 hakedis Excel route — DB integration', () => {
 
     const arrayBuf = await res.arrayBuffer();
     const wb = new ExcelJS.Workbook();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     await wb.xlsx.load(arrayBuf as any);
     expect(wb.worksheets.length).toBe(3);
 
@@ -1151,7 +1151,7 @@ describeIfDb('EXP-04 hakedis PDF route — DB integration', () => {
     // root index.js auto-runs a debug block when module.parent is null, which
     // throws ENOENT under vitest because module.parent is always null in the
     // test loader. Importing the lib path bypasses that debug block entirely.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-require-imports
+     
     const pdfParse = require('pdf-parse/lib/pdf-parse.js') as (buf: Buffer) => Promise<{ text: string }>;
     const parsed = await pdfParse(buf);
     expect(parsed.text).toContain('İstanbul'); // fixture project name

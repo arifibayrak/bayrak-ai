@@ -201,7 +201,7 @@ describeIfDb('chainage snapshot + bucket aggregation (CHN-03, CHN-04)', () => {
   // snapshot to assert the formula — the live write is exercised by bot-audit.ts integration.
   it('chainage snapshot: chainage_m is non-NULL and equals ROUND(segment_fraction × total_length_m, 2) after approval', async () => {
     const { sql } = await import('drizzle-orm');
-    const { submissionBId, projectId, tenantId } = CHAINAGE_FIXTURE_IDS;
+    const { submissionBId, projectId } = CHAINAGE_FIXTURE_IDS;
 
     // Write chainage_m using Postgres ROUND (mirrors handleAuditDecision step 4)
     await db.execute(sql`
@@ -445,7 +445,7 @@ describeIfDb('chainage snapshot + bucket aggregation (CHN-03, CHN-04)', () => {
     const buffer = await buildChainageLedger({ buckets: [fakeBucket] });
 
     const workbook = new ExcelJS.Workbook();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     await workbook.xlsx.load(buffer as any);
     const sheet = workbook.worksheets[0];
 

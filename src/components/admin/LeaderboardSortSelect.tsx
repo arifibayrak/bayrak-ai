@@ -19,7 +19,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useTranslations } from 'next-intl';
 
 interface SortOption {
   value: string;

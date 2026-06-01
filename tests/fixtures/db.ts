@@ -107,7 +107,7 @@ export async function truncateAllTables(db: Awaited<ReturnType<typeof getTestDb>
   } catch (err: unknown) {
     // 42P01 = undefined_table — a table registered at schema-definition time hasn't been
     // migrated yet. NeonDbError wraps the PG code in .code; drizzle may also wrap it in .cause.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const e = err as any;
     const pgCode = e?.code ?? e?.cause?.code ?? '';
     const isUndefinedTable = pgCode === '42P01' ||

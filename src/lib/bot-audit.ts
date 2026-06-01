@@ -402,12 +402,8 @@ export async function handleAuditDecision(
   // ── Step 2a: APPROVE ─────────────────────────────────────────────────────
 
   if (action === 'approve') {
-    const { boqItems } = await import('@/db/schema/boq-items');
-    const { sql } = await import('drizzle-orm');
-
     const { db: txDb, cleanup: txCleanup } = await getTxDb();
 
-    let approvedQuantity: string | number = 0;
     let boqItemId = '';
     const workerPersonId = submission.personId;
     // Phase 15: chainage snapshot values captured from tx for worker notification (Task 2)
@@ -449,7 +445,6 @@ export async function handleAuditDecision(
           throw new AlreadyResolvedError();
         }
 
-        approvedQuantity = affected[0].quantity;
         boqItemId = affected[0].boqItemId;
         // [Phase 16] capture photoUrl from returning() for post-commit AI enqueue (Pitfall 3)
         capturedPhotoUrl = affected[0].photoUrl ?? null;

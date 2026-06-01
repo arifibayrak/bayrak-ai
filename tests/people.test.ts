@@ -194,7 +194,7 @@ describeIfDb('People approval workflow (DB integration)', () => {
     );
 
     // Approve as worker on project 1
-    const { approvePending, addManualPerson } = await getPeopleActions();
+    const { approvePending } = await getPeopleActions();
     await approvePending('00000000-0000-0000-0000-000000000020', {
       displayName: 'Dual Role Person',
       role: 'worker',
