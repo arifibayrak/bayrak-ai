@@ -87,9 +87,11 @@ interface AiFlagCardProps {
 }
 
 export function AiFlagCard({ flag }: AiFlagCardProps) {
-  if (!flag) return null;
-
+  // Hooks must run unconditionally and in the same order every render
+  // (react-hooks/rules-of-hooks) — call useTranslations BEFORE the early return.
   const t = useTranslations('dashboard.admin.ai_flags');
+
+  if (!flag) return null;
 
   // Determine which signals fired (REVIEWS HIGH-3: render only fired signals)
   const hasMismatch  = flag.photoMismatch;
