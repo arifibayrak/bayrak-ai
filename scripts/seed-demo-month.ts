@@ -271,6 +271,11 @@ async function reset() {
     WHERE tenant_id = '${TENANT_ID}'
   `));
 
+  await db.execute(sql.raw(`
+    DELETE FROM pending_people
+    WHERE tenant_id = '${TENANT_ID}'
+  `));
+
   console.log('Reset complete.');
 }
 
@@ -719,6 +724,21 @@ async function seed() {
       ON CONFLICT DO NOTHING
     `));
     actSeq++;
+  }
+
+  // 16. Pending Telegram join requests — field workers who sent /start to the
+  // bot and await approval in the dedicated Requests section (/dashboard/requests).
+  const pending = [
+    { tg: BigInt('7200000001'), name: 'Yusuf Arslan', day: 28 },
+    { tg: BigInt('7200000002'), name: 'Emre Koç',     day: 30 },
+    { tg: BigInt('7200000003'), name: 'Okan Yıldırım', day: 31 },
+  ];
+  for (const p of pending) {
+    await db.execute(sql.raw(`
+      INSERT INTO pending_people (id, tenant_id, telegram_user_id, telegram_name, started_at)
+      VALUES (gen_random_uuid(), '${TENANT_ID}', ${p.tg}, '${p.name.replace(/'/g, "''")}', '${mayDate(p.day, 9, 0)}')
+      ON CONFLICT DO NOTHING
+    `));
   }
 }
 
