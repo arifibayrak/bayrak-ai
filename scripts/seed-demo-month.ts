@@ -459,20 +459,54 @@ async function seed() {
       approvedQtyByBoqItem[s.boqItemId] = (approvedQtyByBoqItem[s.boqItemId] ?? 0) + s.qty;
     }
 
+    // Spatial placement along the route (drives the as-built chainage view + map).
+    // Real submissions get this from the bot's nearest-segment snap at log time;
+    // the seed assigns a deterministic segment_fraction in [0,1]. Approved work sits
+    // earlier on the line, pending/rejected sits ahead — "done behind, in progress
+    // ahead". location/snapped_point/chainage_m are filled by the UPDATE below.
+    const spread = ((subSeq * 37) % 100) / 100;        // deterministic 0..0.99
+    const frac =
+      s.status === 'approved'
+        ? Math.min(0.61, Math.max(0.03, 0.03 + spread * 0.58)) // [0.03, 0.61]
+        : Math.min(0.97, Math.max(0.64, 0.64 + spread * 0.33)); // [0.64, 0.97]
+
     await db.execute(sql.raw(`
       INSERT INTO submissions (
         id, tenant_id, flow_id, person_id, project_id, boq_item_id,
         photo_url, quantity, notes, status, submitted_at,
-        decided_by, decided_at, rejection_reason
+        decided_by, decided_at, rejection_reason,
+        segment_fraction, location_match, location_warning
       ) VALUES (
         '${subId}', '${TENANT_ID}', '${s.flowId}', '${s.personId}', '${s.projectId}', '${s.boqItemId}',
         '${photoUrl}', '${s.qty}', ${notesVal}, '${s.status}', '${submittedAt}',
-        ${decidedByVal}, ${decidedAtVal}, ${rejectionReasonVal}
+        ${decidedByVal}, ${decidedAtVal}, ${rejectionReasonVal},
+        '${frac.toFixed(8)}', 'near', false
       )
       ON CONFLICT DO NOTHING
     `));
     subSeq++;
   }
+
+  // 9b. Fill spatial + chainage columns from the assigned segment_fraction.
+  // location/snapped_point interpolated along the route geometry; chainage_m is the
+  // approval-time snapshot (raw stationing + offset) the as-built view reads.
+  await db.execute(sql.raw(`
+    UPDATE submissions s SET
+      location            = ST_LineInterpolatePoint(r.geom, s.segment_fraction::float8),
+      snapped_point       = ST_LineInterpolatePoint(r.geom, s.segment_fraction::float8),
+      location_lat        = ST_Y(ST_LineInterpolatePoint(r.geom, s.segment_fraction::float8))::numeric,
+      location_lon        = ST_X(ST_LineInterpolatePoint(r.geom, s.segment_fraction::float8))::numeric,
+      location_distance_m = '3.50',
+      chainage_m          = CASE WHEN s.status = 'approved'
+                              THEN ROUND((s.segment_fraction * r.total_length_m + COALESCE(r.chainage_offset_m, 0))::numeric, 2)
+                              ELSE NULL END,
+      route_geometry_version = CASE WHEN s.status = 'approved' THEN r.geometry_version ELSE NULL END
+    FROM routes r
+    WHERE r.project_id = s.project_id
+      AND r.tenant_id  = s.tenant_id
+      AND s.tenant_id  = '${TENANT_ID}'
+      AND s.segment_fraction IS NOT NULL
+  `));
 
   // 10. Update boq_items approved_qty to reflect approved submissions
   for (const [boqItemId, qty] of Object.entries(approvedQtyByBoqItem)) {
