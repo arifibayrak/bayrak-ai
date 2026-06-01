@@ -326,7 +326,7 @@ None.
 
 | Category | Item | Status | Deferred At |
 |----------|------|--------|-------------|
-| AI Assist | Phase 6 (AI-01..AI-05) — async Claude vision, eval harness | Deferred from v1; re-implemented in v4.0 Phase 16 with AI-06 (perceptual hash) added | v1 milestone end |
+| AI Assist | Phase 6 (AI-01..AI-05) — async Claude vision, eval harness | RESOLVED — built in v4.0 Phase 16 (AI-01..AI-06 incl. perceptual hash). Code complete + verified; runs dormant until the precision eval is run on >=30 real approved photos (see phase-16 HUMAN-UAT / 16-04-SUMMARY) | v1 → done in v4.0 |
 
 ## Session Continuity
 
