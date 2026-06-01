@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-05-29)
 Phase: 16 (ai-vision-assist) — EXECUTING
 Plan: 3 of 5
 Status: Ready to execute
-Last activity: 2026-06-01 - Completed quick task 260601-i0d: FK-safe tenant_settings seed migration
+Last activity: 2026-06-01 - Completed quick task 260601-kj4: Field-Industrial UI foundation (premium UI pass increment 1)
 
 ## Performance Metrics
 
@@ -321,6 +321,7 @@ None.
 | 260525-2uq | Bilingual TR/EN marketing landing page at root route | 2026-05-25 | 5717e6b | [260525-2uq-bilingual-tr-en-marketing-landing-page-a](./quick/260525-2uq-bilingual-tr-en-marketing-landing-page-a/) |
 | 260525-3fc | Polish UI/UX — typography, fonts, spacing, visual hierarchy across landing + dashboard | 2026-05-25 | fc1e92c | [260525-3fc-polish-ui-ux-typography-fonts-spacing-vi](./quick/260525-3fc-polish-ui-ux-typography-fonts-spacing-vi/) |
 | 260601-i0d | FK-safe tenant_settings default-row seed (migration 0015) | 2026-06-01 | 52b78ad | [260601-i0d-make-tenant-settings-default-row-seed-fk](./quick/260601-i0d-make-tenant-settings-default-row-seed-fk/) |
+| 260601-kj4 | Field-Industrial UI foundation — tokens + Space Grotesk + brand primitives + dashboard shell (premium UI pass, increment 1) | 2026-06-01 | 10108a9 | [260601-kj4-field-industrial-premium-ui-foundation-d](./quick/260601-kj4-field-industrial-premium-ui-foundation-d/) |
 
 ## Deferred Items
 
