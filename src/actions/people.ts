@@ -45,10 +45,15 @@ const roleSchema = z.enum(['worker', 'auditor'], {
   error: () => ({ message: 'Select a role: Worker or Auditor.' }),
 });
 
+// projectId is either a real project UUID or the '__all__' sentinel, which
+// assigns the person to every project in the tenant (roaming engineers).
+const ALL_PROJECTS = '__all__';
 const approvePendingSchema = z.object({
   displayName: z.string().min(1, 'Enter a name before approving.'),
   role: roleSchema,
-  projectId: z.string().regex(UUID_LIKE, 'Invalid project ID.'),
+  projectId: z
+    .string()
+    .refine((v) => v === ALL_PROJECTS || UUID_LIKE.test(v), 'Invalid project ID.'),
 });
 
 const addManualPersonSchema = z.object({
@@ -106,13 +111,30 @@ export async function approvePending(
 
     approvedPersonId = person.id;
 
-    // 2. Insert assignment
-    await tx.insert(assignments).values({
-      tenantId,
-      personId: person.id,
-      projectId: parsed.projectId,
-      roleOnProject: parsed.role,
-    });
+    // 2. Insert assignment(s). '__all__' → one assignment per tenant project
+    // (roaming engineer); otherwise a single assignment to the chosen project.
+    if (parsed.projectId === ALL_PROJECTS) {
+      const { projects } = await import('@/db/schema/projects');
+      const allProjects = await tx
+        .select({ id: projects.id })
+        .from(projects)
+        .where(eq(projects.tenantId, tenantId));
+      for (const pr of allProjects) {
+        await tx.insert(assignments).values({
+          tenantId,
+          personId: person.id,
+          projectId: pr.id,
+          roleOnProject: parsed.role,
+        });
+      }
+    } else {
+      await tx.insert(assignments).values({
+        tenantId,
+        personId: person.id,
+        projectId: parsed.projectId,
+        roleOnProject: parsed.role,
+      });
+    }
 
     // 3. Delete pending row
     await tx.delete(pendingPeople).where(eq(pendingPeople.id, pendingId));
@@ -125,8 +147,8 @@ export async function approvePending(
       actionType: 'person_approved',
       entityType: 'person',
       entityId: approvedPersonId,
-      projectId: parsed.projectId,
-      metadata: { role: parsed.role, displayName: parsed.displayName },
+      projectId: parsed.projectId === ALL_PROJECTS ? undefined : parsed.projectId,
+      metadata: { role: parsed.role, displayName: parsed.displayName, allProjects: parsed.projectId === ALL_PROJECTS },
     });
   }
 

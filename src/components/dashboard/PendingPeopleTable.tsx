@@ -58,6 +58,7 @@ function PendingRow({
   const [projectId, setProjectId] = useState('');
   const [nameError, setNameError] = useState('');
   const [roleError, setRoleError] = useState('');
+  const [projectError, setProjectError] = useState('');
   const [approving, setApproving] = useState(false);
   const [rejecting, setRejecting] = useState(false);
 
@@ -76,6 +77,14 @@ function PendingRow({
     } else {
       setRoleError('');
     }
+    // Project is REQUIRED — never silently default. Approving without choosing a
+    // project assigns the person to a project the office engineer never picked.
+    if (!projectId) {
+      setProjectError(t('project_required'));
+      valid = false;
+    } else {
+      setProjectError('');
+    }
     if (!valid) return;
 
     setApproving(true);
@@ -83,7 +92,7 @@ function PendingRow({
       await approvePending(person.id, {
         displayName: displayName.trim(),
         role: role as 'worker' | 'auditor',
-        projectId: projectId || projects[0]?.id || '',
+        projectId,
       });
     } finally {
       setApproving(false);
@@ -145,23 +154,30 @@ function PendingRow({
         </div>
       </TableCell>
 
-      {/* Project select */}
+      {/* Project select — required (no silent default). "All projects" assigns
+          the person to every project (roaming engineer). items resolves the
+          trigger label without opening the popup. */}
       <TableCell>
-        <Select
-          value={projectId}
-          onValueChange={(v: string | null) => setProjectId(v ?? '')}
-        >
-          <SelectTrigger size="sm" className="w-36">
-            <SelectValue placeholder={t('col_project')} />
-          </SelectTrigger>
-          <SelectContent>
-            {projects.map((p) => (
-              <SelectItem key={p.id} value={p.id}>
-                {p.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="space-y-1">
+          <Select
+            items={{ __all__: t('all_projects'), ...Object.fromEntries(projects.map((p) => [p.id, p.name])) }}
+            value={projectId}
+            onValueChange={(v: string | null) => setProjectId(v ?? '')}
+          >
+            <SelectTrigger size="sm" className="w-40" aria-invalid={!!projectError}>
+              <SelectValue placeholder={t('col_project')} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">{t('all_projects')}</SelectItem>
+              {projects.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {projectError && <p className="text-[11px] text-destructive">{projectError}</p>}
+        </div>
       </TableCell>
 
       {/* Actions */}

@@ -20,13 +20,58 @@ export const MESSAGES = {
   greeting: (name: string) =>
     `Merhaba ${name}! 👷 Kayıt göndermek için bir proje seçin:`,
 
-  /** Unregistered worker — pending approval */
+  /** Worker home at /start — friendly, actionable, with a quick insight line.
+   * Shown above the project picker for a registered worker. */
+  workerHome: (name: string, approved: number, pending: number) =>
+    `Merhaba ${name}! 👷\n\n` +
+    `Saha işinizi bildirmek için aşağıdan projenizi seçin.\n` +
+    `Adımlar: 📷 fotoğraf → 📍 konum → miktar → ✅ onay\n\n` +
+    `📊 Şu ana kadar: ${approved} onaylı · ${pending} denetimde\n\n` +
+    `ℹ️ Yardım için /yardim`,
+
+  /** Auditor home at /start — explains the audit role (no work-log picker). */
+  auditorHome: (name: string, projectNames: string[]) =>
+    `Merhaba ${name}! 🛡️\n\n` +
+    `Denetçi olarak görevli olduğunuz proje(ler):\n` +
+    projectNames.map((p) => `• ${p}`).join('\n') +
+    `\n\nİşçiler kayıt gönderdiğinde size buraya bildirim gelir; ` +
+    `✅ Onayla / ❌ Reddet ile karara bağlarsınız. Şu an bekleyen kayıt yoksa ` +
+    `yapmanız gereken bir şey yok — bildirim geldiğinde devreye girersiniz.\n\n` +
+    `ℹ️ Yardım için /yardim`,
+
+  /** Registered but not yet assigned to any project. */
+  notAssigned: (name: string) =>
+    `Merhaba ${name}! ✅ Hesabınız onaylı.\n\n` +
+    `Henüz bir projeye atanmadınız. Ofis mühendisiniz sizi bir projeye ` +
+    `atadığında buradan iş bildirebilir ya da denetim yapabilirsiniz.\n\n` +
+    `ℹ️ Yardım için /yardim`,
+
+  /** Unregistered worker — pending approval (friendly, tells them what's next). */
   pendingApproval:
-    'Hesabınız onay bekliyor. Yöneticinize başvurun.',
+    '👋 Başvurunuz alındı! Hesabınız ofis onayı bekliyor. ' +
+    'Onaylandıktan sonra /start yazarak iş bildirmeye başlayabilirsiniz.',
+
+  /** /yardim & /help — full guide. */
+  help:
+    'ℹ️ bayrak.ai Saha Botu — Yardım\n\n' +
+    'Komutlar:\n' +
+    '• /start — Ana menü / yeni iş kaydı başlat\n' +
+    '• /iptal — Devam eden kaydı iptal et\n' +
+    '• /yardim — Bu yardım mesajı\n\n' +
+    'İş bildirimi 6 adımdır:\n' +
+    '1️⃣ /start → projenizi seçin\n' +
+    '2️⃣ İmalat kalemini seçin\n' +
+    '3️⃣ 📷 Fotoğraf gönderin\n' +
+    '4️⃣ 📍 Konumunuzu paylaşın\n' +
+    '5️⃣ Miktarı yazın\n' +
+    '6️⃣ (İsteğe bağlı) not ekleyin → ✅ Onaylayın\n\n' +
+    'Kaydınız sahadaki denetçiye iletilir; onaylanınca ofis panosuna ve ' +
+    'haritaya otomatik işlenir.\n\n' +
+    'Bir sorun olursa ofis mühendisinizle görüşün.',
 
   /** No active flow — sent when a message arrives with no conversation state */
   noActiveFlow:
-    'Aktif bir kayıt yok. /start komutunu kullanarak başlayın.',
+    'Aktif bir kayıt yok. Yeni kayıt için /start, yardım için /yardim yazın.',
 
   // ------------------------------------------------------------------
   // Flow start / resume

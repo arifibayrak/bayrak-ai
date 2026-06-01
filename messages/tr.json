@@ -537,6 +537,8 @@
       "role_auditor": "Denetçi",
       "name_required": "Onaylamadan önce bir ad girin.",
       "role_required": "Bir rol seçin: İşçi veya Denetçi.",
+      "project_required": "Bir proje seçin.",
+      "all_projects": "Tüm Projeler",
       "telegram_required": "Geçerli bir Telegram ID girin.",
       "project_required": "Proje seçin.",
       "remove_assignment": "Görevi Kaldır",

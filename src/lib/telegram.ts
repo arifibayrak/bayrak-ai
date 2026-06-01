@@ -139,6 +139,56 @@ export async function resolveWorker(
 }
 
 // ---------------------------------------------------------------------------
+// getAuditorProjects — projects where this person is assigned as an AUDITOR.
+// Mirrors resolveWorker's project query but for the 'auditor' role, so /start
+// can give auditors a meaningful home instead of an empty work-log picker.
+// ---------------------------------------------------------------------------
+export async function getAuditorProjects(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  db: any,
+  personId: string
+): Promise<Array<{ id: string; name: string }>> {
+  const { assignments } = await import('@/db/schema/assignments');
+  const { projects } = await import('@/db/schema/projects');
+  const { eq, and } = await import('drizzle-orm');
+  const rows = await db
+    .select({ id: projects.id, name: projects.name })
+    .from(assignments)
+    .innerJoin(projects, eq(assignments.projectId, projects.id))
+    .where(
+      and(
+        eq(assignments.personId, personId),
+        eq(assignments.roleOnProject, 'auditor')
+      )
+    );
+  return rows ?? [];
+}
+
+// ---------------------------------------------------------------------------
+// getWorkerInsight — quick submission counts for the /start home insight line.
+// ---------------------------------------------------------------------------
+export async function getWorkerInsight(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  db: any,
+  personId: string
+): Promise<{ approved: number; pending: number }> {
+  const { submissions } = await import('@/db/schema/submissions');
+  const { eq, sql } = await import('drizzle-orm');
+  const rows = await db
+    .select({ status: submissions.status, n: sql<number>`count(*)`.mapWith(Number) })
+    .from(submissions)
+    .where(eq(submissions.personId, personId))
+    .groupBy(submissions.status);
+  let approved = 0;
+  let pending = 0;
+  for (const r of rows ?? []) {
+    if (r.status === 'approved') approved = Number(r.n);
+    else if (r.status === 'pending_audit') pending = Number(r.n);
+  }
+  return { approved, pending };
+}
+
+// ---------------------------------------------------------------------------
 // saveState helper — upserts conversation_state row (bumps updatedAt every time)
 //
 // Called by /start (clean start) and by Plan 05 step handlers after each advance.
@@ -262,22 +312,41 @@ bot.command('start', async (ctx) => {
     return;
   }
 
-  // No active flow (or stale) — start a clean flow (D-15 clean start path)
-  // Upsert conversation_state: set currentStep to PROJECT, page 0
-  // WR-01: store personId in the JSONB data so downstream handlers can read
-  // data.personId reliably without falling back to the undefined fallback path.
-  const { CONVERSATION_TTL_MS: _ttl } = await import('@/lib/bot-fsm');
-  await saveState(
-    db,
-    BigInt(telegramUserId),
-    STEPS.PROJECT,
-    { step: STEPS.PROJECT, page: 0, personId: workerIdentity.person.id },
-    workerIdentity.person.id
-  );
+  // No active flow (or stale) — role-aware home (never a dead-end empty picker).
+  const name = workerIdentity.person.displayName;
 
-  await ctx.reply(MESSAGES.greeting(workerIdentity.person.displayName), {
-    reply_markup: buildProjectKeyboard(workerIdentity.projects, 0),
-  });
+  if (workerIdentity.projects.length > 0) {
+    // WORKER with assigned projects → start a clean log flow at PROJECT step.
+    // WR-01: store personId in the JSONB data so downstream handlers can read
+    // data.personId reliably without falling back to the undefined fallback path.
+    // Insight is a nice-to-have; never let a count query block the work-log home.
+    let insight = { approved: 0, pending: 0 };
+    try {
+      insight = await getWorkerInsight(db, workerIdentity.person.id);
+    } catch {
+      // ignore — show the home with zeroed counts
+    }
+    await saveState(
+      db,
+      BigInt(telegramUserId),
+      STEPS.PROJECT,
+      { step: STEPS.PROJECT, page: 0, personId: workerIdentity.person.id },
+      workerIdentity.person.id
+    );
+    await ctx.reply(MESSAGES.workerHome(name, insight.approved, insight.pending), {
+      reply_markup: buildProjectKeyboard(workerIdentity.projects, 0),
+    });
+    return;
+  }
+
+  // No worker-role projects — this person is an auditor and/or not yet assigned.
+  // Do NOT open a work-log flow; give them a meaningful, actionable home instead.
+  const auditorProjects = await getAuditorProjects(db, workerIdentity.person.id);
+  if (auditorProjects.length > 0) {
+    await ctx.reply(MESSAGES.auditorHome(name, auditorProjects.map((p) => p.name)));
+    return;
+  }
+  await ctx.reply(MESSAGES.notAssigned(name));
 });
 
 // ---------------------------------------------------------------------------
@@ -303,6 +372,15 @@ bot.command('iptal', async (ctx) => {
     .where(eq(conversationState.telegramUserId, BigInt(telegramUserId)));
 
   await ctx.reply(MESSAGES.cancelled);
+});
+
+// ---------------------------------------------------------------------------
+// /yardim (and /help alias) — always-available guide (request: -help factor)
+// ---------------------------------------------------------------------------
+
+bot.command(['yardim', 'help'], async (ctx) => {
+  const { MESSAGES } = await import('@/lib/bot-messages');
+  await ctx.reply(MESSAGES.help);
 });
 
 // ---------------------------------------------------------------------------

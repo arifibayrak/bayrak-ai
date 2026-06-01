@@ -537,6 +537,8 @@
       "role_auditor": "Auditor",
       "name_required": "Enter a name before approving.",
       "role_required": "Select a role: Worker or Auditor.",
+      "project_required": "Select a project.",
+      "all_projects": "All projects",
       "telegram_required": "Enter a valid Telegram ID.",
       "project_required": "Select a project.",
       "remove_assignment": "Remove Assignment",
