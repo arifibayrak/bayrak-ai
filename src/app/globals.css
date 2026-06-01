@@ -9,12 +9,15 @@
   --color-foreground: var(--foreground);
   /* `--font-geist-sans` / `--font-geist-mono` are set on <html> by next/font
      (layout.tsx) via the `geist` package. `--font-sans` resolves to Geist Sans
-     with a robust system fallback stack; `--font-mono` resolves to Geist Mono. */
+     with a robust system fallback stack; `--font-mono` resolves to Geist Mono.
+     `--font-space-grotesk` is set on <html> via next/font (layout.tsx); bound to
+     `--font-heading` so all h1–h4 use Space Grotesk display type. */
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system,
     "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", "SFMono-Regular",
     Menlo, Consolas, "Liberation Mono", monospace;
-  --font-heading: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-space-grotesk), var(--font-geist-sans), ui-sans-serif,
+    system-ui, sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -57,42 +60,44 @@
 }
 
 :root {
-  /* Brand = bayrak.ai amber (D-121). Light mode only — dark block below
-     intentionally not synced (deferred to v3.1+ per D-121). Canvas is slate-50
-     / slate-900; cards lift in pure white; brand primary is amber-500 with
-     slate-900 reading on top. Semantic destructive stays red-600 (NOT brand). */
-  --background: oklch(0.984 0.003 247);          /* slate-50 */
-  --foreground: oklch(0.21 0.034 264);           /* slate-900 */
+  /* Field-Industrial light-canvas theme (260601-kj4).
+     Canvas: near-white cool steel; ink: graphite; accent: amber (restrained hi-vis).
+     Graphite sidebar is chrome-level chrome, NOT app-wide dark mode (D-121).
+     Semantic destructive stays red-600 (NOT brand). Dark block below intentionally
+     not synced (deferred to v3.1+ per D-121). */
+  --background: oklch(0.985 0.0015 250);         /* near-white cool steel canvas */
+  --foreground: oklch(0.22 0.012 255);           /* graphite ink */
   --card: oklch(1 0 0);                          /* white */
-  --card-foreground: oklch(0.21 0.034 264);
+  --card-foreground: oklch(0.22 0.012 255);      /* graphite */
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.21 0.034 264);
-  --primary: oklch(0.769 0.188 70);              /* amber-500 (BRAND PRIMARY) */
-  --primary-foreground: oklch(0.21 0.034 264);   /* slate-900 reads on amber */
-  --secondary: oklch(0.968 0.007 247);           /* slate-100 */
-  --secondary-foreground: oklch(0.21 0.034 264);
-  --muted: oklch(0.968 0.007 247);               /* slate-100 */
-  --muted-foreground: oklch(0.446 0.03 256);     /* slate-600 */
-  --accent: oklch(0.987 0.022 95);               /* amber-50 */
-  --accent-foreground: oklch(0.21 0.034 264);
+  --popover-foreground: oklch(0.22 0.012 255);   /* graphite */
+  --primary: oklch(0.769 0.188 70);              /* amber (KEEP — hi-vis accent) */
+  --primary-foreground: oklch(0.20 0.015 60);    /* graphite reads on amber */
+  --secondary: oklch(0.965 0.004 255);           /* steel-100 */
+  --secondary-foreground: oklch(0.22 0.012 255); /* graphite */
+  --muted: oklch(0.965 0.004 255);               /* steel-100 */
+  --muted-foreground: oklch(0.50 0.014 256);     /* steel-500 */
+  --accent: oklch(0.97 0.03 88);                 /* faint amber wash */
+  --accent-foreground: oklch(0.22 0.012 255);    /* graphite */
   --destructive: oklch(0.577 0.245 27);          /* red-600 (UNCHANGED semantic) */
-  --border: oklch(0.929 0.013 255);              /* slate-200 */
-  --input: oklch(0.929 0.013 255);
-  --ring: oklch(0.769 0.188 70);                 /* amber-500 focus */
+  --border: oklch(0.90 0.005 256);               /* hairline steel */
+  --input: oklch(0.90 0.005 256);                /* hairline steel */
+  --ring: oklch(0.769 0.188 70);                 /* amber focus ring */
   --chart-1: oklch(0.769 0.188 70);              /* amber */
   --chart-2: oklch(0.588 0.158 241);             /* sky */
   --chart-3: oklch(0.696 0.17 162);              /* emerald */
-  --chart-4: oklch(0.555 0.163 49);              /* amber-700 (dark amber) */
-  --chart-5: oklch(0.704 0.04 257);              /* slate-400 */
-  --radius: 0.375rem;                            /* D-125 rounded-md (was 0.625rem) */
-  --sidebar: oklch(0.984 0.003 247);             /* slate-50 */
-  --sidebar-foreground: oklch(0.21 0.034 264);
-  --sidebar-primary: oklch(0.769 0.188 70);      /* amber-500 */
-  --sidebar-primary-foreground: oklch(0.21 0.034 264);
-  --sidebar-accent: oklch(0.987 0.022 95);       /* amber-50 */
-  --sidebar-accent-foreground: oklch(0.21 0.034 264);
-  --sidebar-border: oklch(0.929 0.013 255);
-  --sidebar-ring: oklch(0.769 0.188 70);
+  --chart-4: oklch(0.555 0.163 49);              /* amber-700 */
+  --chart-5: oklch(0.65 0.010 256);              /* steel-400 */
+  --radius: 0.25rem;                             /* engineered — tighter than D-125 */
+  /* Graphite sidebar — signature industrial chrome (NOT app-wide dark mode) */
+  --sidebar: oklch(0.24 0.012 258);              /* graphite panel */
+  --sidebar-foreground: oklch(0.92 0.004 250);   /* light steel */
+  --sidebar-primary: oklch(0.769 0.188 70);      /* amber */
+  --sidebar-primary-foreground: oklch(0.20 0.015 60); /* graphite on amber */
+  --sidebar-accent: oklch(0.30 0.014 258);       /* raised graphite hover/active */
+  --sidebar-accent-foreground: oklch(0.97 0.003 250); /* near-white */
+  --sidebar-border: oklch(0.32 0.012 258);       /* graphite separator */
+  --sidebar-ring: oklch(0.769 0.188 70);         /* amber */
   /* D-121 semantic-color extension — no shadcn slot equivalents */
   --success: oklch(0.696 0.17 162);              /* emerald-600 */
   --info: oklch(0.588 0.158 241);                /* sky-600 */
@@ -149,12 +154,13 @@
   html {
     @apply font-sans;
   }
-  /* Bold & tight: headings get negative tracking + balanced wrapping by default.
+  /* Headings: Space Grotesk display type, negative tracking, balanced wrapping.
      Weight is set per-usage via font-* utilities (utilities win the cascade). */
   h1,
   h2,
   h3,
   h4 {
+    font-family: var(--font-heading);
     letter-spacing: -0.02em;
     text-wrap: balance;
   }
@@ -167,5 +173,45 @@
     line-height: 1.08;
     letter-spacing: -0.025em;
     font-weight: 700;
+  }
+
+  /* Flat panel — bg-card, 1px hairline border, radius-md. No shadow. */
+  .panel {
+    background-color: var(--card);
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius) * 0.8);
+  }
+
+  /* Elevated panel — hairline border + single barely-there shadow. */
+  .elevated {
+    background-color: var(--card);
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius) * 0.8);
+    box-shadow: 0 1px 2px oklch(0 0 0 / 0.04);
+  }
+
+  /* Blueprint section divider — thin top border with a 2×8px amber tick mark.
+     Apply to the element that opens a new section. Use sparingly. */
+  .rule-tick {
+    position: relative;
+    border-top: 1px solid var(--border);
+    padding-top: 1rem;
+  }
+  .rule-tick::before {
+    content: "";
+    position: absolute;
+    top: -1px;
+    left: 0;
+    width: 8px;
+    height: 2px;
+    background-color: var(--primary);
+  }
+
+  /* Tabular / data figures utility.
+     Rule: ALL numerics (qty, chainage, BOQ codes, IDs, currency, %, dates) use
+     font-mono + tabular-nums. Apply `.font-data` or inline `font-mono tabular-nums`. */
+  .font-data {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
   }
 }
