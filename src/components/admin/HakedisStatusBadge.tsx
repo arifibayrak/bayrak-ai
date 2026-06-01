@@ -23,28 +23,14 @@
 
 import { useTranslations } from 'next-intl';
 import { BrandBadge } from '@/components/brand';
+import {
+  type HakedisStatus,
+  STATUS_VARIANT_MAP,
+  asHakedisStatus,
+} from '@/lib/hakedis-status';
 
-export type HakedisStatus = 'draft' | 'finalized' | 'submitted' | 'paid';
-
-const STATUS_VARIANT_MAP: Record<
-  HakedisStatus,
-  'warning' | 'info' | 'primary' | 'success'
-> = {
-  draft: 'warning',
-  finalized: 'info',
-  submitted: 'primary',
-  paid: 'success',
-};
-
-/**
- * Allowlist guard for raw DB status strings (WR-04).
- * Returns the typed status if it is one of the four known values, else `null`.
- * Lets call sites avoid the unsafe `as HakedisStatus` cast that asserts a
- * guarantee the data layer does not enforce at the render boundary.
- */
-export function asHakedisStatus(s: string | null | undefined): HakedisStatus | null {
-  return s != null && s in STATUS_VARIANT_MAP ? (s as HakedisStatus) : null;
-}
+// Re-export so existing client importers of these from this module keep working.
+export { type HakedisStatus, asHakedisStatus } from '@/lib/hakedis-status';
 
 interface HakedisStatusBadgeProps {
   // Accepts a raw string: unknown values render a neutral badge with the raw
