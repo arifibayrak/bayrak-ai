@@ -9,7 +9,7 @@ import { LanguageToggle } from './LanguageToggle';
 /**
  * Dashboard top navigation bar — Server Component.
  * Spec: sticky h-14 bg-card border-b border-border
- * Left: bayrak.ai wordmark
+ * Left: mobile hamburger only (sidebar is the single brand anchor)
  * Right: LanguageToggle + user email + sign-out (ghost)
  *
  * All copy via i18n keys (nav.*).
@@ -22,13 +22,12 @@ export async function TopNav({ userEmail }: { userEmail: string }) {
   return (
     <header className="sticky top-0 z-40 h-14 bg-card border-b border-border">
       <div className="max-w-5xl mx-auto px-6 h-full flex items-center justify-between">
-        {/* Left: mobile hamburger + wordmark */}
-        <div className="flex items-center gap-2">
+        {/* Left: mobile hamburger (sidebar is the single brand anchor — no duplicate wordmark here) */}
+        <div className="flex items-center">
           <SidebarTrigger
             className="md:hidden text-foreground hover:bg-secondary focus-visible:ring-2 focus-visible:ring-ring"
             aria-label={tAdmin('open_nav')}
           />
-          <span className="text-xl font-bold tracking-tight text-foreground">{t('wordmark')}</span>
         </div>
 
         {/* Right: language toggle + settings gear + user email + sign out */}

@@ -4,14 +4,17 @@ import { cn } from "@/lib/utils";
 /**
  * BrandLogo — bayrak.ai wordmark primitive (D-124).
  *
- * Renders `bayrak` in slate-900 (via text-foreground) + `.ai` in amber-500
- * (via text-primary). The amber `.ai` suffix IS the brand mark for v3.0
- * (no abstract glyph until v3.1+).
+ * Renders `bayrak` + `.ai` (amber) wordmark.
  *
- * Inherits Geist Sans from the html font-sans cascade. Weight is semibold
- * per D-124. `size` prop scales text-sm / text-base / text-2xl.
+ * `variant` controls surface context:
+ *   - "default"  → text-foreground (dark text on light surfaces, e.g. landing page)
+ *   - "sidebar"  → text-sidebar-foreground (light text on graphite sidebar panel)
+ *
+ * The amber `.ai` suffix always uses text-primary (amber-500) for brand consistency.
+ * `size` prop scales text-sm / text-base / text-2xl.
  */
 export type BrandLogoSize = "sm" | "md" | "lg";
+export type BrandLogoVariant = "default" | "sidebar";
 
 const SIZE_CLASS: Record<BrandLogoSize, string> = {
   sm: "text-sm",
@@ -19,22 +22,31 @@ const SIZE_CLASS: Record<BrandLogoSize, string> = {
   lg: "text-2xl",
 };
 
+const VARIANT_CLASS: Record<BrandLogoVariant, string> = {
+  default: "text-foreground",
+  sidebar: "text-sidebar-foreground",
+};
+
 export interface BrandLogoProps {
   size?: BrandLogoSize;
+  variant?: BrandLogoVariant;
   className?: string;
 }
 
-export function BrandLogo({ size = "md", className }: BrandLogoProps) {
+export function BrandLogo({ size = "md", variant = "default", className }: BrandLogoProps) {
   return (
     <span
       data-slot="brand-logo"
+      aria-label="bayrak.ai"
       className={cn(
         SIZE_CLASS[size],
-        "font-semibold tracking-tight text-foreground",
+        VARIANT_CLASS[variant],
+        "font-semibold tracking-tight",
         className,
       )}
     >
-      bayrak<span className="text-primary">.ai</span>
+      <span aria-hidden="true">bayrak</span>
+      <span className="text-primary" aria-hidden="true">.ai</span>
     </span>
   );
 }

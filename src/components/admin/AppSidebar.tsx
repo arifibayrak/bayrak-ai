@@ -18,7 +18,7 @@ export function AppSidebar() {
   return (
     <Sidebar>
       <SidebarHeader className="border-b border-sidebar-border px-4 py-3">
-        <BrandLogo size="md" />
+        <BrandLogo size="md" variant="sidebar" />
       </SidebarHeader>
       <SidebarContent className="px-2 py-2">
         <SidebarNav />
