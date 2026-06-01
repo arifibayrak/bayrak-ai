@@ -186,8 +186,10 @@ export default async function OverviewPage({ searchParams }: Props) {
         </BrandCard.Body>
       </BrandCard>
 
-      {/* KPI card row: 2-col mobile / 3-col md / 5-col desktop (D-88: Stalled Projects 5th card) */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-8">
+      {/* KPI card row: responsive wrapping grid. 5-across only at 2xl (>=1536px) where
+          cards have room; 3-across at laptop widths so labels (e.g. "Durmuş Projeler")
+          never clip against the corner alert badge (D-88: Stalled Projects 5th card). */}
+      <div className="grid grid-cols-2 md:grid-cols-3 2xl:grid-cols-5 gap-4">
         {/* Pending backlog — point-in-time (D-66): no date filter in drill link
             Alert: destructive when avgDecisionLatencyHours > auditSlaHours; warning (amber) otherwise */}
         <KpiCard

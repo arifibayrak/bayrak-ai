@@ -61,8 +61,8 @@ export function KpiCard({
         </span>
       )}
       <BrandCard.Body className="p-3">
-        <div className="flex flex-row items-center gap-2 pb-2">
-          <span className="text-muted-foreground" aria-hidden="true">
+        <div className={`flex flex-row items-center gap-2 pb-2 ${alertBadge ? 'pr-7' : ''}`}>
+          <span className="text-muted-foreground shrink-0" aria-hidden="true">
             {icon}
           </span>
           <span className="text-sm text-muted-foreground">{label}</span>
