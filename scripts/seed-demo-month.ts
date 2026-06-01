@@ -382,7 +382,12 @@ async function seed() {
   for (const s of SUBMISSIONS) {
     const subId = `ee000000-0000-0000-${String(subSeq).padStart(4, '0')}-000000000000`;
     const submittedAt = mayDate(s.day, 8, 30);
-    const photoUrl = `https://blob.vercel-storage.com/demo/submission-${subSeq}.jpg`;
+    // Local placeholder under /public so next/image renders it without a
+    // remotePatterns host. Real bot photos use *.public.blob.vercel-storage.com
+    // (configured in next.config.ts); the previous fake blob.vercel-storage.com
+    // host was NOT configured and made next/image throw a render-time error,
+    // crashing every photo surface (record detail, Kayitlar tab, map popup).
+    const photoUrl = `/demo/field-photo.png`;
     const notesVal = s.notes ? q(s.notes) : 'NULL';
 
     let decidedByVal = 'NULL';
