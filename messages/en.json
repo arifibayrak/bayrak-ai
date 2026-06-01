@@ -167,6 +167,7 @@
         "overview": "Overview",
         "projects": "Projects",
         "people": "People",
+        "requests": "Requests",
         "analytics": "Analytics",
         "hakedis": "Hakkediş",
         "exports": "Exports",
@@ -176,6 +177,13 @@
         "expand_sidebar": "Expand sidebar",
         "collapse_sidebar": "Collapse sidebar",
         "settings_aria_label": "Open settings"
+      },
+      "requests": {
+        "heading": "Telegram Join Requests",
+        "subtitle": "Approve or reject field workers who sent /start to the bot",
+        "pending_count": "{count} pending request(s)",
+        "empty_title": "No pending requests",
+        "empty_body": "When a field worker sends /start to the Telegram bot, they appear here for you to approve."
       },
       "overview": {
         "heading": "Overview",

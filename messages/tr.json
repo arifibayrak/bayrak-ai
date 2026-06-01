@@ -167,6 +167,7 @@
         "overview": "Genel Bakış",
         "projects": "Projeler",
         "people": "Personel",
+        "requests": "Talepler",
         "analytics": "Analizler",
         "hakedis": "Hakkediş",
         "exports": "Dışa Aktar",
@@ -176,6 +177,13 @@
         "expand_sidebar": "Kenar çubuğunu genişlet",
         "collapse_sidebar": "Kenar çubuğunu daralt",
         "settings_aria_label": "Ayarları aç"
+      },
+      "requests": {
+        "heading": "Telegram Katılım Talepleri",
+        "subtitle": "Bota /start gönderen saha çalışanlarını onaylayın veya reddedin",
+        "pending_count": "{count} bekleyen talep",
+        "empty_title": "Bekleyen talep yok",
+        "empty_body": "Bir saha çalışanı Telegram botuna /start gönderdiğinde burada görünür ve onaylayabilirsiniz."
       },
       "overview": {
         "heading": "Genel Bakış",
