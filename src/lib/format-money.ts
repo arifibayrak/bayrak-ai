@@ -58,3 +58,38 @@ export function formatMoney(
   if (amount === '—') return '—';
   return `${amount} ${currency}`;
 }
+
+/**
+ * Currency symbols for the codes this product uses. TRY → ₺ (Turkish Lira sign,
+ * U+20BA). Unknown codes fall back to the code itself.
+ */
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  TRY: '₺',
+  USD: '$',
+  EUR: '€',
+  GBP: '£',
+};
+
+export function currencySymbol(currency: string): string {
+  return CURRENCY_SYMBOLS[currency] ?? currency;
+}
+
+/**
+ * Symbol money formatter — grouped, exactly two decimals, with the currency
+ * symbol. Known symbols prefix the amount ("₺1.234,56"); unknown codes are
+ * appended ("1.234,56 XAU"). Returns the em dash for null/unparseable input.
+ *
+ * Precision-safe: delegates to formatMoneyAmount (decimal.js + BigInt grouping),
+ * never JS float. Use everywhere a monetary value is shown to a user so the
+ * currency is always explicit and the precision is always two digits.
+ */
+export function formatMoneySymbol(
+  value: string | null | undefined,
+  currency: string,
+  locale: string,
+): string {
+  const amount = formatMoneyAmount(value, locale);
+  if (amount === '—') return '—';
+  const sym = CURRENCY_SYMBOLS[currency];
+  return sym ? `${sym}${amount}` : `${amount} ${currency}`;
+}
