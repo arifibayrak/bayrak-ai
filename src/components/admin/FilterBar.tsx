@@ -73,6 +73,22 @@ export function FilterBar({ projectOptions, personOptions, showStatus = false }:
     { value: 'rejected', label: t('status_rejected') },
   ] as const;
 
+  // base-ui Select resolves the trigger label from `items` without opening the
+  // popup (its <Select.Item>s live in an unmounted Portal). Without this the
+  // trigger renders the raw value — e.g. the literal "__all__" sentinel.
+  const projectItems: Record<string, string> = {
+    __all__: t('all_projects'),
+    ...Object.fromEntries(projectOptions.map((p) => [p.id, p.name])),
+  };
+  const personItems: Record<string, string> = {
+    __all__: t('all_people'),
+    ...Object.fromEntries((personOptions ?? []).map((p) => [p.id, p.name])),
+  };
+  const statusItems: Record<string, string> = {
+    __all__: t('all_statuses'),
+    ...Object.fromEntries(STATUS_OPTIONS.map((o) => [o.value, o.label])),
+  };
+
   return (
     <div className="grid grid-cols-2 gap-2 md:flex md:flex-wrap md:items-end md:gap-3">
       {/* From date */}
@@ -119,6 +135,7 @@ export function FilterBar({ projectOptions, personOptions, showStatus = false }:
             {/* visually hidden — select has placeholder */}
           </label>
           <Select
+            items={projectItems}
             value={currentProject || '__all__'}
             onValueChange={(value: string | null) => {
               const v = value ?? '';
@@ -150,6 +167,7 @@ export function FilterBar({ projectOptions, personOptions, showStatus = false }:
             {/* visually hidden — select has placeholder */}
           </label>
           <Select
+            items={personItems}
             value={currentPerson || '__all__'}
             onValueChange={(value: string | null) => {
               const v = value ?? '';
@@ -181,6 +199,7 @@ export function FilterBar({ projectOptions, personOptions, showStatus = false }:
             {/* visually hidden — select has placeholder */}
           </label>
           <Select
+            items={statusItems}
             value={currentStatus || '__all__'}
             onValueChange={(value: string | null) => {
               const v = value ?? '';

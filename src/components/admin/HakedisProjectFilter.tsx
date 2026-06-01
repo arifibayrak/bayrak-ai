@@ -48,8 +48,15 @@ export function HakedisProjectFilter({
     router.push(`/dashboard/hakedis?${params.toString()}`);
   }
 
+  // base-ui resolves the trigger label from `items` without opening the popup
+  // (its <Select.Item>s live in an unmounted Portal) — otherwise the trigger
+  // renders the raw project UUID instead of the project name.
+  const items: Record<string, string> = Object.fromEntries(
+    projects.map((p) => [p.id, p.name])
+  );
+
   return (
-    <Select value={selectedProjectId} onValueChange={handleChange}>
+    <Select items={items} value={selectedProjectId} onValueChange={handleChange}>
       <SelectTrigger className="w-[200px]" aria-label={t('col_period')}>
         <SelectValue />
       </SelectTrigger>
