@@ -3,13 +3,13 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 /**
- * BrandHeading — semantic heading primitive (D-122 Geist Sans + D-125 tight
- * tracking inherited from globals.css base layer).
+ * BrandHeading — semantic heading primitive (Field-Industrial restyle 260601-kj4).
  *
- * Polymorphic via `as` prop (defaults to `h2`). Always Geist Sans (inherited
- * from the html font-sans cascade — no font-* utility needed).
+ * Polymorphic via `as` prop (defaults to `h2`). Uses Space Grotesk display type
+ * via `font-heading` class (bound to --font-heading CSS variable in globals).
+ * Tight tracking per engineering style. Display size uses .text-display utility.
  */
-const brandHeadingVariants = cva("tracking-tight text-foreground", {
+const brandHeadingVariants = cva("font-heading tracking-tight text-foreground", {
   variants: {
     size: {
       display: "text-4xl font-bold",

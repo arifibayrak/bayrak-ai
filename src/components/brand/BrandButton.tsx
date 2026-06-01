@@ -4,28 +4,33 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 /**
- * BrandButton — bayrak.ai brand-spine button (Phase 13 D-127 W1).
+ * BrandButton — bayrak.ai brand-spine button (Field-Industrial restyle 260601-kj4).
  *
  * Wraps shadcn `<Button>` and overrides its `default` variant chrome with the
- * bayrak.ai variant + size system (D-121 amber primary, D-125 rounded-md, D-126
- * icon-size scaling). The underlying shadcn Button still supplies focus-visible
- * rings, disabled treatment, and `asChild` slot.
+ * bayrak.ai variant + size system. Crisp 120ms transition (no scale/bounce).
+ * Strong focus-visible ring using --ring (amber). radius-sm per engineered theme.
  *
- * NO `'use client'` directive — server-renderable from any RSC. shadcn Button
- * is itself a base-ui wrapper that emits its own client boundary when needed.
+ * Variant notes:
+ *  - primary   : amber bg + graphite text + amber-600 hover
+ *  - secondary : white panel + hairline border + graphite text
+ *  - destructive: red fill
+ *  - outline   : hairline border-slate-300 (test assertion preserved)
+ *  - ghost     : transparent + steel hover
+ *
+ * NO `'use client'` directive — server-renderable from any RSC.
  */
 const brandButtonVariants = cva(
-  "inline-flex items-center justify-center rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 disabled:pointer-events-none disabled:opacity-50",
+  "inline-flex items-center justify-center rounded-sm font-medium transition-colors duration-[120ms] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 disabled:pointer-events-none disabled:opacity-50",
   {
     variants: {
       variant: {
         primary: "bg-primary text-primary-foreground hover:bg-amber-600",
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-slate-200",
+          "bg-card text-foreground border border-border hover:bg-secondary",
         destructive: "bg-destructive text-white hover:bg-red-700",
         outline:
-          "border border-slate-300 bg-white text-slate-900 hover:bg-slate-50",
-        ghost: "text-slate-900 hover:bg-slate-100",
+          "border border-slate-300 bg-white text-foreground hover:bg-secondary",
+        ghost: "text-foreground hover:bg-secondary",
       },
       size: {
         sm: "h-8 px-3 text-sm gap-1.5 [&_svg]:size-4",

@@ -36,11 +36,11 @@ export function BrandEmpty({
       )}
     >
       {icon ? <div className="mb-2">{icon}</div> : null}
-      <BrandHeading as="h2" size="h2" className="text-slate-900">
+      <BrandHeading as="h2" size="h2" className="text-foreground">
         {title}
       </BrandHeading>
       {description ? (
-        <p className="text-sm text-slate-600 max-w-md">{description}</p>
+        <p className="text-sm text-muted-foreground max-w-md">{description}</p>
       ) : null}
       {action ? <div>{action}</div> : null}
     </div>
