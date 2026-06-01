@@ -67,6 +67,19 @@ const IDS = {
   pline1_3:  'dd000000-0000-0000-0000-000000000603',
   pline1_4:  'dd000000-0000-0000-0000-000000000604',
   pline1_5:  'dd000000-0000-0000-0000-000000000605',
+  // Additional hakedis periods
+  period1Draft: 'dd000000-0000-0000-0000-000000000502', // proj1 June draft
+  period2:      'dd000000-0000-0000-0000-000000000503', // proj2 May finalized
+  period2Draft: 'dd000000-0000-0000-0000-000000000504', // proj2 June draft
+  // Period lines — project 2 (May finalized)
+  pline2_1: 'dd000000-0000-0000-0000-000000000621',
+  pline2_2: 'dd000000-0000-0000-0000-000000000622',
+  pline2_3: 'dd000000-0000-0000-0000-000000000623',
+  pline2_4: 'dd000000-0000-0000-0000-000000000624',
+  pline2_5: 'dd000000-0000-0000-0000-000000000625',
+  // Office engineers (Auth.js users — text PK, NOT people.id)
+  oe1: 'aa000000-0000-0000-0000-0000000000a1',
+  oe2: 'aa000000-0000-0000-0000-0000000000a2',
 };
 
 // Fixed Telegram user IDs (realistic-looking but not real accounts)
@@ -135,6 +148,32 @@ const SUBMISSIONS: SubmissionDef[] = [
   { flowId: 'dd000000-0000-0000-0002-000000000010', personId: IDS.worker2, projectId: IDS.proj2, boqItemId: IDS.boq2_4, status: 'pending_audit',  qty: 18.0, day: 28 },
   // --- Project 2, BOQ item 5 (Kazıklı Temel)
   { flowId: 'dd000000-0000-0000-0002-000000000011', personId: IDS.worker3, projectId: IDS.proj2, boqItemId: IDS.boq2_5, status: 'approved',       qty: 12.0, day: 22 },
+
+  // ── Additional volume (richer demo) ──────────────────────────────────────
+  // --- Project 1 (more across all BOQ items + late-month backlog)
+  { flowId: 'dd000000-0000-0000-0003-000000000001', personId: IDS.worker1, projectId: IDS.proj1, boqItemId: IDS.boq1_1, status: 'approved',      qty: 50.0, day: 20, notes: 'Güzergah km 0+650 kazı' },
+  { flowId: 'dd000000-0000-0000-0003-000000000002', personId: IDS.worker2, projectId: IDS.proj1, boqItemId: IDS.boq1_1, status: 'pending_audit', qty: 30.0, day: 29 },
+  { flowId: 'dd000000-0000-0000-0003-000000000003', personId: IDS.worker3, projectId: IDS.proj1, boqItemId: IDS.boq1_2, status: 'approved',      qty: 40.0, day: 21 },
+  { flowId: 'dd000000-0000-0000-0003-000000000004', personId: IDS.worker2, projectId: IDS.proj1, boqItemId: IDS.boq1_2, status: 'rejected',      qty: 15.0, day: 23, notes: 'Kaynak dikişi standart dışı' },
+  { flowId: 'dd000000-0000-0000-0003-000000000005', personId: IDS.worker1, projectId: IDS.proj1, boqItemId: IDS.boq1_2, status: 'pending_audit', qty: 25.0, day: 30 },
+  { flowId: 'dd000000-0000-0000-0003-000000000006', personId: IDS.worker3, projectId: IDS.proj1, boqItemId: IDS.boq1_3, status: 'approved',      qty: 35.0, day: 17 },
+  { flowId: 'dd000000-0000-0000-0003-000000000007', personId: IDS.worker2, projectId: IDS.proj1, boqItemId: IDS.boq1_3, status: 'pending_audit', qty: 28.0, day: 31 },
+  { flowId: 'dd000000-0000-0000-0003-000000000008', personId: IDS.worker4, projectId: IDS.proj1, boqItemId: IDS.boq1_4, status: 'approved',      qty: 20.0, day: 24 },
+  { flowId: 'dd000000-0000-0000-0003-000000000009', personId: IDS.worker3, projectId: IDS.proj1, boqItemId: IDS.boq1_4, status: 'approved',      qty: 16.0, day: 26 },
+  { flowId: 'dd000000-0000-0000-0003-000000000010', personId: IDS.worker4, projectId: IDS.proj1, boqItemId: IDS.boq1_5, status: 'approved',      qty: 9.0,  day: 20 },
+  { flowId: 'dd000000-0000-0000-0003-000000000011', personId: IDS.worker4, projectId: IDS.proj1, boqItemId: IDS.boq1_5, status: 'pending_audit', qty: 6.0,  day: 28 },
+  // --- Project 2 (more across all BOQ items + late-month backlog)
+  { flowId: 'dd000000-0000-0000-0003-000000000012', personId: IDS.worker1, projectId: IDS.proj2, boqItemId: IDS.boq2_1, status: 'approved',      qty: 80.0, day: 13 },
+  { flowId: 'dd000000-0000-0000-0003-000000000013', personId: IDS.worker2, projectId: IDS.proj2, boqItemId: IDS.boq2_1, status: 'pending_audit', qty: 50.0, day: 29 },
+  { flowId: 'dd000000-0000-0000-0003-000000000014', personId: IDS.worker3, projectId: IDS.proj2, boqItemId: IDS.boq2_2, status: 'approved',      qty: 40.0, day: 19 },
+  { flowId: 'dd000000-0000-0000-0003-000000000015', personId: IDS.worker4, projectId: IDS.proj2, boqItemId: IDS.boq2_2, status: 'rejected',      qty: 18.0, day: 21, notes: 'Boru yatağı eğimi hatalı' },
+  { flowId: 'dd000000-0000-0000-0003-000000000016', personId: IDS.worker1, projectId: IDS.proj2, boqItemId: IDS.boq2_3, status: 'approved',      qty: 55.0, day: 23 },
+  { flowId: 'dd000000-0000-0000-0003-000000000017', personId: IDS.worker2, projectId: IDS.proj2, boqItemId: IDS.boq2_3, status: 'pending_audit', qty: 30.0, day: 30 },
+  { flowId: 'dd000000-0000-0000-0003-000000000018', personId: IDS.worker3, projectId: IDS.proj2, boqItemId: IDS.boq2_4, status: 'approved',      qty: 22.0, day: 18 },
+  { flowId: 'dd000000-0000-0000-0003-000000000019', personId: IDS.worker4, projectId: IDS.proj2, boqItemId: IDS.boq2_4, status: 'approved',      qty: 19.0, day: 25 },
+  { flowId: 'dd000000-0000-0000-0003-000000000020', personId: IDS.worker1, projectId: IDS.proj2, boqItemId: IDS.boq2_4, status: 'pending_audit', qty: 15.0, day: 31 },
+  { flowId: 'dd000000-0000-0000-0003-000000000021', personId: IDS.worker3, projectId: IDS.proj2, boqItemId: IDS.boq2_5, status: 'approved',      qty: 4.0,  day: 20 },
+  { flowId: 'dd000000-0000-0000-0003-000000000022', personId: IDS.worker4, projectId: IDS.proj2, boqItemId: IDS.boq2_5, status: 'approved',      qty: 3.0,  day: 27 },
 ];
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -265,6 +304,20 @@ async function seed() {
       INSERT INTO people (id, tenant_id, telegram_user_id, display_name)
       VALUES ('${p.id}', '${TENANT_ID}', ${p.telegramId}, '${p.name.replace(/'/g, "''")}')
       ON CONFLICT DO NOTHING
+    `));
+  }
+
+  // 3b. Office engineers (Auth.js users) — drive the Analizler scorecards.
+  // UPSERT by id; demo emails won't collide with real allowlisted accounts.
+  const officeEngineers = [
+    { id: IDS.oe1, name: 'Selin Aydın',  email: 'demo.selin@bayrak.ai' },
+    { id: IDS.oe2, name: 'Burak Yıldız', email: 'demo.burak@bayrak.ai' },
+  ];
+  for (const oe of officeEngineers) {
+    await db.execute(sql.raw(`
+      INSERT INTO users (id, name, email, email_verified)
+      VALUES ('${oe.id}', '${oe.name.replace(/'/g, "''")}', '${oe.email}', now())
+      ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, email = EXCLUDED.email
     `));
   }
 
@@ -436,12 +489,12 @@ async function seed() {
       id, tenant_id, project_id, period_number,
       period_start_date, period_end_date, currency_code, status,
       kdv_rate, retention_rate, tevkifat_fraction, stopaj_enabled, avans_kesintisi_rate,
-      notes
+      notes, created_by_user_id, finalized_at
     ) VALUES (
       '${IDS.period1}', '${TENANT_ID}', '${IDS.proj1}', 'HK-2026-05',
       '2026-05-01', '2026-05-31', 'TRY', 'finalized',
       '0.2000', '0.0500', '0.4000', false, '0.0000',
-      'Mayıs 2026 hakediş dönemi'
+      'Mayıs 2026 hakediş dönemi', '${IDS.oe1}', '${mayDate(31, 17, 0)}'
     )
     ON CONFLICT DO NOTHING
   `));
@@ -502,6 +555,137 @@ async function seed() {
     }
     lineSubSeq++;
   }
+
+  // 14. Additional hakkediş periods — both projects get a finalized + a draft
+  // period, so the list (and the project filter) has real content either way.
+
+  // Helper: period lines + approved-submission links for a finalized period.
+  async function seedPeriodLines(
+    periodId: string,
+    lineItems: { id: string; boqItemId: string; material: string; unit: string; unitPrice: string }[],
+  ) {
+    for (const line of lineItems) {
+      const cumQty = approvedQtyByBoqItem[line.boqItemId] ?? 0;
+      if (cumQty === 0) continue;
+      const cumQtyStr = cumQty.toFixed(3);
+      const periodValue = (cumQty * parseFloat(line.unitPrice)).toFixed(2);
+      await db.execute(sql.raw(`
+        INSERT INTO hakedis_period_lines (
+          id, tenant_id, period_id, boq_item_id,
+          material_snapshot, unit_snapshot, currency_code_snapshot, unit_price_snapshot,
+          cumulative_qty_approved, previous_cumulative_qty,
+          period_value, cumulative_value
+        ) VALUES (
+          '${line.id}', '${TENANT_ID}', '${periodId}', '${line.boqItemId}',
+          '${line.material.replace(/'/g, "''")}', '${line.unit}', 'TRY', '${line.unitPrice}',
+          '${cumQtyStr}', '0.000', '${periodValue}', '${periodValue}'
+        )
+        ON CONFLICT DO NOTHING
+      `));
+      const approvedForItem = SUBMISSIONS.filter(
+        (s) => s.boqItemId === line.boqItemId && s.status === 'approved',
+      );
+      for (const sub of approvedForItem) {
+        const subIdx = SUBMISSIONS.indexOf(sub) + 1;
+        const submissionId = `ee000000-0000-0000-${String(subIdx).padStart(4, '0')}-000000000000`;
+        await db.execute(sql.raw(`
+          INSERT INTO hakedis_line_submissions (tenant_id, period_line_id, submission_id, qty_contributed)
+          VALUES ('${TENANT_ID}', '${line.id}', '${submissionId}', '${sub.qty.toFixed(3)}')
+          ON CONFLICT DO NOTHING
+        `));
+      }
+    }
+  }
+
+  // Project 2 — May finalized period (mirrors project 1's HK-2026-05)
+  await db.execute(sql.raw(`
+    INSERT INTO hakedis_periods (
+      id, tenant_id, project_id, period_number,
+      period_start_date, period_end_date, currency_code, status,
+      kdv_rate, retention_rate, tevkifat_fraction, stopaj_enabled, avans_kesintisi_rate,
+      notes, created_by_user_id, finalized_at
+    ) VALUES (
+      '${IDS.period2}', '${TENANT_ID}', '${IDS.proj2}', 'HK-2026-05',
+      '2026-05-01', '2026-05-31', 'TRY', 'finalized',
+      '0.2000', '0.0500', '0.4000', false, '0.0000',
+      'Mayıs 2026 hakediş dönemi', '${IDS.oe2}', '${mayDate(31, 18, 0)}'
+    )
+    ON CONFLICT DO NOTHING
+  `));
+  await seedPeriodLines(IDS.period2, [
+    { id: IDS.pline2_1, boqItemId: IDS.boq2_1, material: 'Kazı (Mekanik)',              unit: 'm³',   unitPrice: '90.0000'    },
+    { id: IDS.pline2_2, boqItemId: IDS.boq2_2, material: 'DN150 PVC İçme Suyu Borusu',  unit: 'm',    unitPrice: '310.0000'   },
+    { id: IDS.pline2_3, boqItemId: IDS.boq2_3, material: 'Granüler Dolgu',              unit: 'm³',   unitPrice: '72.0000'    },
+    { id: IDS.pline2_4, boqItemId: IDS.boq2_4, material: 'Kilit Taşı Döşeme Onarımı',   unit: 'm²',   unitPrice: '290.0000'   },
+    { id: IDS.pline2_5, boqItemId: IDS.boq2_5, material: 'Fore Kazıklı Temel (D=60cm)', unit: 'adet', unitPrice: '12500.0000' },
+  ]);
+
+  // Both projects — June draft (in-progress, no lines yet; shows the Sil action)
+  const draftPeriods = [
+    { id: IDS.period1Draft, projectId: IDS.proj1, by: IDS.oe1 },
+    { id: IDS.period2Draft, projectId: IDS.proj2, by: IDS.oe2 },
+  ];
+  for (const d of draftPeriods) {
+    await db.execute(sql.raw(`
+      INSERT INTO hakedis_periods (
+        id, tenant_id, project_id, period_number,
+        period_start_date, period_end_date, currency_code, status,
+        kdv_rate, retention_rate, tevkifat_fraction, stopaj_enabled, avans_kesintisi_rate,
+        notes, created_by_user_id
+      ) VALUES (
+        '${d.id}', '${TENANT_ID}', '${d.projectId}', 'HK-2026-06',
+        '2026-06-01', '2026-06-30', 'TRY', 'draft',
+        '0.2000', '0.0500', '0.4000', false, '0.0000',
+        'Haziran 2026 hakediş dönemi (taslak)', '${d.by}'
+      )
+      ON CONFLICT DO NOTHING
+    `));
+  }
+
+  // 15. Office activity log — drives the Analizler office-engineer list and the
+  // per-engineer scorecard activity feed (empty before this = "Yakında" state).
+  interface ActivityDef { oe: string; action: string; entity: string; project: string | null; day: number; hour: number; }
+  const activities: ActivityDef[] = [
+    // Selin (oe1) — set up project 1
+    { oe: IDS.oe1, action: 'project_created',          entity: 'project',        project: IDS.proj1, day: 1,  hour: 9  },
+    { oe: IDS.oe1, action: 'boq_imported',             entity: 'boq_item',       project: IDS.proj1, day: 1,  hour: 10 },
+    { oe: IDS.oe1, action: 'unit_price_set',           entity: 'boq_item',       project: IDS.proj1, day: 2,  hour: 9  },
+    { oe: IDS.oe1, action: 'unit_price_set',           entity: 'boq_item',       project: IDS.proj1, day: 2,  hour: 10 },
+    { oe: IDS.oe1, action: 'route_uploaded',           entity: 'route',          project: IDS.proj1, day: 2,  hour: 14 },
+    { oe: IDS.oe1, action: 'person_approved',          entity: 'person',         project: IDS.proj1, day: 3,  hour: 9  },
+    { oe: IDS.oe1, action: 'person_approved',          entity: 'person',         project: IDS.proj1, day: 3,  hour: 10 },
+    { oe: IDS.oe1, action: 'person_assigned',          entity: 'person',         project: IDS.proj1, day: 3,  hour: 11 },
+    { oe: IDS.oe1, action: 'person_assigned',          entity: 'person',         project: IDS.proj1, day: 4,  hour: 9  },
+    { oe: IDS.oe1, action: 'hakedis_period_created',   entity: 'hakedis_period', project: IDS.proj1, day: 30, hour: 16 },
+    { oe: IDS.oe1, action: 'hakedis_period_finalized', entity: 'hakedis_period', project: IDS.proj1, day: 31, hour: 17 },
+    { oe: IDS.oe1, action: 'hakedis_excel_exported',   entity: 'hakedis_period', project: IDS.proj1, day: 31, hour: 17 },
+    { oe: IDS.oe1, action: 'hakedis_pdf_exported',     entity: 'hakedis_period', project: IDS.proj1, day: 31, hour: 18 },
+    // Burak (oe2) — set up project 2
+    { oe: IDS.oe2, action: 'project_created',          entity: 'project',        project: IDS.proj2, day: 1,  hour: 11 },
+    { oe: IDS.oe2, action: 'boq_imported',             entity: 'boq_item',       project: IDS.proj2, day: 1,  hour: 12 },
+    { oe: IDS.oe2, action: 'unit_price_set',           entity: 'boq_item',       project: IDS.proj2, day: 2,  hour: 11 },
+    { oe: IDS.oe2, action: 'route_uploaded',           entity: 'route',          project: IDS.proj2, day: 2,  hour: 15 },
+    { oe: IDS.oe2, action: 'chainage_offset_set',      entity: 'route',          project: IDS.proj2, day: 5,  hour: 10 },
+    { oe: IDS.oe2, action: 'person_assigned',          entity: 'person',         project: IDS.proj2, day: 4,  hour: 14 },
+    { oe: IDS.oe2, action: 'submission_ledger_exported', entity: 'project',      project: IDS.proj2, day: 28, hour: 16 },
+    { oe: IDS.oe2, action: 'performance_summary_exported', entity: 'project',    project: null,      day: 28, hour: 17 },
+    { oe: IDS.oe2, action: 'hakedis_period_created',   entity: 'hakedis_period', project: IDS.proj2, day: 30, hour: 15 },
+    { oe: IDS.oe2, action: 'hakedis_period_finalized', entity: 'hakedis_period', project: IDS.proj2, day: 31, hour: 18 },
+  ];
+  let actSeq = 1;
+  for (const a of activities) {
+    const actId = `ac000000-0000-0000-${String(actSeq).padStart(4, '0')}-000000000000`;
+    const projVal = a.project ? `'${a.project}'` : 'NULL';
+    await db.execute(sql.raw(`
+      INSERT INTO office_activity_log (
+        id, tenant_id, actor_user_id, action_type, entity_type, entity_id, project_id, metadata, occurred_at
+      ) VALUES (
+        '${actId}', '${TENANT_ID}', '${a.oe}', '${a.action}', '${a.entity}', NULL, ${projVal}, NULL, '${mayDate(a.day, a.hour, 0)}'
+      )
+      ON CONFLICT DO NOTHING
+    `));
+    actSeq++;
+  }
 }
 
 // ─── Summary ───────────────────────────────────────────────────────────────
@@ -522,15 +706,15 @@ async function printSummary() {
   const boqRows    = await r(sql.raw(`SELECT COUNT(*) AS n FROM boq_items WHERE tenant_id = '${tid}'`));
   const routeRows  = await r(sql.raw(`SELECT COUNT(*) AS n FROM routes WHERE tenant_id = '${tid}'`));
   const subRows    = await r(sql.raw(`SELECT status, COUNT(*) AS n FROM submissions WHERE tenant_id = '${tid}' GROUP BY status ORDER BY status`));
-  const periodRows = await r(sql.raw(`SELECT COUNT(*) AS n FROM hakedis_periods WHERE tenant_id = '${tid}'`));
+  const periodRows = await r(sql.raw(`SELECT status, COUNT(*) AS n FROM hakedis_periods WHERE tenant_id = '${tid}' GROUP BY status ORDER BY status`));
   const plineRows  = await r(sql.raw(`SELECT COUNT(*) AS n FROM hakedis_period_lines WHERE tenant_id = '${tid}'`));
   const hlsRows    = await r(sql.raw(`SELECT COUNT(*) AS n FROM hakedis_line_submissions WHERE tenant_id = '${tid}'`));
+  const actRows    = await r(sql.raw(`SELECT COUNT(DISTINCT actor_user_id) AS engineers, COUNT(*) AS n FROM office_activity_log WHERE tenant_id = '${tid}'`));
 
   const projCount   = Number(projRows[0]?.n ?? 0);
   const peopleCount = Number(peopleRows[0]?.n ?? 0);
   const boqCount    = Number(boqRows[0]?.n ?? 0);
   const routeCount  = Number(routeRows[0]?.n ?? 0);
-  const periodCount = Number(periodRows[0]?.n ?? 0);
   const plineCount  = Number(plineRows[0]?.n ?? 0);
   const hlsCount    = Number(hlsRows[0]?.n ?? 0);
 
@@ -543,9 +727,13 @@ async function printSummary() {
   for (const row of subRows as any[]) {
     console.log(`  ${String(row.status).padEnd(15)}: ${row.n}`);
   }
-  console.log(`Hakkediş periods:  ${periodCount}`);
+  console.log('Hakkediş periods:');
+  for (const row of periodRows as any[]) {
+    console.log(`  ${String(row.status).padEnd(15)}: ${row.n}`);
+  }
   console.log(`Period lines:      ${plineCount}`);
   console.log(`Line submissions:  ${hlsCount}`);
+  console.log(`Office engineers:  ${Number(actRows[0]?.engineers ?? 0)} (${Number(actRows[0]?.n ?? 0)} activity entries)`);
   console.log('-------------------------\n');
 }
 
