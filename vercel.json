@@ -4,11 +4,5 @@
       "memory": 512,
       "maxDuration": 55
     }
-  },
-  "crons": [
-    {
-      "path": "/api/cron/ai-flags",
-      "schedule": "0 * * * *"
-    }
-  ]
+  }
 }
