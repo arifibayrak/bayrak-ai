@@ -1,16 +1,27 @@
 ---
 title: UI polish batch — remaining (stat grid + analytics empty state)
-status: pending
+status: completed
 priority: medium
 created: 2026-06-01
 updated: 2026-06-01
+completed: 2026-06-01
 area: ui
 origin: user feedback while reviewing Field-Industrial foundation
 ---
 
 # UI polish — remaining items
 
-From the 2026-06-01 browser review. DONE so far: hakkediş crash fix (commit 99727d3), logo dedup + graphite legibility (0679cfd), test-data cleanup + demo-month seed (81ce079). Remaining:
+From the 2026-06-01 browser review. DONE so far: hakkediş crash fix (commit 99727d3), logo dedup + graphite legibility (0679cfd), test-data cleanup + demo-month seed (81ce079).
+
+## RESOLVED 2026-06-01 (increment 2)
+- **Post-seed photo crash (root cause found):** seed wrote `https://blob.vercel-storage.com/demo/...`, a host NOT in `next.config` `images.remotePatterns` (real bot photos use `*.public.blob.vercel-storage.com`). `next/image` throws a render-time error on an unconfigured host → caught by `app/error.tsx` ("Bir şeyler ters gitti"). SSR returned 200, so there was no server `⨯`. Crashed every photo surface: record detail, project Kayıtlar tab, map popup. Fixed by pointing seed at local `/demo/field-photo.png` (committed on-brand placeholder; relative paths bypass remotePatterns). Re-seeded dev DB. (commit 20c5586)
+- **Stat grid (#2):** KPI grid → `grid-cols-2 md:grid-cols-3 2xl:grid-cols-5 gap-4`; 5th card no longer clips against its corner alert badge. Charts row was already fine. (c28a255)
+- **Filter selects bonus bug:** base-ui Select trigger showed raw value (`__all__` / project UUID); fixed via Root `items` map. (676ed11)
+- **Analytics empty state (#3):** full-page-fit centered `BrandEmpty` (BarChart2 icon + Yakında badge); office-engineers table still renders when engineers exist. (dd4db69)
+- Gate green: tsc 0, vitest 416 pass / 2 skip, build OK.
+
+---
+Original items (now done):
 
 ## 2. Stat cards → responsive wrapping grid
 - On `/dashboard/overview` the KPI stat cards (Bekleyen Denetim, Onaylar, Retler, Aktif İşçiler, Para…) sit in a single horizontal row that OVERFLOWS / gets cut off at the right edge. Make them a responsive grid that wraps by viewport width (e.g. `grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3`), not one fixed overflowing row.
