@@ -29,6 +29,7 @@
     "drizzle-orm": "^0.45.2",
     "dxf-parser": "^1.1.2",
     "exceljs": "^4.4.0",
+    "fast-xml-parser": "^5.8.0",
     "geist": "1.7.1",
     "grammy": "^1.43.0",
     "lucide-react": "^1.16.0",
