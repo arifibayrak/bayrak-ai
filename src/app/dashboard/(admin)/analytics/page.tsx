@@ -132,8 +132,8 @@ export default async function AnalyticsPage({ searchParams }: Props) {
         />
       </div>
 
-      {/* KPI row */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
+      {/* KPI row — responsive 1/2/3-up so currency values are never clipped within max-w-5xl */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <KpiCard
           label={t('kpi_complete')}
           subLabel=""
