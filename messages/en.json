@@ -192,6 +192,7 @@
     },
     "admin": {
       "nav": {
+        "home": "Home",
         "overview": "Overview",
         "projects": "Projects",
         "people": "People",
@@ -612,6 +613,33 @@
       "empty_heading": "No records yet",
       "empty_body": "No approved work records found for this project. The as-built view will appear after the first auditor approval.",
       "error_body": "Failed to load route data. Refresh the page."
+    },
+    "home": {
+      "greeting": "Welcome back",
+      "role_admin": "Administrator",
+      "role_office_engineer": "Office Engineer",
+      "role_audit_engineer": "Audit Engineer",
+      "readonly_note": "You have read-only monitoring access.",
+      "section_attention": "Needs attention",
+      "section_quicklinks": "Quick links",
+      "section_snapshot": "Snapshot",
+      "attention_none": "All projects are on track.",
+      "kpi_pending": "Pending audits",
+      "kpi_approvals": "Approved",
+      "kpi_workers": "Active workers",
+      "kpi_stalled": "Stalled projects",
+      "kpi_rejections": "Rejected",
+      "link_overview": "Overview",
+      "link_analytics": "Analytics",
+      "link_projects": "Projects",
+      "link_people": "People",
+      "link_requests": "Join requests",
+      "link_hakedis": "Progress payments",
+      "link_exports": "Exports",
+      "link_records": "Records",
+      "link_accounts": "Accounts",
+      "link_new_project": "New project",
+      "view_all_projects": "View all projects"
     }
   },
   "landing": {

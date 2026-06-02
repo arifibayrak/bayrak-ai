@@ -25,7 +25,7 @@ export default function SignInPage() {
     try {
       const result = await signIn('resend', {
         email: email.trim().toLowerCase(),
-        callbackUrl: '/dashboard/projects',
+        callbackUrl: '/dashboard',
         redirect: false,
       });
 

@@ -192,6 +192,7 @@
     },
     "admin": {
       "nav": {
+        "home": "Ana sayfa",
         "overview": "Genel Bakış",
         "projects": "Projeler",
         "people": "Personel",
@@ -612,6 +613,33 @@
       "empty_heading": "Henüz kayıt yok",
       "empty_body": "Bu projede onaylanmış iş kaydı bulunmuyor. İlk onaydan sonra as-built görünümü burada gösterilecek.",
       "error_body": "Güzergah verisi yüklenemedi. Sayfayı yenileyin."
+    },
+    "home": {
+      "greeting": "Tekrar hoş geldiniz",
+      "role_admin": "Yönetici",
+      "role_office_engineer": "Ofis Mühendisi",
+      "role_audit_engineer": "Denetim Mühendisi",
+      "readonly_note": "Yalnızca görüntüleme (salt-okunur) erişiminiz var.",
+      "section_attention": "Dikkat gerekiyor",
+      "section_quicklinks": "Hızlı bağlantılar",
+      "section_snapshot": "Özet",
+      "attention_none": "Tüm projeler yolunda.",
+      "kpi_pending": "Bekleyen onaylar",
+      "kpi_approvals": "Onaylanan",
+      "kpi_workers": "Aktif çalışanlar",
+      "kpi_stalled": "Durgun projeler",
+      "kpi_rejections": "Reddedilen",
+      "link_overview": "Genel Bakış",
+      "link_analytics": "Analizler",
+      "link_projects": "Projeler",
+      "link_people": "Personel",
+      "link_requests": "Katılım istekleri",
+      "link_hakedis": "Hakediş",
+      "link_exports": "Dışa aktar",
+      "link_records": "Kayıtlar",
+      "link_accounts": "Hesaplar",
+      "link_new_project": "Yeni proje",
+      "view_all_projects": "Tüm projeleri gör"
     }
   },
   "landing": {

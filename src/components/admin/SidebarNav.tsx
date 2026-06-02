@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import {
+  Home,
   LayoutDashboard,
   FolderOpen,
   Users,
@@ -20,7 +21,11 @@ import {
   SidebarMenuItem,
 } from '@/components/ui/sidebar';
 
+// `alwaysShow` items bypass the audit_engineer filter (Home is every role's
+// landing). It must NOT be added to AUDIT_ALLOWED_PREFIXES — '/dashboard' as a
+// prefix would match every office route and defeat the read-only restriction.
 const NAV_ITEMS = [
+  { key: 'home', href: '/dashboard', icon: Home, exact: true, alwaysShow: true },
   { key: 'overview', href: '/dashboard/overview', icon: LayoutDashboard, exact: true },
   { key: 'projects', href: '/dashboard/projects', icon: FolderOpen, exact: false },
   { key: 'people', href: '/dashboard/people', icon: Users, exact: false },
@@ -48,7 +53,10 @@ export function SidebarNav({ role }: { role: Role }) {
 
   const items =
     role === ROLES.AUDIT
-      ? NAV_ITEMS.filter((item) => auditCanAccessPath(item.href))
+      ? NAV_ITEMS.filter(
+          (item) =>
+            ('alwaysShow' in item && item.alwaysShow) || auditCanAccessPath(item.href),
+        )
       : NAV_ITEMS;
 
   return (
