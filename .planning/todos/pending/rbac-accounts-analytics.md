@@ -32,11 +32,15 @@ Net-new beyond the v4.0 roadmap. Three pieces. Build RBAC FIRST (everything else
 6. **Analizler finish** — replace the stub/coming-soon with real analytics: portfolio trends, per-role insights, charts (reuse Phase 9 analytics queries / TrendChartsClient). Define exact widgets at build.
 7. i18n (TR/EN), tests (`vitest run` must stay green — baseline 416), `tsc`, `npm run build`, deploy.
 
-## OPEN QUESTIONS to resolve at build time
-- Exact audit-engineer web surfaces (which pages + which records they see — only their own decisions? all in their projects?).
-- Do `audit_engineer` web users link to a `people` (Telegram auditor) row, or are they independent web accounts? (Identity mapping.)
-- Default role for a brand-new non-`@bayrak.ai` login: office_engineer vs a least-privilege "pending" state an admin must promote.
-- Whether "deactivate / remove account" is in-scope for v1 of the panel.
+## RESOLVED (decided 2026-06-02 — build exactly these, no further questions)
+- **Scope this milestone = RBAC core + account panel ONLY.** "Finish Analizler" is a SEPARATE follow-up; do not build analytics here.
+- **Audit-engineer web surfaces = READ-ONLY monitoring.** Allowed routes: `/dashboard/overview`, `/dashboard/records` (+ `/records/[id]`), `/dashboard/analytics` (+ scorecard pages). DENIED: projects create/edit/delete, hakedis, exports, requests, settings, AND all write Server Actions.
+- **Web `audit_engineer` accounts are INDEPENDENT** of Telegram `people` rows (no identity link in v1).
+- **Default role for a new non-`@bayrak.ai` login = `office_engineer`** (the allowlist already gates who can log in at all).
+- **"Deactivate/remove account" is OUT of scope** for v1 — panel does role view + role change only.
+
+## How a fresh session should build this
+Run from a NEW conversation (main agent has Bash + full context — subagents are Bash-restricted here and cannot build/verify). Prompt: "Build the RBAC milestone exactly per `.planning/todos/pending/rbac-accounts-analytics.md`." Then verify (tsc / next build / `vitest run` baseline 416) and commit atomically. Do NOT use `drizzle-kit push` (use `migrate.ts`, D-49). Deploy via `vercel --prod` (CLI may stall on api.vercel.com DNS — builds still complete server-side; dashboard Redeploy is the fallback).
 
 ## Context for the build session
 - Today: NO roles, NO middleware; every allowlisted magic-link user has FULL access (10 `auth()` page guards, no authorization).
