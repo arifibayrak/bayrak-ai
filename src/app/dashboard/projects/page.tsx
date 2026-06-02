@@ -2,15 +2,54 @@ import Link from 'next/link';
 import { FolderOpenIcon } from 'lucide-react';
 import { getTranslations } from 'next-intl/server';
 import { BrandButton, BrandCard, BrandHeading } from '@/components/brand';
-import { ProjectCard } from '@/components/dashboard/ProjectCard';
-import { getProjects } from '@/actions/projects';
+import { ProjectsPortfolioClient } from '@/components/dashboard/ProjectsPortfolioClient';
+import type { ProjectVM } from '@/components/dashboard/ProjectPortfolioCard';
+import { getProjectsPortfolio } from '@/actions/analytics';
+import { getTenantSettings } from '@/actions/settings';
 import { requireWriteAccess } from '@/lib/rbac';
+import { deriveProjectStatus } from '@/lib/project-status';
+
+export const dynamic = 'force-dynamic';
 
 export default async function ProjectsPage() {
   // RBAC: office-only page — redirects audit_engineer (and unauthenticated)
   await requireWriteAccess();
   const t = await getTranslations('dashboard.projects');
-  const projects = await getProjects();
+
+  const [rows, settings] = await Promise.all([
+    getProjectsPortfolio(),
+    getTenantSettings(),
+  ]);
+
+  // Derive status server-side (single source of truth) and shape view-models.
+  const now = new Date();
+  const projects: ProjectVM[] = rows.map((r) => {
+    const s = deriveProjectStatus(
+      r,
+      {
+        stalledDays: settings.stalledDays,
+        rejectionRateThreshold: Number(settings.rejectionRateThreshold),
+      },
+      now,
+    );
+    return {
+      id: r.projectId,
+      name: r.projectName,
+      description: r.description,
+      createdAt: r.createdAt,
+      status: s.status,
+      progressPct: s.progressPct,
+      primaryCurrency: s.primaryCurrency,
+      contractedValue: s.contractedValue,
+      earnedValue: s.earnedValue,
+      approvedCount: r.approvedCount,
+      pendingCount: r.pendingCount,
+      rejectedCount: r.rejectedCount,
+      boqCount: r.boqCount,
+      workerCount: r.workerCount,
+      lastActivityAt: r.lastActivityAt,
+    };
+  });
 
   return (
     <div className="space-y-6">
@@ -25,7 +64,7 @@ export default async function ProjectsPage() {
         </BrandButton>
       </div>
 
-      {/* Project list / empty state */}
+      {/* Portfolio dashboard / empty state */}
       {projects.length === 0 ? (
         <BrandCard>
           <BrandCard.Body className="flex flex-col items-center justify-center py-24 gap-4 text-muted-foreground">
@@ -34,18 +73,7 @@ export default async function ProjectsPage() {
           </BrandCard.Body>
         </BrandCard>
       ) : (
-        <div className="space-y-3">
-          {projects.map((project) => (
-            <ProjectCard
-              key={project.id}
-              id={project.id}
-              name={project.name}
-              createdAt={project.createdAt}
-              boqCount={project.boqCount}
-              peopleCount={project.peopleCount}
-            />
-          ))}
-        </div>
+        <ProjectsPortfolioClient projects={projects} />
       )}
     </div>
   );
