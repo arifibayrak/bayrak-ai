@@ -154,7 +154,23 @@
       "crs_23035": "ED50 / UTM 35N (EPSG:23035) — Legacy standard",
       "crs_23036": "ED50 / UTM 36N (EPSG:23036) — Legacy standard",
       "crs_32635": "WGS84 / UTM 35N (EPSG:32635)",
-      "crs_32636": "WGS84 / UTM 36N (EPSG:32636)"
+      "crs_32636": "WGS84 / UTM 36N (EPSG:32636)",
+      "elevation": {
+        "heading": "Elevation profile",
+        "sub": "Terrain elevation sampled along the route (real 3D).",
+        "sample": "Sample elevation",
+        "resample": "Re-sample",
+        "sampling": "Sampling terrain…",
+        "not_sampled": "Terrain elevation not sampled yet.",
+        "min": "Min",
+        "max": "Max",
+        "length_3d": "3D length",
+        "length_2d": "2D length",
+        "sampled_at": "Sampled {date}",
+        "error": "Could not sample elevation. Please try again.",
+        "axis_distance": "Distance (m)",
+        "axis_elevation": "Elevation (m)"
+      }
     },
     "submissions": {
       "tab_label": "Submissions",

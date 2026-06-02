@@ -154,7 +154,23 @@
       "crs_23035": "ED50 / UTM 35N (EPSG:23035) — Eski standart",
       "crs_23036": "ED50 / UTM 36N (EPSG:23036) — Eski standart",
       "crs_32635": "WGS84 / UTM 35N (EPSG:32635)",
-      "crs_32636": "WGS84 / UTM 36N (EPSG:32636)"
+      "crs_32636": "WGS84 / UTM 36N (EPSG:32636)",
+      "elevation": {
+        "heading": "Yükseklik profili",
+        "sub": "Güzergah boyunca arazi yüksekliği örneklendi (gerçek 3B).",
+        "sample": "Yüksekliği örnekle",
+        "resample": "Yeniden örnekle",
+        "sampling": "Arazi örnekleniyor…",
+        "not_sampled": "Arazi yüksekliği henüz örneklenmedi.",
+        "min": "En düşük",
+        "max": "En yüksek",
+        "length_3d": "3B uzunluk",
+        "length_2d": "2B uzunluk",
+        "sampled_at": "{date} örneklendi",
+        "error": "Yükseklik örneklenemedi. Lütfen tekrar deneyin.",
+        "axis_distance": "Mesafe (m)",
+        "axis_elevation": "Yükseklik (m)"
+      }
     },
     "submissions": {
       "tab_label": "Kayıtlar",

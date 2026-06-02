@@ -22,6 +22,7 @@ import { getTranslations } from 'next-intl/server';
 import { getRoute, getRouteGeoJSON, getRouteSourceDocuments } from '@/actions/routes';
 import { getApprovedPoints, getBoqLegend } from '@/actions/submissions';
 import { RouteTabClient } from './RouteTabClient';
+import { ElevationProfile } from './ElevationProfile';
 
 interface RouteTabProps {
   projectId: string;
@@ -78,6 +79,19 @@ export async function RouteTab({ projectId }: RouteTabProps) {
         boqLegend={boqLegend}
         sourceDocuments={sourceDocuments}
       />
+
+      {/* Real-3D terrain elevation profile — only when a route exists. */}
+      {routeGeoJSONResult ? (
+        <ElevationProfile
+          projectId={projectId}
+          sampledAt={routeGeoJSONResult.elevationSampledAt ?? null}
+          minM={routeGeoJSONResult.minElevationM ? String(routeGeoJSONResult.minElevationM) : null}
+          maxM={routeGeoJSONResult.maxElevationM ? String(routeGeoJSONResult.maxElevationM) : null}
+          length3dM={routeGeoJSONResult.length3dM ? String(routeGeoJSONResult.length3dM) : null}
+          totalLengthM={routeGeoJSONResult.totalLengthM ? String(routeGeoJSONResult.totalLengthM) : null}
+          profile={routeGeoJSONResult.elevationProfile ?? null}
+        />
+      ) : null}
     </div>
   );
 }
