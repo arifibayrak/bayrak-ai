@@ -22,8 +22,15 @@ Net-new beyond the v4.0 roadmap. Three pieces. Build RBAC FIRST (everything else
 - `src/types/next-auth.d.ts`: role on Session/User.
 - No enforcement wired yet ⇒ zero behavior change so far.
 
-**REMAINING — wire enforcement + build the panel (start from d4c4150):**
-1. **Account panel** `src/app/dashboard/(admin)/settings/users/page.tsx` — `await requireAdmin()` first; list `users` (name/email/role); client role-select per row → new `src/actions/users.ts` `setUserRole(userId, role)` with `assertAdmin()` + invariant (never set admin for non-@bayrak.ai; @bayrak.ai always admin). Add an admin-only link to it from `settings/page.tsx`. i18n TR/EN.
+**DONE — Layer 2: Account panel (commit `895cf11`, tsc+build green, schema test fixed):**
+- `/dashboard/settings/users` (requireAdmin) lists accounts + assigns office/audit; admin domain-locked.
+- `src/actions/users.ts` getAccounts/setUserRole (assertAdmin + @bayrak.ai invariant).
+- `src/components/admin/AccountRoleSelect.tsx`; settings page now requireWriteAccess + admin-only panel link. TR/EN added.
+- Migration `0016` ALSO applied to TEST_DATABASE_URL (neondb_test) — full suite back to 416.
+
+**⚠️ DO NOT assign anyone `audit_engineer` in the panel until Layer 3 lands** — the read-only enforcement (steps 2–4 below) is NOT wired yet, so an audit_engineer would still have full access to office pages/actions. Until then everyone is admin (@bayrak.ai) or office_engineer = unchanged behavior, safe.
+
+**REMAINING — Layer 3 enforcement (start from 895cf11):**
 2. **Audit_engineer read-only enforcement:** add `await requireWriteAccess()` at the top of every office-only page RSC — `dashboard/projects` (+ `[id]`, `[id]/edit`, `[id]/boq-template`, `new`), `(admin)/hakedis` (+`[periodId]`), `(admin)/exports`, `(admin)/requests`, `(admin)/people` (+`[personId]`), `(admin)/settings` (+`users`=requireAdmin). Leave overview/records/analytics open to all.
 3. **Write-action guards:** add `await assertCanWrite()` after `auth()` in every mutating Server Action: `actions/projects.ts`, `actions/boq.ts`, `actions/people.ts` (approve/reject/manual/assign), `actions/hakedis.ts` (create/finalize/delete/recompute), `actions/chainage.ts` (setChainageOffset), `actions/settings.ts`. (`users.ts` uses `assertAdmin`.)
 4. **Nav:** pass role from `dashboard/layout.tsx` → `AppSidebar`/`SidebarNav`; hide office-only items for audit_engineer; show the account-panel link to admin only.
