@@ -5,6 +5,7 @@ import { eq, and, count } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { db } from '@/db';
 import { auth } from '@/lib/auth';
+import { assertCanWrite } from '@/lib/rbac';
 import { getDefaultTenantId } from '@/lib/tenant';
 import { projects } from '@/db/schema/projects';
 import { boqItems } from '@/db/schema/boq-items';
@@ -26,6 +27,7 @@ const updateProjectSchema = z.object({
 // ─── createProject ─────────────────────────────────────────────────────────────
 
 export async function createProject(input: { name: string; description?: string }) {
+  await assertCanWrite(); // RBAC: audit_engineer is read-only
   const session = await auth();
   if (!session) throw new Error('Unauthorized');
 
@@ -61,6 +63,7 @@ export async function updateProject(
   id: string,
   input: { name?: string; description?: string }
 ) {
+  await assertCanWrite(); // RBAC: audit_engineer is read-only
   const session = await auth();
   if (!session) throw new Error('Unauthorized');
 
@@ -105,6 +108,7 @@ export async function updateProject(
 // ─── deleteProject ─────────────────────────────────────────────────────────────
 
 export async function deleteProject(id: string) {
+  await assertCanWrite(); // RBAC: audit_engineer is read-only
   const session = await auth();
   if (!session) throw new Error('Unauthorized');
 

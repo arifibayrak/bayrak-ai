@@ -20,6 +20,7 @@ import { db } from '@/db';
 import { boqItems } from '@/db/schema/boq-items';
 import { projects } from '@/db/schema/projects';
 import { auth } from '@/lib/auth';
+import { assertCanWrite } from '@/lib/rbac';
 import { getDefaultTenantId } from '@/lib/tenant';
 import { parseBoqExcel, type BoqRow } from '@/lib/excel';
 import { logOfficeActivity } from '@/lib/log-office-activity';
@@ -72,6 +73,7 @@ export async function addBoqItem(params: {
   unit: string;
   plannedQty: string | number;
 }) {
+  await assertCanWrite(); // RBAC: audit_engineer is read-only
   const session = await auth();
   if (!session) throw new Error('Unauthorized');
 
@@ -154,6 +156,7 @@ export async function updateBoqItem(
     plannedQty?: string | number;
   }
 ) {
+  await assertCanWrite(); // RBAC: audit_engineer is read-only
   const session = await auth();
   if (!session) throw new Error('Unauthorized');
 
@@ -214,6 +217,7 @@ export async function updateBoqItem(
  * Auth-guarded. WR-06: tenant-scoped WHERE clause prevents cross-tenant deletes.
  */
 export async function deleteBoqItem(id: string) {
+  await assertCanWrite(); // RBAC: audit_engineer is read-only
   const session = await auth();
   if (!session) throw new Error('Unauthorized');
 
@@ -256,6 +260,7 @@ export async function setUnitPrice(params: {
   unitPrice: string | null;
   currencyCode: string;
 }) {
+  await assertCanWrite(); // RBAC: audit_engineer is read-only
   const session = await auth();
   if (!session) throw new Error('Unauthorized');
 
@@ -380,6 +385,7 @@ export async function previewBoqImport(formData: FormData) {
  * Security (T-06-02): values are parameterized through Drizzle — no injection possible.
  */
 export async function confirmBoqImport(projectId: string, rows: BoqRow[]) {
+  await assertCanWrite(); // RBAC: audit_engineer is read-only
   const session = await auth();
   if (!session) throw new Error('Unauthorized');
 

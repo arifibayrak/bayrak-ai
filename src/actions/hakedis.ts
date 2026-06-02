@@ -26,6 +26,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { db } from '@/db';
 import { auth } from '@/lib/auth';
+import { assertCanWrite } from '@/lib/rbac';
 import { getDefaultTenantId } from '@/lib/tenant';
 import { logOfficeActivity } from '@/lib/log-office-activity';
 import { ALLOWED_CURRENCIES } from '@/lib/currencies';
@@ -449,6 +450,7 @@ export async function getLineSubmissions(periodLineId: string): Promise<LineSubm
  * Security: auth-guarded; tenant-scoped.
  */
 export async function recomputePeriodLines(periodId: string): Promise<{ ok: true }> {
+  await assertCanWrite(); // RBAC: audit_engineer is read-only
   const session = await auth();
   if (!session) throw new Error('Unauthorized');
   const tenantId = getDefaultTenantId();
@@ -547,6 +549,7 @@ export async function createPeriod(input: {
   stopajEnabled?: boolean;
   stopajRate?: string;
 }): Promise<{ ok: true; periodId: string }> {
+  await assertCanWrite(); // RBAC: audit_engineer is read-only
   const session = await auth();
   if (!session) throw new Error('Unauthorized');
   const tenantId = getDefaultTenantId();
@@ -869,6 +872,7 @@ export async function getPeriodDetail(periodId: string): Promise<{
  * Security: auth-guarded; tenant-scoped; draft-only guard.
  */
 export async function finalizePeriod(periodId: string): Promise<{ ok: true }> {
+  await assertCanWrite(); // RBAC: audit_engineer is read-only
   const session = await auth();
   if (!session) throw new Error('Unauthorized');
   const tenantId = getDefaultTenantId();
@@ -922,6 +926,7 @@ export async function updatePaymentStatus(
   periodId: string,
   target: HakedisStatus,
 ): Promise<{ ok: true }> {
+  await assertCanWrite(); // RBAC: audit_engineer is read-only
   const session = await auth();
   if (!session) throw new Error('Unauthorized');
   const tenantId = getDefaultTenantId();
@@ -965,6 +970,7 @@ export async function updatePaymentStatus(
  * Security: auth-guarded; tenant-scoped; draft-only guard.
  */
 export async function deletePeriod(periodId: string): Promise<{ ok: true }> {
+  await assertCanWrite(); // RBAC: audit_engineer is read-only
   const session = await auth();
   if (!session) throw new Error('Unauthorized');
   const tenantId = getDefaultTenantId();

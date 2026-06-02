@@ -18,6 +18,7 @@ import { sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { db } from '@/db';
 import { auth } from '@/lib/auth';
+import { assertCanWrite } from '@/lib/rbac';
 import { getDefaultTenantId } from '@/lib/tenant';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -106,6 +107,7 @@ export async function updateTenantSettings(input: {
   rejectionRateThreshold: number;  // 0–1 fraction (stored as numeric in DB)
   stalledDays: number;
 }): Promise<{ ok: true }> {
+  await assertCanWrite(); // RBAC: audit_engineer is read-only
   const session = await auth();
   if (!session) throw new Error('Unauthorized');
   const tenantId = getDefaultTenantId();
