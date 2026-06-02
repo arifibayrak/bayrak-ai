@@ -27,6 +27,7 @@ import { db } from '@/db';
 import { routes } from '@/db/schema/routes';
 import { projects } from '@/db/schema/projects';
 import { auth } from '@/lib/auth';
+import { assertCanWrite } from '@/lib/rbac';
 import { getDefaultTenantId } from '@/lib/tenant';
 import { logOfficeActivity } from '@/lib/log-office-activity';
 import { fetchChainageBucketsRaw } from '@/lib/chainage-data';
@@ -89,6 +90,7 @@ export async function setChainageOffset(
   projectId: string,
   offsetM: number,
 ): Promise<{ ok: true }> {
+  await assertCanWrite(); // RBAC: audit_engineer is read-only
   const session = await auth();
   if (!session) throw new Error('Unauthorized');
 

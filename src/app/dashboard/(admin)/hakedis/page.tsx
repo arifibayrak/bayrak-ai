@@ -5,7 +5,7 @@ import { getTranslations, getLocale } from 'next-intl/server';
 import { formatMoneyAmount } from '@/lib/format-money';
 import { FileX } from 'lucide-react';
 import { BrandCard, BrandHeading, BrandTable } from '@/components/brand';
-import { auth } from '@/lib/auth';
+import { requireWriteAccess } from '@/lib/rbac';
 import { getPeriodsByProject } from '@/actions/hakedis';
 import { getProjects } from '@/actions/projects';
 import { HakedisCreateDialog } from '@/components/admin/HakedisCreateDialog';
@@ -45,8 +45,7 @@ function formatDateTR(dateStr: string): string {
 
 export default async function HakedisPage({ searchParams }: Props) {
   // T-10-03-EoP: auth guard — first statement
-  const session = await auth();
-  if (!session) redirect('/auth/signin');
+  await requireWriteAccess();
 
   const t = await getTranslations('dashboard.admin.hakedis');
   const locale = await getLocale();
