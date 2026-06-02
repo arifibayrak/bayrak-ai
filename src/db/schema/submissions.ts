@@ -50,6 +50,9 @@ export const submissions = pgTable('submissions', {
   // Phase 3: audit decision trail (D-38)
   // All three are nullable — no DEFAULT needed; backfill not required for existing pending_audit rows.
   decidedBy: uuid('decided_by').references(() => people.id),        // null until decided
+  // Worker-selected auditor (set in the bot flow when a project has 2+ auditors).
+  // null → fanOutToAuditors notifies ALL project auditors (legacy behavior).
+  assignedAuditorPersonId: uuid('assigned_auditor_person_id').references(() => people.id),
   decidedAt: timestamp('decided_at', { withTimezone: true }),        // null until decided
   rejectionReason: text('rejection_reason'),                         // null unless rejected
   // Phase 14: v4.0 chainage foundation — columns added here; values written at approval (Phase 15).

@@ -142,6 +142,16 @@ export async function fanOutToAuditors(submissionId: string): Promise<void> {
 
   const { inArray } = await import('drizzle-orm');
   const auditorPersonIds = auditorAssignments.map((a: { personId: string }) => a.personId);
+
+  // Worker-selected auditor: if the submission names a chosen auditor AND they
+  // are actually an auditor on the project, route ONLY to them. Otherwise (null,
+  // or a stale/invalid choice) fall back to all auditors (legacy behavior).
+  const chosenAuditorId = (submission.assignedAuditorPersonId as string | null) ?? null;
+  const targetPersonIds =
+    chosenAuditorId && auditorPersonIds.includes(chosenAuditorId)
+      ? [chosenAuditorId]
+      : auditorPersonIds;
+
   const auditorRows = await db
     .select({
       id: people.id,
@@ -149,7 +159,7 @@ export async function fanOutToAuditors(submissionId: string): Promise<void> {
       displayName: people.displayName,
     })
     .from(people)
-    .where(inArray(people.id, auditorPersonIds));
+    .where(inArray(people.id, targetPersonIds));
 
   // Build caption
   const quantity = parseFloat(submission.quantity as string);
