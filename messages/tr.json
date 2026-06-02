@@ -188,7 +188,11 @@
       "popup_auditor": "Onaylayan",
       "popup_distance": "Güzergahtan uzak — {meters} m",
       "legend_title": "Lejant",
-      "load_error": "Veriler yüklenemedi. Sayfayı yenileyiniz."
+      "load_error": "Veriler yüklenemedi. Sayfayı yenileyiniz.",
+      "view_record": "Kaydı gör",
+      "view_2d": "2B",
+      "view_3d": "3B",
+      "view_mode_label": "Görünüm"
     },
     "admin": {
       "nav": {

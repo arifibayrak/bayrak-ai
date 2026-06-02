@@ -31,9 +31,12 @@ import Map, { Source, Layer, Popup } from 'react-map-gl/mapbox';
 import type { MapRef, LayerProps, MapMouseEvent } from 'react-map-gl/mapbox';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useTranslations } from 'next-intl';
+import { Box, Square } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -112,6 +115,17 @@ const anomalyRingStyle: LayerProps = {
   },
 };
 
+// Sky layer for the 3D outlook (atmosphere gradient above the terrain).
+const skyLayerStyle: LayerProps = {
+  id: 'sky',
+  type: 'sky',
+  paint: {
+    'sky-type': 'atmosphere',
+    'sky-atmosphere-sun': [0.0, 0.0],
+    'sky-atmosphere-sun-intensity': 15,
+  },
+};
+
 // Approved points circle: data-driven color from boqPaletteSlot property.
 const circleLayerStyle: LayerProps = {
   id: 'approved-points',
@@ -158,6 +172,20 @@ export function MapView({ routeGeoJSON, approvedPoints, boqLegend }: MapViewProp
 
   const mapRef = useRef<MapRef>(null);
   const [popupInfo, setPopupInfo] = useState<PopupInfo | null>(null);
+  const [is3D, setIs3D] = useState(false);
+  const [cursor, setCursor] = useState<string>('');
+
+  // Toggle the 3D "outlook": tilt the camera (terrain + sky are bound to is3D).
+  const toggle3D = useCallback(() => {
+    setIs3D((prev) => {
+      const next = !prev;
+      const map = mapRef.current?.getMap();
+      if (map) {
+        map.easeTo({ pitch: next ? 60 : 0, duration: 600 });
+      }
+      return next;
+    });
+  }, []);
 
   // D-56: fitBounds to route bbox on load.
   const onLoad = useCallback(() => {
@@ -208,18 +236,67 @@ export function MapView({ routeGeoJSON, approvedPoints, boqLegend }: MapViewProp
 
   return (
     <div className="relative w-full">
+      {/* 2D / 3D outlook toggle (top-right overlay) */}
+      <div className="absolute right-2 top-2 z-10">
+        <div
+          role="group"
+          aria-label={tMap('view_mode_label')}
+          className="inline-flex overflow-hidden rounded-md border border-border bg-background/90 backdrop-blur-sm"
+        >
+          <button
+            type="button"
+            onClick={() => is3D && toggle3D()}
+            aria-pressed={!is3D}
+            className={cn(
+              'inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium transition-colors',
+              !is3D ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted',
+            )}
+          >
+            <Square className="size-3.5" aria-hidden="true" />
+            {tMap('view_2d')}
+          </button>
+          <button
+            type="button"
+            onClick={() => !is3D && toggle3D()}
+            aria-pressed={is3D}
+            className={cn(
+              'inline-flex items-center gap-1 border-l border-border px-2.5 py-1.5 text-xs font-medium transition-colors',
+              is3D ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted',
+            )}
+          >
+            <Box className="size-3.5" aria-hidden="true" />
+            {tMap('view_3d')}
+          </button>
+        </div>
+      </div>
+
       {/* Map container — h-[600px] desktop / h-[400px] mobile (D-60) */}
       <div className="h-[400px] w-full sm:h-[600px]">
         <Map
           ref={mapRef}
           mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN}
-          mapStyle="mapbox://styles/mapbox/streets-v12"
+          mapStyle="mapbox://styles/mapbox/satellite-streets-v12"
           style={{ width: '100%', height: '100%' }}
           interactiveLayerIds={['approved-points']}
           onClick={handleMapClick}
           onLoad={onLoad}
+          onMouseEnter={() => setCursor('pointer')}
+          onMouseLeave={() => setCursor('')}
+          cursor={cursor}
           initialViewState={{ longitude: 28, latitude: 41, zoom: 7 }}
+          maxPitch={75}
+          terrain={is3D ? { source: 'mapbox-dem', exaggeration: 1.4 } : undefined}
         >
+          {/* Terrain DEM source (cheap to keep mounted; only applied when 3D). */}
+          <Source
+            id="mapbox-dem"
+            type="raster-dem"
+            url="mapbox://mapbox.mapbox-terrain-dem-v1"
+            tileSize={512}
+            maxzoom={14}
+          />
+          {is3D && <Layer {...skyLayerStyle} />}
+
           {/* Route line layer */}
           <Source id="route" type="geojson" data={routeGeoJSON}>
             <Layer {...routeLayerStyle} />
@@ -293,6 +370,14 @@ export function MapView({ routeGeoJSON, approvedPoints, boqLegend }: MapViewProp
                     {tMap('popup_distance', { meters: Math.round(popupInfo.properties.locationDistanceM) })}
                   </p>
                 )}
+
+                {/* Interactive drill-through: open the full submission record. */}
+                <Link
+                  href={`/dashboard/records/${popupInfo.properties.id}`}
+                  className="mt-1 inline-flex items-center text-sm font-medium text-primary hover:underline"
+                >
+                  {tMap('view_record')} →
+                </Link>
               </div>
             </Popup>
           )}

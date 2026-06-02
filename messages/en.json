@@ -188,7 +188,11 @@
       "popup_auditor": "Approved by",
       "popup_distance": "Far from route — {meters} m",
       "legend_title": "Legend",
-      "load_error": "Failed to load data. Please refresh the page."
+      "load_error": "Failed to load data. Please refresh the page.",
+      "view_record": "View record",
+      "view_2d": "2D",
+      "view_3d": "3D",
+      "view_mode_label": "View"
     },
     "admin": {
       "nav": {
