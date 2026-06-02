@@ -28,13 +28,15 @@ Net-new beyond the v4.0 roadmap. Three pieces. Build RBAC FIRST (everything else
 - `src/components/admin/AccountRoleSelect.tsx`; settings page now requireWriteAccess + admin-only panel link. TR/EN added.
 - Migration `0016` ALSO applied to TEST_DATABASE_URL (neondb_test) — full suite back to 416.
 
-**⚠️ DO NOT assign anyone `audit_engineer` in the panel until Layer 3 lands** — the read-only enforcement (steps 2–4 below) is NOT wired yet, so an audit_engineer would still have full access to office pages/actions. Until then everyone is admin (@bayrak.ai) or office_engineer = unchanged behavior, safe.
+**DONE — Layer 3: enforcement (4 commits after `3126630`; tsc+lint+build green, suite 416→430):**
+2. **Audit_engineer read-only page enforcement:** `requireWriteAccess()` now guards every office-only RSC — `projects` (+`[id]`, `[id]/edit`, `new`), `(admin)/exports`, `(admin)/requests`, `(admin)/people` (+`[personId]`), `(admin)/hakedis`+`[periodId]`. `(admin)/settings`=requireWriteAccess, `settings/users`=requireAdmin (Layer 2). `projects/[id]/boq-template/route.ts` returns 403 for read-only roles. overview/records/analytics left open to all.
+3. **Write-action guards:** `assertCanWrite()` added to all mutating Server Actions — `projects.ts` (create/update/delete), `boq.ts` (add/update/delete/setUnitPrice/confirmImport), `hakedis.ts` (createPeriod/recomputePeriodLines/finalize/updatePaymentStatus/delete), `settings.ts` (updateTenantSettings). `people.ts`+`chainage.ts` already done in `3126630`/`119ef7f`. (`recomputeHakedisLine` is the internal bot-driven engine — no session, intentionally NOT guarded. `users.ts` uses `assertAdmin`.)
+4. **Nav:** `layout.tsx` passes effective role → `AppSidebar` → `SidebarNav`; audit_engineer sees only overview+analytics (via `auditCanAccessPath`), office-only items hidden. Account panel link stays admin-only on the settings page (Layer 2).
+5. **Tests:** `tests/authz.test.ts` (14): non-@bayrak.ai never admin, canWrite/canManageAccounts, auditCanAccessPath allowlist, assertCanWrite blocks audit_engineer, setUserRole admin-guard. `vitest run` 430 pass / 0 fail.
 
-**REMAINING — Layer 3 enforcement (start from 895cf11):**
-2. **Audit_engineer read-only enforcement:** add `await requireWriteAccess()` at the top of every office-only page RSC — `dashboard/projects` (+ `[id]`, `[id]/edit`, `[id]/boq-template`, `new`), `(admin)/hakedis` (+`[periodId]`), `(admin)/exports`, `(admin)/requests`, `(admin)/people` (+`[personId]`), `(admin)/settings` (+`users`=requireAdmin). Leave overview/records/analytics open to all.
-3. **Write-action guards:** add `await assertCanWrite()` after `auth()` in every mutating Server Action: `actions/projects.ts`, `actions/boq.ts`, `actions/people.ts` (approve/reject/manual/assign), `actions/hakedis.ts` (create/finalize/delete/recompute), `actions/chainage.ts` (setChainageOffset), `actions/settings.ts`. (`users.ts` uses `assertAdmin`.)
-4. **Nav:** pass role from `dashboard/layout.tsx` → `AppSidebar`/`SidebarNav`; hide office-only items for audit_engineer; show the account-panel link to admin only.
-5. Verify: `tsc` + `next build` + `vitest run` (baseline 416; add tests: non-@bayrak.ai never admin, setUserRole admin-guard, assertCanWrite blocks audit_engineer). Deploy `vercel --prod`.
+**✅ SAFE to assign `audit_engineer` in the panel now** — read-only enforcement is wired at page + action + nav + route layers (defense in depth).
+
+**REMAINING:** deploy `vercel --prod` (enforcement-only, no schema change this layer — migration `0016` already applied).
 
 ## LOCKED DECISIONS (from user, 2026-06-02)
 
