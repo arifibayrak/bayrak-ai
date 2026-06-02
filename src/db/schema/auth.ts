@@ -11,6 +11,9 @@ export const users = pgTable('users', {
   email: text('email').unique(),
   emailVerified: timestamp('email_verified', { mode: 'date' }),
   image: text('image'),
+  // RBAC role (admin | office_engineer | audit_engineer). @bayrak.ai users are
+  // always treated as admin at runtime regardless of this value (see authz.ts).
+  role: text('role').notNull().default('office_engineer'),
 });
 
 export const accounts = pgTable('accounts', {

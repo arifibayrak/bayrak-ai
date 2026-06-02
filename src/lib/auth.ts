@@ -4,6 +4,7 @@ import { DrizzleAdapter } from '@auth/drizzle-adapter';
 import { db } from '@/db';
 import { users, accounts, sessions, verificationTokens } from '@/db/schema/auth';
 import { isAllowed } from './auth-allowlist';
+import { effectiveRole } from './authz';
 
 // Re-export for convenience so callers can import from a single module
 export { isAllowed } from './auth-allowlist';
@@ -33,6 +34,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       // happens for non-allowlisted addresses (Pitfall 2, D-11).
       const incomingEmail = (user?.email ?? '').toLowerCase();
       return isAllowed(incomingEmail);
+    },
+    // Database-session strategy: `user` is the adapter row (carries `role`).
+    // Re-derive the effective role on EVERY request — the trust boundary.
+    // @bayrak.ai → admin; a non-@bayrak.ai stored 'admin' is clamped down.
+    async session({ session, user }) {
+      if (session.user) {
+        const email = user?.email ?? session.user.email;
+        session.user.role = effectiveRole(email, (user as { role?: string })?.role);
+      }
+      return session;
     },
   },
   pages: {

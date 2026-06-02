@@ -113,6 +113,13 @@
       "when": 1780315161645,
       "tag": "0015_v4_tenant_settings_seed_fk_safe",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1780401561645,
+      "tag": "0016_v5_users_role",
+      "breakpoints": true
     }
   ]
 }
