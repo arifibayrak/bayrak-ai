@@ -13,6 +13,7 @@ import {
   Download,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ROLES, auditCanAccessPath, type Role } from '@/lib/authz';
 import {
   SidebarMenu,
   SidebarMenuButton,
@@ -35,15 +36,25 @@ const NAV_ITEMS = [
  * Active detection: exact match for leaf routes, startsWith for routes with sub-pages.
  * Active style: amber left-accent bar (2px) + amber text/icon (Field-Industrial 260601-kj4).
  * Uses render prop pattern (Base UI SidebarMenuButton) instead of asChild.
+ *
+ * RBAC (Layer 3): audit_engineer is read-only and only sees the nav items whose
+ * route is in AUDIT_ALLOWED_PREFIXES (overview, analytics). Office-only items
+ * (projects, people, requests, hakedis, exports) are hidden. UI hiding is cosmetic
+ * — each office page/action is independently guarded server-side (defense in depth).
  */
-export function SidebarNav() {
+export function SidebarNav({ role }: { role: Role }) {
   const pathname = usePathname();
   const t = useTranslations('dashboard.admin.nav');
+
+  const items =
+    role === ROLES.AUDIT
+      ? NAV_ITEMS.filter((item) => auditCanAccessPath(item.href))
+      : NAV_ITEMS;
 
   return (
     <nav aria-label={t('main_nav_aria')}>
       <SidebarMenu>
-        {NAV_ITEMS.map((item) => {
+        {items.map((item) => {
           const isActive = item.exact
             ? pathname === item.href
             : pathname.startsWith(item.href);

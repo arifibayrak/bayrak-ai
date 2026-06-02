@@ -4,6 +4,7 @@ import {
   SidebarHeader,
 } from '@/components/ui/sidebar';
 import { BrandLogo } from '@/components/brand';
+import type { Role } from '@/lib/authz';
 import { SidebarNav } from './SidebarNav';
 
 /**
@@ -14,14 +15,14 @@ import { SidebarNav } from './SidebarNav';
  * Field-Industrial restyle (260601-kj4): graphite panel via --sidebar* tokens,
  * hairline bottom border on header, tighter density.
  */
-export function AppSidebar() {
+export function AppSidebar({ role }: { role: Role }) {
   return (
     <Sidebar>
       <SidebarHeader className="border-b border-sidebar-border px-4 py-3">
         <BrandLogo size="md" variant="sidebar" />
       </SidebarHeader>
       <SidebarContent className="px-2 py-2">
-        <SidebarNav />
+        <SidebarNav role={role} />
       </SidebarContent>
     </Sidebar>
   );

@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
+import { sessionRole } from '@/lib/rbac';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/admin/AppSidebar';
 import { TopNav } from '@/components/layout/TopNav';
@@ -20,10 +21,11 @@ export default async function DashboardLayout({
   if (!session) redirect('/auth/signin');
 
   const userEmail = session.user?.email ?? '';
+  const role = sessionRole(session);
 
   return (
     <SidebarProvider>
-      <AppSidebar />
+      <AppSidebar role={role} />
       <SidebarInset>
         <TopNav userEmail={userEmail} />
         <main className="max-w-5xl mx-auto px-6 py-8 sm:py-10">{children}</main>
