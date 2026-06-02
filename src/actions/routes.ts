@@ -29,6 +29,7 @@ import { getDefaultTenantId } from '@/lib/tenant';
 import { logOfficeActivity } from '@/lib/log-office-activity';
 import { sampleElevations, ELEVATION_SOURCE } from '@/lib/elevation';
 import { buildElevationProfile } from '@/lib/elevation-profile';
+import { parseLandXml } from '@/lib/landxml';
 
 // ---------------------------------------------------------------------------
 // uploadRoute — GeoJSON LineString route upload (RTE-04: signature unchanged)
@@ -100,6 +101,107 @@ export async function uploadRoute(projectId: string, fileContent: string) {
 
   revalidatePath(`/dashboard/projects/${projectId}`);
   return { ok: true as const, count: result.count, id: row.id };
+}
+
+// ---------------------------------------------------------------------------
+// uploadLandXml — LandXML/InfraModel alignment import (designed elevation + chainage)
+// ---------------------------------------------------------------------------
+
+type UploadLandXmlResult =
+  | { ok: true; count: number; id: string; hasVerticalProfile: boolean; warnings: string[]; name: string }
+  | { ok: false; error: string };
+
+/**
+ * uploadLandXml — parse a LandXML alignment (horizontal + vertical), upsert the
+ * route as a 2D LineString, and — when the file carries a vertical profile —
+ * populate the elevation columns with DESIGNED elevation (elevation_source
+ * 'landxml-designed'), reusing the same profile pipeline as terrain sampling.
+ * The alignment's staStart is stored as the chainage offset so the as-built view
+ * reflects true civil stationing. Office-only (assertCanWrite).
+ */
+export async function uploadLandXml(
+  projectId: string,
+  fileContent: string,
+  epsg: number,
+): Promise<UploadLandXmlResult> {
+  await assertCanWrite(); // RBAC: audit_engineer is read-only
+  const session = await auth();
+  if (!session) throw new Error('Unauthorized');
+
+  // CR-02: ownership check before any write (IDOR mitigation).
+  const owned = await db
+    .select({ id: projects.id })
+    .from(projects)
+    .where(and(eq(projects.id, projectId), eq(projects.tenantId, getDefaultTenantId())))
+    .limit(1);
+  if (!owned.length) throw new Error('Not found');
+
+  const parsed = parseLandXml(fileContent, epsg);
+  if (!parsed.ok) return { ok: false as const, error: parsed.error };
+
+  const geojsonString = JSON.stringify({ type: 'LineString', coordinates: parsed.coords });
+
+  // Designed elevation profile (only when the LandXML carries a vertical profile).
+  const elev = parsed.hasVerticalProfile
+    ? buildElevationProfile(parsed.coords, parsed.elevations)
+    : null;
+
+  const elevationCols = elev
+    ? {
+        minElevationM: String(elev.minM),
+        maxElevationM: String(elev.maxM),
+        length3dM: String(elev.length3dM),
+        elevationProfile: elev.profile,
+        elevationSampledAt: new Date(),
+        elevationSource: 'landxml-designed',
+      }
+    : {};
+
+  const [row] = await db
+    .insert(routes)
+    .values({
+      projectId,
+      tenantId: getDefaultTenantId(),
+      geom: sql`ST_GeomFromGeoJSON(${geojsonString})`,
+      coordinateCount: parsed.coords.length,
+      totalLengthM: sql`ST_Length(ST_GeomFromGeoJSON(${geojsonString})::geography)`,
+      geometryVersion: 1,
+      sourceLayer: 'LandXML',
+      sourceCrs: String(epsg),
+      chainageOffsetM: String(parsed.staStart),
+      ...elevationCols,
+    })
+    .onConflictDoUpdate({
+      target: routes.projectId,
+      set: {
+        geom: sql`ST_GeomFromGeoJSON(${geojsonString})`,
+        coordinateCount: parsed.coords.length,
+        uploadedAt: sql`now()`,
+        totalLengthM: sql`ST_Length(ST_GeomFromGeoJSON(${geojsonString})::geography)`,
+        geometryVersion: sql`COALESCE(${routes.geometryVersion}, 0) + 1`,
+        sourceLayer: 'LandXML',
+        sourceCrs: String(epsg),
+        chainageOffsetM: String(parsed.staStart),
+        // Reset elevation to the LandXML profile (or clear if none in this file).
+        minElevationM: elev ? String(elev.minM) : null,
+        maxElevationM: elev ? String(elev.maxM) : null,
+        length3dM: elev ? String(elev.length3dM) : null,
+        elevationProfile: elev ? elev.profile : null,
+        elevationSampledAt: elev ? new Date() : null,
+        elevationSource: elev ? 'landxml-designed' : null,
+      },
+    })
+    .returning({ id: routes.id });
+
+  revalidatePath(`/dashboard/projects/${projectId}`);
+  return {
+    ok: true as const,
+    count: parsed.coords.length,
+    id: row?.id ?? '',
+    hasVerticalProfile: parsed.hasVerticalProfile,
+    warnings: parsed.warnings,
+    name: parsed.name,
+  };
 }
 
 // ---------------------------------------------------------------------------

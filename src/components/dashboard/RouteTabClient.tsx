@@ -29,6 +29,7 @@ import { useTranslations } from 'next-intl';
 import { FileText, Download } from 'lucide-react';
 import { RouteUpload } from './RouteUpload';
 import { DxfUpload } from './DxfUpload';
+import { LandXmlUpload } from './LandXmlUpload';
 import { MapView } from './MapView';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -349,6 +350,10 @@ export function RouteTabClient({
         {t('dxf_section_label')}
       </p>
       <DxfUpload projectId={projectId} onSuccess={handleUploadSuccess} />
+
+      {/* LandXML alignment import — designed elevation + civil chainage */}
+      <Separator className="my-2" />
+      <LandXmlUpload projectId={projectId} onSuccess={handleUploadSuccess} />
     </div>
   );
 }

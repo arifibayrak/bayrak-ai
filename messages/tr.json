@@ -170,6 +170,20 @@
         "error": "Yükseklik örneklenemedi. Lütfen tekrar deneyin.",
         "axis_distance": "Mesafe (m)",
         "axis_elevation": "Yükseklik (m)"
+      },
+      "landxml": {
+        "section_label": "LandXML güzergahı — tasarım yüksekliği + kilometraj",
+        "choose_file": "LandXML dosyası seç (.xml)",
+        "crs_label": "Koordinat sistemi",
+        "import": "LandXML içe aktar",
+        "importing": "İçe aktarılıyor…",
+        "success": "“{name}” içe aktarıldı — {count} nokta",
+        "no_profile_note": "Düşey profil bulunamadı — yalnızca yatay güzergah içe aktarıldı (yükseklik için araziyi örnekleyin).",
+        "with_profile_note": "Tasarım düşey profili yükseklik olarak içe aktarıldı.",
+        "warn_spiral": "Spiral geçişler düz hat olarak yaklaşıklandı.",
+        "warn_vertical_linear": "Düşey kurplar PVI'lar arasında doğrusal yaklaşıklandı.",
+        "warn_outside": "Bazı noktalar Türkiye dışında — koordinat sistemini kontrol edin.",
+        "error": "LandXML dosyası içe aktarılamadı."
       }
     },
     "submissions": {
