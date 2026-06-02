@@ -12,6 +12,23 @@ note: SECURITY-CRITICAL (auth). Build in a fresh session with full context. Sugg
 
 Net-new beyond the v4.0 roadmap. Three pieces. Build RBAC FIRST (everything else gates on it).
 
+## PROGRESS
+
+**DONE — Layer 1: Foundation (commit `d4c4150`, tsc green, migration applied to neondb):**
+- `users.role` column (migration `0016_v5_users_role`). Default `office_engineer`.
+- `src/lib/authz.ts` (pure): ROLES, `effectiveRole()` (@bayrak.ai⇒admin always; non-@bayrak.ai clamped to never-admin), `canWrite`, `canManageAccounts`, `AUDIT_ALLOWED_PREFIXES` + `auditCanAccessPath()`.
+- `src/lib/auth.ts`: session callback sets `session.user.role` every request (trust boundary).
+- `src/lib/rbac.ts`: `requireRole/requireAdmin/requireWriteAccess` (page redirect) + `assertCanWrite/assertAdmin` (server-action throw) — READY TO WIRE, not yet used.
+- `src/types/next-auth.d.ts`: role on Session/User.
+- No enforcement wired yet ⇒ zero behavior change so far.
+
+**REMAINING — wire enforcement + build the panel (start from d4c4150):**
+1. **Account panel** `src/app/dashboard/(admin)/settings/users/page.tsx` — `await requireAdmin()` first; list `users` (name/email/role); client role-select per row → new `src/actions/users.ts` `setUserRole(userId, role)` with `assertAdmin()` + invariant (never set admin for non-@bayrak.ai; @bayrak.ai always admin). Add an admin-only link to it from `settings/page.tsx`. i18n TR/EN.
+2. **Audit_engineer read-only enforcement:** add `await requireWriteAccess()` at the top of every office-only page RSC — `dashboard/projects` (+ `[id]`, `[id]/edit`, `[id]/boq-template`, `new`), `(admin)/hakedis` (+`[periodId]`), `(admin)/exports`, `(admin)/requests`, `(admin)/people` (+`[personId]`), `(admin)/settings` (+`users`=requireAdmin). Leave overview/records/analytics open to all.
+3. **Write-action guards:** add `await assertCanWrite()` after `auth()` in every mutating Server Action: `actions/projects.ts`, `actions/boq.ts`, `actions/people.ts` (approve/reject/manual/assign), `actions/hakedis.ts` (create/finalize/delete/recompute), `actions/chainage.ts` (setChainageOffset), `actions/settings.ts`. (`users.ts` uses `assertAdmin`.)
+4. **Nav:** pass role from `dashboard/layout.tsx` → `AppSidebar`/`SidebarNav`; hide office-only items for audit_engineer; show the account-panel link to admin only.
+5. Verify: `tsc` + `next build` + `vitest run` (baseline 416; add tests: non-@bayrak.ai never admin, setUserRole admin-guard, assertCanWrite blocks audit_engineer). Deploy `vercel --prod`.
+
 ## LOCKED DECISIONS (from user, 2026-06-02)
 
 **Roles (3):** `admin`, `office_engineer`, `audit_engineer`.
