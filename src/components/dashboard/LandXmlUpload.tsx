@@ -69,7 +69,7 @@ export function LandXmlUpload({
   const warnKey = (w: string) =>
     w === 'spiral_linear'
       ? tl('warn_spiral')
-      : w === 'vertical_curves_linear'
+      : w === 'vertical_circular_approx'
         ? tl('warn_vertical_linear')
         : w === 'outside_turkey_bbox'
           ? tl('warn_outside')

@@ -181,7 +181,7 @@
         "no_profile_note": "No vertical profile found — horizontal alignment imported (sample terrain elevation instead).",
         "with_profile_note": "Designed vertical profile imported as elevation.",
         "warn_spiral": "Spiral transitions approximated as straight chords.",
-        "warn_vertical_linear": "Vertical curves approximated as linear between PVIs.",
+        "warn_vertical_linear": "Circular vertical curves approximated as linear (parabolic curves are computed exactly).",
         "warn_outside": "Some points fall outside Turkey — check the coordinate system.",
         "error": "Could not import the LandXML file."
       }

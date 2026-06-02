@@ -112,26 +112,94 @@ function densifyCurve(start: PE, center: PE, end: PE, radius: number, rot: strin
   return pts; // excludes start (caller already has it), includes end
 }
 
-// ── Vertical profile (piecewise-linear over PVIs) ─────────────────────────────
+// ── Vertical profile (tangent grades + symmetric parabolic vertical curves) ────
 
-type PVI = { sta: number; z: number };
+/** A profile PVI; curveLen > 0 means a symmetric parabolic vertical curve of that length is centred on it. */
+export type ProfilePVI = { sta: number; z: number; curveLen: number };
 
-function buildProfile(pvis: PVI[]): (sta: number) => number | null {
+/**
+ * buildVerticalProfile — elevation(station) evaluator.
+ *
+ * Tangent grades run straight between consecutive PVIs. A PVI carrying a
+ * ParaCurve of length L is smoothed by the standard symmetric parabola over
+ * [PVI.sta − L/2, PVI.sta + L/2]:
+ *     y(x) = y_BVC + g_in·x + (g_out − g_in)/(2L)·x²
+ * where x is measured from the BVC and g_in/g_out are the adjacent tangent
+ * grades. Exposed for unit testing.
+ */
+export function buildVerticalProfile(pvis: ProfilePVI[]): (sta: number) => number | null {
   if (pvis.length === 0) return () => null;
-  const sorted = [...pvis].sort((a, b) => a.sta - b.sta);
-  return (sta: number) => {
-    if (sta <= sorted[0].sta) return sorted[0].z;
-    if (sta >= sorted[sorted.length - 1].sta) return sorted[sorted.length - 1].z;
-    for (let i = 1; i < sorted.length; i++) {
-      if (sta <= sorted[i].sta) {
-        const a = sorted[i - 1];
-        const b = sorted[i];
-        const t = b.sta === a.sta ? 0 : (sta - a.sta) / (b.sta - a.sta);
-        return a.z + t * (b.z - a.z);
+  const p = [...pvis].sort((a, b) => a.sta - b.sta);
+  if (p.length === 1) return () => p[0].z;
+  const grade = (i: number) => {
+    const ds = p[i + 1].sta - p[i].sta;
+    return ds === 0 ? 0 : (p[i + 1].z - p[i].z) / ds;
+  };
+  return (s: number) => {
+    if (s <= p[0].sta) return p[0].z;
+    if (s >= p[p.length - 1].sta) return p[p.length - 1].z;
+    // Inside a parabolic vertical-curve zone? (interior PVIs only)
+    for (let j = 1; j < p.length - 1; j++) {
+      const L = p[j].curveLen;
+      if (L > 0) {
+        const bvc = p[j].sta - L / 2;
+        const evc = p[j].sta + L / 2;
+        if (s >= bvc && s <= evc) {
+          const gIn = grade(j - 1);
+          const gOut = grade(j);
+          const yBvc = p[j].z - gIn * (L / 2);
+          const x = s - bvc;
+          return yBvc + gIn * x + ((gOut - gIn) / (2 * L)) * x * x;
+        }
       }
     }
-    return sorted[sorted.length - 1].z;
+    // Straight tangent between the bracketing PVIs.
+    for (let k = 0; k < p.length - 1; k++) {
+      if (s <= p[k + 1].sta) return p[k].z + grade(k) * (s - p[k].sta);
+    }
+    return p[p.length - 1].z;
   };
+}
+
+// ── Clothoid (spiral) densification ───────────────────────────────────────────
+
+/** Parse a LandXML radius attribute; "INF"/blank/0/NaN → Infinity (zero curvature). */
+function parseRadius(v: string | undefined): number {
+  if (v == null || /inf/i.test(v)) return Infinity;
+  const n = Number(v);
+  return Number.isNaN(n) || n === 0 ? Infinity : n;
+}
+
+/**
+ * densifyClothoid — sample a clothoid (linear curvature vs. arc length) from a
+ * start point + start heading, with curvature 1/radiusStart → 1/radiusEnd over
+ * length L. Heading θ(l) = θ0 + sign·(k0·l + (k1−k0)·l²/2L); position integrated
+ * by midpoint steps. Returns points AFTER the start (caller already has start).
+ */
+function densifyClothoid(
+  start: PE,
+  theta0: number,
+  radiusStart: number,
+  radiusEnd: number,
+  length: number,
+  rot: string,
+): PE[] {
+  const sign = rot.toLowerCase() === 'cw' ? -1 : 1;
+  const k0 = Number.isFinite(radiusStart) ? 1 / radiusStart : 0;
+  const k1 = Number.isFinite(radiusEnd) ? 1 / radiusEnd : 0;
+  const steps = Math.max(8, Math.min(128, Math.ceil(length / 10)));
+  const dl = length / steps;
+  let e = start.e;
+  let n = start.n;
+  const pts: PE[] = [];
+  for (let i = 1; i <= steps; i++) {
+    const lMid = (i - 0.5) * dl;
+    const theta = theta0 + sign * (k0 * lMid + ((k1 - k0) * lMid * lMid) / (2 * length));
+    e += Math.cos(theta) * dl;
+    n += Math.sin(theta) * dl;
+    pts.push({ e, n });
+  }
+  return pts;
 }
 
 export function parseLandXml(xml: string, epsg: number): LandXmlParseResult {
@@ -195,14 +263,49 @@ export function parseLandXml(xml: string, epsg: number): LandXmlParseResult {
         pushPt({ e: e.e, n: e.n });
       }
     } else if (tag === 'Spiral') {
-      // Clothoid transition — approximated as a straight chord in v1.
+      const sAttrs = attrs(el);
       const start = findFirst(childrenOf(el), 'Start');
       const end = findFirst(childrenOf(el), 'End');
       const s = start && parsePoint(textOf(start));
       const e = end && parsePoint(textOf(end));
       if (s) pushPt({ e: s.e, n: s.n });
-      if (e) pushPt({ e: e.e, n: e.n });
-      if (!warnings.includes('spiral_linear')) warnings.push('spiral_linear');
+
+      const startPE: PE | undefined = s ? { e: s.e, n: s.n } : proj[proj.length - 1];
+      const L = Number(sAttrs['@_length']) || 0;
+      let densified: PE[] | null = null;
+
+      // Integrate the clothoid when we have a length and an incoming heading
+      // (the tangent of the previous element ≈ last two polyline points).
+      if (startPE && L > 0 && proj.length >= 2) {
+        const prev = proj[proj.length - 2];
+        const cur = proj[proj.length - 1];
+        const theta0 = Math.atan2(cur.n - prev.n, cur.e - prev.e);
+        const rot = sAttrs['@_rot'] ?? 'ccw';
+        const cand = densifyClothoid(
+          startPE,
+          theta0,
+          parseRadius(sAttrs['@_radiusStart']),
+          parseRadius(sAttrs['@_radiusEnd']),
+          L,
+          rot,
+        );
+        // Validate against the given End; bad sign/convention → fall back to chord.
+        if (e) {
+          const last = cand[cand.length - 1];
+          const dev = Math.hypot(last.e - e.e, last.n - e.n);
+          if (dev <= Math.max(2, 0.02 * L)) densified = cand;
+        } else {
+          densified = cand;
+        }
+      }
+
+      if (densified) {
+        for (const p of densified) pushPt(p);
+        if (e) pushPt({ e: e.e, n: e.n }); // snap exact end
+      } else {
+        if (e) pushPt({ e: e.e, n: e.n }); // chord fallback
+        if (!warnings.includes('spiral_linear')) warnings.push('spiral_linear');
+      }
     }
   }
 
@@ -210,24 +313,28 @@ export function parseLandXml(xml: string, epsg: number): LandXmlParseResult {
     return { ok: false, error: 'Could not extract a valid alignment polyline.' };
   }
 
-  // 2) Vertical profile (optional).
+  // 2) Vertical profile (optional). ParaCurve → proper parabola; CircCurve
+  // (rare) is still treated as a plain PVI (linearised) and flagged.
   const profAlign = findFirst(childrenOf(alignment), 'ProfAlign');
-  const pvis: PVI[] = [];
-  let hasParaCurve = false;
+  const pvis: ProfilePVI[] = [];
+  let hasCircCurve = false;
   if (profAlign) {
     for (const el of childrenOf(profAlign)) {
       const tag = tagOf(el);
       if (tag === 'PVI' || tag === 'ParaCurve' || tag === 'CircCurve') {
         const p = parsePoint(textOf(el)); // "station elevation" → n=station, e=elevation
-        if (p) pvis.push({ sta: p.n, z: p.e });
-        if (tag === 'ParaCurve' || tag === 'CircCurve') hasParaCurve = true;
+        if (p) {
+          const curveLen = tag === 'ParaCurve' ? Number(attrs(el)['@_length']) || 0 : 0;
+          pvis.push({ sta: p.n, z: p.e, curveLen });
+        }
+        if (tag === 'CircCurve') hasCircCurve = true;
       }
     }
   }
   const hasVerticalProfile = pvis.length > 0;
-  if (hasParaCurve) warnings.push('vertical_curves_linear');
+  if (hasCircCurve) warnings.push('vertical_circular_approx');
   if (!hasVerticalProfile) warnings.push('no_vertical_profile');
-  const profileFn = buildProfile(pvis);
+  const profileFn = buildVerticalProfile(pvis);
 
   // 3) Reproject + station + elevation per vertex.
   const coords: [number, number][] = [];

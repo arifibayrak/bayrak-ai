@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseLandXml } from '@/lib/landxml';
+import { parseLandXml, buildVerticalProfile } from '@/lib/landxml';
 
 // EPSG:5254 (TUREF / TM30) — reprojectToWGS84(5254, 600000, 4570000) ≈ [29°E, 41.3°N].
 // LandXML point text is "northing easting [elevation]".
@@ -95,5 +95,79 @@ describe('parseLandXml', () => {
   it('returns ok:false for non-LandXML input', () => {
     const r = parseLandXml('<foo><bar/></foo>', 5254);
     expect(r.ok).toBe(false);
+  });
+
+  it('densifies a Spiral via clothoid integration (no End → integrated path used)', () => {
+    // A Line sets the incoming heading (+easting), then a clothoid (straight→R200)
+    // is integrated. With no <End> the integrated path is used directly.
+    const spiralXml = `<?xml version="1.0"?>
+<LandXML>
+ <Alignments>
+  <Alignment name="S" staStart="0" length="300">
+   <CoordGeom>
+    <Line><Start>4570000 600000</Start><End>4570000 600200</End></Line>
+    <Spiral length="100" radiusStart="INF" radiusEnd="200" rot="ccw" spiType="clothoid">
+     <Start>4570000 600200</Start>
+    </Spiral>
+   </CoordGeom>
+  </Alignment>
+ </Alignments>
+</LandXML>`;
+    const r = parseLandXml(spiralXml, 5254);
+    if (!r.ok) throw new Error('parse failed');
+    expect(r.coords.length).toBeGreaterThan(5); // clothoid densified, not a chord
+    expect(r.warnings).not.toContain('spiral_linear'); // integration used, no fallback
+  });
+
+  it('falls back to a chord (with warning) when the integrated end misses the declared End', () => {
+    const bad = `<?xml version="1.0"?>
+<LandXML>
+ <Alignments>
+  <Alignment name="S" staStart="0" length="300">
+   <CoordGeom>
+    <Line><Start>4570000 600000</Start><End>4570000 600200</End></Line>
+    <Spiral length="100" radiusStart="INF" radiusEnd="200" rot="ccw">
+     <Start>4570000 600200</Start>
+     <End>4575000 600200</End>
+    </Spiral>
+   </CoordGeom>
+  </Alignment>
+ </Alignments>
+</LandXML>`;
+    const r = parseLandXml(bad, 5254);
+    if (!r.ok) throw new Error('parse failed');
+    expect(r.warnings).toContain('spiral_linear');
+  });
+});
+
+describe('buildVerticalProfile (parabolic vertical curves)', () => {
+  it('plain PVIs interpolate linearly', () => {
+    const f = buildVerticalProfile([
+      { sta: 0, z: 100, curveLen: 0 },
+      { sta: 1000, z: 120, curveLen: 0 },
+    ]);
+    expect(f(500)).toBeCloseTo(110, 6);
+  });
+
+  it('a symmetric crest parabola lowers the PVI elevation by (Δgrade)·L/8', () => {
+    // grades +0.02 then −0.02 (Δ = 0.04), L = 400 → max offset at PVI = 0.04·400/8 = 2 m.
+    const f = buildVerticalProfile([
+      { sta: 0, z: 100, curveLen: 0 },
+      { sta: 1000, z: 120, curveLen: 400 },
+      { sta: 2000, z: 100, curveLen: 0 },
+    ]);
+    expect(f(1000)).toBeCloseTo(118, 4); // 120 − 2
+    // BVC (sta 800) and EVC (sta 1200) sit on the tangents at elev 116.
+    expect(f(800)).toBeCloseTo(116, 4);
+    expect(f(1200)).toBeCloseTo(116, 4);
+  });
+
+  it('clamps to the first/last PVI outside the range', () => {
+    const f = buildVerticalProfile([
+      { sta: 100, z: 50, curveLen: 0 },
+      { sta: 200, z: 60, curveLen: 0 },
+    ]);
+    expect(f(0)).toBe(50);
+    expect(f(999)).toBe(60);
   });
 });
