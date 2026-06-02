@@ -24,8 +24,11 @@ import { routeSourceDocuments } from '@/db/schema/route-source-documents';
 import { validateLineStringGeoJSON } from '@/lib/geojson';
 import { parseDxfToLineString } from '@/lib/dxf-parser';
 import { auth } from '@/lib/auth';
+import { assertCanWrite } from '@/lib/rbac';
 import { getDefaultTenantId } from '@/lib/tenant';
 import { logOfficeActivity } from '@/lib/log-office-activity';
+import { sampleElevations, ELEVATION_SOURCE } from '@/lib/elevation';
+import { buildElevationProfile } from '@/lib/elevation-profile';
 
 // ---------------------------------------------------------------------------
 // uploadRoute — GeoJSON LineString route upload (RTE-04: signature unchanged)
@@ -326,6 +329,12 @@ export async function getRouteGeoJSON(projectId: string) {
       sourceLayer: routes.sourceLayer,
       geometryVersion: routes.geometryVersion,
       sourceBlobUrl: routes.sourceBlobUrl,
+      // Elevation (terrain-sampled, real 3D) — null until sampleRouteElevation runs.
+      minElevationM: routes.minElevationM,
+      maxElevationM: routes.maxElevationM,
+      length3dM: routes.length3dM,
+      elevationProfile: routes.elevationProfile,
+      elevationSampledAt: routes.elevationSampledAt,
     })
     .from(routes)
     .where(
@@ -338,7 +347,7 @@ export async function getRouteGeoJSON(projectId: string) {
 
   if (!result[0]) return null;
 
-  const { geomJson, uploadedAt, ...rest } = result[0];
+  const { geomJson, uploadedAt, elevationSampledAt, ...rest } = result[0];
 
   // CR-03: guard JSON.parse — ST_AsGeoJSON returns null for null geometry
   if (!geomJson) return null;
@@ -346,8 +355,60 @@ export async function getRouteGeoJSON(projectId: string) {
   return {
     ...rest,
     uploadedAt: (uploadedAt as Date).toISOString(),
+    elevationSampledAt: elevationSampledAt ? (elevationSampledAt as Date).toISOString() : null,
     geojson: JSON.parse(geomJson as string) as { type: 'LineString'; coordinates: [number, number][] },
   };
+}
+
+// ---------------------------------------------------------------------------
+// sampleRouteElevation — terrain-sample Z onto the route (real 3D)
+// ---------------------------------------------------------------------------
+
+/**
+ * sampleRouteElevation — fetch the project route, sample a DEM elevation for
+ * every vertex (Mapbox Terrain-RGB), and persist the derived vertical profile,
+ * 3D (slope) length, and min/max elevation. Office-only (assertCanWrite); the
+ * 2D geometry is untouched — only the additive elevation columns are written.
+ */
+export async function sampleRouteElevation(
+  projectId: string,
+): Promise<{ ok: true; minM: number; maxM: number; length3dM: number; points: number } | { ok: false; error: string }> {
+  await assertCanWrite(); // RBAC: audit_engineer is read-only
+  const session = await auth();
+  if (!session) throw new Error('Unauthorized');
+  const tenantId = getDefaultTenantId();
+
+  const route = await getRouteGeoJSON(projectId);
+  if (!route) return { ok: false as const, error: 'No route to sample.' };
+
+  const coords = route.geojson.coordinates;
+  if (!coords || coords.length < 2) {
+    return { ok: false as const, error: 'Route has too few points.' };
+  }
+
+  let elevations: number[];
+  try {
+    elevations = await sampleElevations(coords);
+  } catch (err) {
+    return { ok: false as const, error: err instanceof Error ? err.message : 'Elevation sampling failed.' };
+  }
+
+  const { profile, length3dM, minM, maxM } = buildElevationProfile(coords, elevations);
+
+  await db
+    .update(routes)
+    .set({
+      minElevationM: String(minM),
+      maxElevationM: String(maxM),
+      length3dM: String(length3dM),
+      elevationProfile: profile,
+      elevationSampledAt: new Date(),
+      elevationSource: ELEVATION_SOURCE,
+    })
+    .where(and(eq(routes.projectId, projectId), eq(routes.tenantId, tenantId)));
+
+  revalidatePath(`/dashboard/projects/${projectId}`);
+  return { ok: true as const, minM, maxM, length3dM, points: coords.length };
 }
 
 // ---------------------------------------------------------------------------

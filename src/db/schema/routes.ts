@@ -1,9 +1,12 @@
 // CRITICAL: After `drizzle-kit generate`, open the generated migration SQL
 // and change geometry(point,4326) → geometry(LineString,4326) for the `geom` column.
 // Add this comment to the migration file to prevent silent regression.
-import { pgTable, uuid, integer, numeric, text, timestamp, customType, index } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, integer, numeric, text, timestamp, jsonb, customType, index } from 'drizzle-orm/pg-core';
 import { projects } from './projects';
 import { tenants } from './tenants';
+
+/** One sampled point of the route's vertical profile (chainage metres → elevation metres). */
+export type ElevationProfilePoint = { m: number; z: number };
 
 // Drizzle's built-in geometry() defaults to 'point' in generated SQL.
 // We declare 'LineString' here but MUST verify the generated migration SQL.
@@ -39,6 +42,14 @@ export const routes = pgTable('routes', {
   // chainage_offset_m: user-configurable calibration offset applied at display time.
   // All user-facing displays show: raw_chainage_m + offset (never store offset in submissions).
   chainageOffsetM: numeric('chainage_offset_m', { precision: 12, scale: 2 }).default('0'),
+  // Phase: terrain elevation sampling (real 3D). Additive — geom stays 2D.
+  // Populated by sampleRouteElevation() from a DEM (Mapbox Terrain-RGB).
+  minElevationM: numeric('min_elevation_m', { precision: 8, scale: 2 }),
+  maxElevationM: numeric('max_elevation_m', { precision: 8, scale: 2 }),
+  length3dM: numeric('length_3d_m', { precision: 12, scale: 2 }),
+  elevationProfile: jsonb('elevation_profile').$type<ElevationProfilePoint[]>(),
+  elevationSampledAt: timestamp('elevation_sampled_at', { withTimezone: true }),
+  elevationSource: text('elevation_source'),
 }, (t) => [
   // GiST index mandatory for spatial queries (Phase 4+)
   index('routes_geom_gist').using('gist', t.geom),
