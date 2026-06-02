@@ -5,6 +5,7 @@ import { eq, and } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { db } from '@/db';
 import { auth } from '@/lib/auth';
+import { assertCanWrite } from '@/lib/rbac';
 import { getDefaultTenantId } from '@/lib/tenant';
 import { people } from '@/db/schema/people';
 import { pendingPeople } from '@/db/schema/pending-people';
@@ -72,6 +73,7 @@ export async function approvePending(
   pendingId: string,
   input: { displayName: string; role: 'worker' | 'auditor'; projectId: string }
 ) {
+  await assertCanWrite(); // RBAC: audit_engineer is read-only
   const session = await auth();
   if (!session) throw new Error('Unauthorized');
 
@@ -158,6 +160,7 @@ export async function approvePending(
 // ─── rejectPending ────────────────────────────────────────────────────────────
 
 export async function rejectPending(pendingId: string) {
+  await assertCanWrite(); // RBAC: audit_engineer is read-only
   const session = await auth();
   if (!session) throw new Error('Unauthorized');
 
@@ -183,6 +186,7 @@ export async function addManualPerson(input: {
   telegramUserId: number;
   projectId: string;
 }) {
+  await assertCanWrite(); // RBAC: audit_engineer is read-only
   const session = await auth();
   if (!session) throw new Error('Unauthorized');
 
@@ -231,6 +235,7 @@ export async function addManualPerson(input: {
 // ─── removeAssignment ─────────────────────────────────────────────────────────
 
 export async function removeAssignment(assignmentId: string) {
+  await assertCanWrite(); // RBAC: audit_engineer is read-only
   const session = await auth();
   if (!session) throw new Error('Unauthorized');
 
