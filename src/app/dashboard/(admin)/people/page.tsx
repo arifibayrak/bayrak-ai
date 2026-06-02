@@ -40,6 +40,7 @@ import {
 } from '@/lib/leaderboard-sort';
 import { getProjects } from '@/actions/projects';
 import { getTenantSettings } from '@/actions/settings';
+import { requireWriteAccess } from '@/lib/rbac';
 
 export const dynamic = 'force-dynamic';
 
@@ -54,6 +55,8 @@ interface Props {
 }
 
 export default async function PeoplePage({ searchParams }: Props) {
+  // RBAC: office-only page — redirects audit_engineer (and unauthenticated)
+  await requireWriteAccess();
   const { from, to, project, role, sortBy } = await searchParams;
 
   // T-08-05-IV: validate date strings before constructing Date objects

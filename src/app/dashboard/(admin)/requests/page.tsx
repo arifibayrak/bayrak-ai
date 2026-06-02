@@ -13,10 +13,9 @@
  * Security: auth() guard first; getPendingPeople() / getProjects() are tenant-scoped.
  */
 
-import { redirect } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { UserPlus } from 'lucide-react';
-import { auth } from '@/lib/auth';
+import { requireWriteAccess } from '@/lib/rbac';
 import { getPendingPeople } from '@/actions/people';
 import { getProjects } from '@/actions/projects';
 import { PendingPeopleTable } from '@/components/dashboard/PendingPeopleTable';
@@ -25,8 +24,8 @@ import { BrandBadge, BrandCard, BrandEmpty, BrandHeading } from '@/components/br
 export const dynamic = 'force-dynamic';
 
 export default async function RequestsPage() {
-  const session = await auth();
-  if (!session) redirect('/auth/signin');
+  // RBAC: office-only page — redirects audit_engineer (and unauthenticated)
+  await requireWriteAccess();
 
   const t = await getTranslations('dashboard.admin.requests');
 

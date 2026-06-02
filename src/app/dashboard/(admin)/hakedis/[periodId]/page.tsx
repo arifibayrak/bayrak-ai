@@ -18,13 +18,13 @@
  */
 
 import Link from 'next/link';
-import { notFound, redirect } from 'next/navigation';
+import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { getLocale } from 'next-intl/server';
 import { ChevronLeft, Lock, TriangleAlert } from 'lucide-react';
 import Decimal from 'decimal.js';
 import { formatMoney } from '@/lib/format-money';
-import { auth } from '@/lib/auth';
+import { requireWriteAccess } from '@/lib/rbac';
 import { getPeriodDetail } from '@/actions/hakedis';
 import { getProjects } from '@/actions/projects';
 import { HakedisStatusBadge } from '@/components/admin/HakedisStatusBadge';
@@ -75,9 +75,8 @@ function toPercent(fraction: string | null): string {
 // ── Page component ─────────────────────────────────────────────────────────────
 
 export default async function PeriodDetailPage({ params }: Props) {
-  // T-10-04-EoP: auth guard — FIRST statement
-  const session = await auth();
-  if (!session) redirect('/auth/signin');
+  // RBAC: office-only page — redirects audit_engineer (and unauthenticated)
+  await requireWriteAccess();
 
   const { periodId } = await params;
 

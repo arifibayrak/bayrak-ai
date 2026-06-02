@@ -1,9 +1,8 @@
 import { Suspense } from 'react';
 import Link from 'next/link';
-import { redirect } from 'next/navigation';
 import { getTranslations, getLocale } from 'next-intl/server';
 import { FileSpreadsheet, FileText, FileX, Download } from 'lucide-react';
-import { auth } from '@/lib/auth';
+import { requireWriteAccess } from '@/lib/rbac';
 import { getProjects } from '@/actions/projects';
 import { getAllFinishedPeriods } from '@/actions/analytics';
 import { FilterBar } from '@/components/admin/FilterBar';
@@ -62,9 +61,8 @@ export default async function ExportsPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  // T-11-05-AUTH: auth guard — first statement
-  const session = await auth();
-  if (!session) redirect('/auth/signin');
+  // RBAC: office-only page — redirects audit_engineer (and unauthenticated)
+  await requireWriteAccess();
 
   const sp = await searchParams;
   const t = await getTranslations('dashboard.admin.exports');

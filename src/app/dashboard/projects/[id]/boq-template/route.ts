@@ -9,12 +9,18 @@
 
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
+import { sessionRole } from '@/lib/rbac';
+import { canWrite } from '@/lib/authz';
 import { generateBoqTemplate } from '@/lib/excel';
 
 export async function GET() {
   const session = await auth();
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  // RBAC: BOQ template download is part of the office write workflow; audit_engineer is read-only.
+  if (!canWrite(sessionRole(session))) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   const buffer = await generateBoqTemplate();

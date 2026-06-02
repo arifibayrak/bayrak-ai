@@ -41,6 +41,7 @@ import { getTenantSettings } from '@/actions/settings';
 import { FilterBar } from '@/components/admin/FilterBar';
 import { KpiCard } from '@/components/admin/KpiCard';
 import { ActivityTimeline, type TimelineEntry } from '@/components/admin/ActivityTimeline';
+import { requireWriteAccess } from '@/lib/rbac';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,6 +51,8 @@ interface Props {
 }
 
 export default async function PersonProfilePage({ params, searchParams }: Props) {
+  // RBAC: office-only page — redirects audit_engineer (and unauthenticated)
+  await requireWriteAccess();
   const { personId } = await params;
   const { from, to, project } = await searchParams;
 

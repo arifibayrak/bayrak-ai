@@ -3,12 +3,15 @@ import { getTranslations } from 'next-intl/server';
 import { BrandCard, BrandHeading } from '@/components/brand';
 import { ProjectForm } from '@/components/dashboard/ProjectForm';
 import { getProject } from '@/actions/projects';
+import { requireWriteAccess } from '@/lib/rbac';
 
 interface Props {
   params: Promise<{ id: string }>;
 }
 
 export default async function EditProjectPage({ params }: Props) {
+  // RBAC: office-only page — redirects audit_engineer (and unauthenticated)
+  await requireWriteAccess();
   const { id } = await params;
   const t = await getTranslations('dashboard.projects');
 

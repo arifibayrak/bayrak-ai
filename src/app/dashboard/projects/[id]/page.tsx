@@ -11,6 +11,7 @@ import { ChainageTab } from '@/components/dashboard/ChainageTab';
 import { RefreshOnFocus } from '@/components/dashboard/RefreshOnFocus';
 import { getProject } from '@/actions/projects';
 import { getPendingPeople, getActivePeople } from '@/actions/people';
+import { requireWriteAccess } from '@/lib/rbac';
 
 // D-55 / RESEARCH Open Q1: force-dynamic on the page segment ensures every
 // load/navigation re-fetches fresh data (map points + BOQ %) from the server.
@@ -22,6 +23,8 @@ interface Props {
 }
 
 export default async function ProjectDetailPage({ params, searchParams }: Props) {
+  // RBAC: office-only page — redirects audit_engineer (and unauthenticated)
+  await requireWriteAccess();
   const { id } = await params;
   const { tab, status, page } = await searchParams;
 
