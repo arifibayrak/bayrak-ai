@@ -13,9 +13,11 @@
  * No sidebar item (D-86) — reachable only via TopNav gear icon.
  */
 
-import { redirect } from 'next/navigation';
+import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
-import { auth } from '@/lib/auth';
+import { ShieldCheck } from 'lucide-react';
+import { requireWriteAccess } from '@/lib/rbac';
+import { ROLES } from '@/lib/authz';
 import { getTenantSettings } from '@/actions/settings';
 import { BrandCard, BrandHeading } from '@/components/brand';
 import { ThresholdSettingsForm } from '@/components/admin/ThresholdSettingsForm';
@@ -23,11 +25,11 @@ import { ThresholdSettingsForm } from '@/components/admin/ThresholdSettingsForm'
 export const dynamic = 'force-dynamic';
 
 export default async function SettingsPage() {
-  // T-09-06-EoP: office-engineer-only guard — mirrors layout.tsx lines 19-20 exactly
-  const session = await auth();
-  if (!session) redirect('/auth/signin');
+  // RBAC: admin + office only (audit_engineer is read-only → redirected).
+  const { role } = await requireWriteAccess();
 
   const t = await getTranslations('dashboard.admin.settings');
+  const tUsers = await getTranslations('dashboard.admin.users');
 
   // getTenantSettings is itself auth-guarded + tenant-scoped (double guard)
   const settings = await getTenantSettings();
@@ -56,6 +58,21 @@ export default async function SettingsPage() {
           />
         </BrandCard.Body>
       </BrandCard>
+
+      {/* Admin-only: account management entry point */}
+      {role === ROLES.ADMIN && (
+        <BrandCard>
+          <BrandCard.Body>
+            <Link
+              href="/dashboard/settings/users"
+              className="inline-flex items-center gap-2 text-sm font-medium hover:underline"
+            >
+              <ShieldCheck className="size-4" aria-hidden="true" />
+              {tUsers('settings_link')}
+            </Link>
+          </BrandCard.Body>
+        </BrandCard>
+      )}
     </div>
   );
 }

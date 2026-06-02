@@ -355,6 +355,20 @@
         "photo_alt": "Kayıt fotoğrafı",
         "no_photo": "Fotoğraf yok"
       },
+      "users": {
+        "heading": "Hesap Yönetimi",
+        "subtitle": "Web kullanıcılarının rollerini yönetin",
+        "col_name": "Ad",
+        "col_email": "E-posta",
+        "col_role": "Rol",
+        "col_manage": "Rol Ata",
+        "role_admin": "Yönetici",
+        "role_office": "Ofis Mühendisi",
+        "role_audit": "Denetçi Mühendis",
+        "locked_admin": "Yönetici (@bayrak.ai)",
+        "change_failed": "Değiştirilemedi",
+        "settings_link": "Hesap Yönetimi (yalnızca yönetici)"
+      },
       "settings": {
         "heading": "Ayarlar",
         "subtitle": "Performans uyarı eşikleri",

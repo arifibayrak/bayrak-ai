@@ -355,6 +355,20 @@
         "photo_alt": "Submission photo",
         "no_photo": "No photo"
       },
+      "users": {
+        "heading": "Account Management",
+        "subtitle": "Manage web users' roles",
+        "col_name": "Name",
+        "col_email": "Email",
+        "col_role": "Role",
+        "col_manage": "Assign role",
+        "role_admin": "Admin",
+        "role_office": "Office Engineer",
+        "role_audit": "Audit Engineer",
+        "locked_admin": "Admin (@bayrak.ai)",
+        "change_failed": "Couldn't change",
+        "settings_link": "Account Management (admin only)"
+      },
       "settings": {
         "heading": "Settings",
         "subtitle": "Performance alert thresholds",
