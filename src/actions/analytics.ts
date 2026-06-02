@@ -79,6 +79,30 @@ export type ProjectSummary = {
   earnedValueByCurrency: Record<string, string>;
 };
 
+/**
+ * ProjectPortfolioRow — one row per project for the Projects LIST page (the
+ * owner/office-engineer portfolio dashboard). Superset of ProjectSummary: adds
+ * the fields a rich card needs (rejection, counts, recency, worker count) in a
+ * single query. Kept separate from getPortfolioOverview so the Overview page is
+ * never affected by changes here.
+ */
+export type ProjectPortfolioRow = {
+  projectId: string;
+  projectName: string;
+  description: string | null;
+  createdAt: string;                  // ISO
+  approvedCount: number;
+  pendingCount: number;
+  rejectedCount: number;
+  boqCount: number;
+  workerCount: number;
+  lastActivityAt: string | null;      // ISO — MAX(submitted_at) across all submissions
+  lastApprovedAt: string | null;      // ISO — MAX(decided_at) WHERE approved
+  // Value grouped by currency — never summed across currencies
+  contractedValueByCurrency: Record<string, string>;
+  earnedValueByCurrency: Record<string, string>;
+};
+
 export type ActivityLogEntry = {
   id: string;
   actorUserId: string;
@@ -1031,6 +1055,155 @@ export async function getPortfolioOverview(): Promise<ProjectSummary[]> {
   }
 
   return Array.from(projectMap.values());
+}
+
+/**
+ * getProjectsPortfolio — per-project rollup for the Projects LIST page.
+ *
+ * One round-trip. Each side pre-aggregated in its own CTE then LEFT JOINed to
+ * projects, exactly like getPortfolioOverview (CR-02: avoids the Cartesian
+ * fan-out a naive double LEFT JOIN would cause). Earned value is sourced from
+ * APPROVED submissions (WR-02), identical to the project-detail EV.
+ *
+ * Value maps are per-currency; counts/recency/worker-count are per-project and
+ * therefore identical across a project's currency rows (safe to assign).
+ */
+export async function getProjectsPortfolio(): Promise<ProjectPortfolioRow[]> {
+  const session = await auth();
+  if (!session) throw new Error('Unauthorized');
+  const tenantId = getDefaultTenantId();
+
+  const result = await db.execute(sql`
+    WITH boq_agg AS (
+      SELECT
+        project_id,
+        currency_code,
+        SUM(planned_qty::numeric * unit_price::numeric)
+          FILTER (WHERE unit_price IS NOT NULL)            AS contracted_value
+      FROM boq_items
+      WHERE tenant_id = ${tenantId}
+      GROUP BY project_id, currency_code
+    ),
+    boq_cnt AS (
+      SELECT project_id, COUNT(*) AS boq_count
+      FROM boq_items
+      WHERE tenant_id = ${tenantId}
+      GROUP BY project_id
+    ),
+    ev_agg AS (
+      SELECT
+        s.project_id,
+        b.currency_code,
+        SUM(s.quantity::numeric * b.unit_price::numeric)
+          FILTER (WHERE s.status = 'approved' AND b.unit_price IS NOT NULL) AS earned_value
+      FROM submissions s
+      JOIN boq_items b ON b.id = s.boq_item_id
+      WHERE s.tenant_id = ${tenantId}
+      GROUP BY s.project_id, b.currency_code
+    ),
+    val_agg AS (
+      SELECT
+        COALESCE(ba.project_id, ea.project_id)       AS project_id,
+        COALESCE(ba.currency_code, ea.currency_code) AS currency_code,
+        ba.contracted_value,
+        ea.earned_value
+      FROM boq_agg ba
+      FULL OUTER JOIN ev_agg ea
+        ON ea.project_id = ba.project_id
+       AND ea.currency_code = ba.currency_code
+    ),
+    sub_agg AS (
+      SELECT
+        project_id,
+        COUNT(*) FILTER (WHERE status = 'approved')        AS approved_count,
+        COUNT(*) FILTER (WHERE status = 'pending_audit')   AS pending_count,
+        COUNT(*) FILTER (WHERE status = 'rejected')        AS rejected_count,
+        MAX(submitted_at)                                  AS last_activity_at,
+        MAX(decided_at) FILTER (WHERE status = 'approved') AS last_approved_at
+      FROM submissions
+      WHERE tenant_id = ${tenantId}
+      GROUP BY project_id
+    ),
+    ppl_agg AS (
+      SELECT project_id, COUNT(DISTINCT person_id) AS worker_count
+      FROM assignments
+      WHERE tenant_id = ${tenantId} AND role_on_project = 'worker'
+      GROUP BY project_id
+    )
+    SELECT
+      p.id                              AS project_id,
+      p.name                            AS project_name,
+      p.description                     AS description,
+      p.created_at                      AS created_at,
+      va.currency_code,
+      va.contracted_value,
+      va.earned_value,
+      COALESCE(sa.approved_count, 0)    AS approved_count,
+      COALESCE(sa.pending_count, 0)     AS pending_count,
+      COALESCE(sa.rejected_count, 0)    AS rejected_count,
+      sa.last_activity_at,
+      sa.last_approved_at,
+      COALESCE(bc.boq_count, 0)         AS boq_count,
+      COALESCE(pa.worker_count, 0)      AS worker_count
+    FROM projects p
+    LEFT JOIN val_agg va ON va.project_id = p.id
+    LEFT JOIN sub_agg sa ON sa.project_id = p.id
+    LEFT JOIN boq_cnt bc ON bc.project_id = p.id
+    LEFT JOIN ppl_agg pa ON pa.project_id = p.id
+    WHERE p.tenant_id = ${tenantId}
+    ORDER BY p.created_at DESC, va.currency_code
+  `);
+
+  const map = new Map<string, ProjectPortfolioRow>();
+
+  for (const row of result.rows) {
+    const projectId = String(row.project_id);
+    const currency = row.currency_code != null ? String(row.currency_code) : null;
+
+    if (!map.has(projectId)) {
+      const createdRaw = row.created_at;
+      map.set(projectId, {
+        projectId,
+        projectName: String(row.project_name),
+        description: row.description != null ? String(row.description) : null,
+        createdAt:
+          createdRaw instanceof Date
+            ? createdRaw.toISOString()
+            : String(createdRaw),
+        approvedCount: Number(row.approved_count ?? 0),
+        pendingCount: Number(row.pending_count ?? 0),
+        rejectedCount: Number(row.rejected_count ?? 0),
+        boqCount: Number(row.boq_count ?? 0),
+        workerCount: Number(row.worker_count ?? 0),
+        lastActivityAt:
+          row.last_activity_at == null
+            ? null
+            : row.last_activity_at instanceof Date
+              ? row.last_activity_at.toISOString()
+              : String(row.last_activity_at),
+        lastApprovedAt:
+          row.last_approved_at == null
+            ? null
+            : row.last_approved_at instanceof Date
+              ? row.last_approved_at.toISOString()
+              : String(row.last_approved_at),
+        contractedValueByCurrency: {},
+        earnedValueByCurrency: {},
+      });
+    }
+
+    const summary = map.get(projectId)!;
+    if (currency) {
+      if (row.contracted_value != null) {
+        summary.contractedValueByCurrency[currency] = String(row.contracted_value);
+      }
+      if (row.earned_value != null) {
+        summary.earnedValueByCurrency[currency] = String(row.earned_value);
+      }
+    }
+  }
+
+  return Array.from(map.values());
 }
 
 // ── getPortfolioPeople ────────────────────────────────────────────────────────
