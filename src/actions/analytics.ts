@@ -620,6 +620,89 @@ export async function getProjectMetrics(
   };
 }
 
+// ── getBoqProgress ───────────────────────────────────────────────────────────
+
+/**
+ * BoqProgressRow — one BOQ line for the construction burn-down view.
+ *
+ * approvedQty is sourced from APPROVED submissions (the ledger, WR-02), not the
+ * denormalized boq_items.approved_qty, so it always agrees with earned value.
+ * All quantities/values are strings (decimal.js-safe); pctComplete is a number
+ * for chart widths (0..>100; can exceed 100 if over-delivered).
+ */
+export type BoqProgressRow = {
+  boqItemId: string;
+  material: string;
+  unit: string;
+  currencyCode: string;
+  plannedQty: string;
+  approvedQty: string;
+  pendingQty: string;
+  unitPrice: string | null;
+  earnedValue: string | null;       // approvedQty * unitPrice
+  contractedValue: string | null;   // plannedQty * unitPrice
+  remainingValue: string | null;    // (planned - approved) * unitPrice, floored at 0
+  pctComplete: number | null;       // approvedQty / plannedQty * 100; null if plannedQty = 0
+  rejectedCount: number;
+};
+
+/**
+ * getBoqProgress — per-item BOQ burn-down for one project (the hakkediş basis).
+ * One query, aggregating approved/pending quantities per BOQ item from the
+ * submissions ledger. Ordered by the BOQ import order (sort_order).
+ *
+ * Security: auth-guarded; tenant-scoped; projectId bound as a param.
+ */
+export async function getBoqProgress(projectId: string): Promise<BoqProgressRow[]> {
+  const session = await auth();
+  if (!session) throw new Error('Unauthorized');
+  const tenantId = getDefaultTenantId();
+
+  const result = await db.execute(sql`
+    SELECT
+      b.id                                                              AS boq_item_id,
+      b.material,
+      b.unit,
+      b.currency_code,
+      b.planned_qty,
+      b.unit_price,
+      b.sort_order,
+      COALESCE(SUM(s.quantity::numeric) FILTER (WHERE s.status = 'approved'), 0)      AS approved_qty,
+      COALESCE(SUM(s.quantity::numeric) FILTER (WHERE s.status = 'pending_audit'), 0) AS pending_qty,
+      COUNT(*) FILTER (WHERE s.status = 'rejected')                     AS rejected_count
+    FROM boq_items b
+    LEFT JOIN submissions s
+      ON s.boq_item_id = b.id AND s.tenant_id = b.tenant_id
+    WHERE b.project_id = ${projectId}
+      AND b.tenant_id  = ${tenantId}
+    GROUP BY b.id, b.material, b.unit, b.currency_code, b.planned_qty, b.unit_price, b.sort_order
+    ORDER BY b.sort_order, b.material
+  `);
+
+  return result.rows.map((r) => {
+    const planned = r.planned_qty != null ? Number(r.planned_qty) : 0;
+    const approved = r.approved_qty != null ? Number(r.approved_qty) : 0;
+    const unitPrice = r.unit_price != null ? Number(r.unit_price) : null;
+    const pctComplete = planned > 0 ? (approved / planned) * 100 : null;
+    const remainingQty = Math.max(0, planned - approved);
+    return {
+      boqItemId: String(r.boq_item_id),
+      material: String(r.material),
+      unit: String(r.unit),
+      currencyCode: r.currency_code != null ? String(r.currency_code) : 'TRY',
+      plannedQty: String(r.planned_qty ?? '0'),
+      approvedQty: String(r.approved_qty ?? '0'),
+      pendingQty: String(r.pending_qty ?? '0'),
+      unitPrice: unitPrice != null ? String(r.unit_price) : null,
+      earnedValue: unitPrice != null ? String(approved * unitPrice) : null,
+      contractedValue: unitPrice != null ? String(planned * unitPrice) : null,
+      remainingValue: unitPrice != null ? String(remainingQty * unitPrice) : null,
+      pctComplete,
+      rejectedCount: Number(r.rejected_count ?? 0),
+    };
+  });
+}
+
 // ── getOfficeActivityLog ─────────────────────────────────────────────────────
 
 /**

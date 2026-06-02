@@ -558,6 +558,32 @@
           "cancel": "Hayır, Koru",
           "confirm": "Evet, Sil"
         }
+      },
+      "analytics": {
+        "heading": "Analizler",
+        "subtitle": "Proje bazında inşaat ilerlemesi ve hakediş değeri.",
+        "picker_label": "Proje",
+        "kpi_complete": "Tamamlanma",
+        "kpi_earned": "Kazanılan değer",
+        "kpi_contract": "Sözleşme değeri",
+        "kpi_pending": "Bekleyen onaylar",
+        "kpi_rejection_rate": "Red oranı",
+        "kpi_avg_latency": "Ort. onay süresi",
+        "unit_hours": "sa",
+        "burndown_heading": "BOQ ilerleme (burn-down)",
+        "burndown_sub": "Kalem bazında onaylanan miktarın sözleşme miktarına oranı.",
+        "col_item": "Kalem",
+        "col_progress": "İlerleme",
+        "col_qty": "Miktar",
+        "col_pending": "Bekleyen",
+        "col_earned": "Kazanılan",
+        "col_remaining": "Kalan",
+        "insights_heading": "En yüksek kalan değer",
+        "team_heading": "Ekip aktivitesi",
+        "team_sub": "Ofis mühendisi bazında aktivite karneleri.",
+        "empty_no_projects": "Henüz proje yok. Analiz görmek için bir proje oluşturun.",
+        "empty_no_boq": "Bu projede henüz BOQ kalemi yok.",
+        "of_contract": "/ {contract}"
       }
     },
     "people": {

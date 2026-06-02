@@ -558,6 +558,32 @@
           "cancel": "No, Keep It",
           "confirm": "Yes, Delete"
         }
+      },
+      "analytics": {
+        "heading": "Analytics",
+        "subtitle": "Construction progress and earned value, by project.",
+        "picker_label": "Project",
+        "kpi_complete": "Complete",
+        "kpi_earned": "Earned value",
+        "kpi_contract": "Contract value",
+        "kpi_pending": "Pending audits",
+        "kpi_rejection_rate": "Rejection rate",
+        "kpi_avg_latency": "Avg. audit time",
+        "unit_hours": "h",
+        "burndown_heading": "BOQ burn-down",
+        "burndown_sub": "Approved quantity against contracted quantity, per line item.",
+        "col_item": "Item",
+        "col_progress": "Progress",
+        "col_qty": "Qty",
+        "col_pending": "Pending",
+        "col_earned": "Earned",
+        "col_remaining": "Remaining",
+        "insights_heading": "Largest remaining value",
+        "team_heading": "Team activity",
+        "team_sub": "Per office-engineer activity scorecards.",
+        "empty_no_projects": "No projects yet. Create a project to see analytics.",
+        "empty_no_boq": "This project has no BOQ items yet.",
+        "of_contract": "of {contract}"
       }
     },
     "people": {
