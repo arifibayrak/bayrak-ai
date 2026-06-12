@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: — Document-Driven Route Import, Chainage As-Built Tracking & AI Vision Assist
 status: executing
-stopped_at: context exhaustion at 75% (2026-06-01)
-last_updated: "2026-06-01T16:18:13.405Z"
+stopped_at: context exhaustion at 75% (2026-06-02)
+last_updated: "2026-06-02T11:50:58.703Z"
 last_activity: "2026-06-01 - Completed quick task 260601-kj4: Field-Industrial UI foundation (premium UI pass increment 1)"
 progress:
   total_phases: 6
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-05-29)
 Phase: 16 (ai-vision-assist) — EXECUTING
 Plan: 3 of 5
 Status: Ready to execute
-Last activity: 2026-06-01 - Completed quick task 260601-kj4: Field-Industrial UI foundation (premium UI pass increment 1)
+Last activity: 2026-06-12 - Completed quick task 260612-o1h: GitHub presentation (README rewrite, AGENTS.md, repo metadata)
 
 ## Performance Metrics
 
@@ -322,6 +322,7 @@ None.
 | 260525-3fc | Polish UI/UX — typography, fonts, spacing, visual hierarchy across landing + dashboard | 2026-05-25 | fc1e92c | [260525-3fc-polish-ui-ux-typography-fonts-spacing-vi](./quick/260525-3fc-polish-ui-ux-typography-fonts-spacing-vi/) |
 | 260601-i0d | FK-safe tenant_settings default-row seed (migration 0015) | 2026-06-01 | 52b78ad | [260601-i0d-make-tenant-settings-default-row-seed-fk](./quick/260601-i0d-make-tenant-settings-default-row-seed-fk/) |
 | 260601-kj4 | Field-Industrial UI foundation — tokens + Space Grotesk + brand primitives + dashboard shell (premium UI pass, increment 1) | 2026-06-01 | 10108a9 | [260601-kj4-field-industrial-premium-ui-foundation-d](./quick/260601-kj4-field-industrial-premium-ui-foundation-d/) |
+| 260612-o1h | GitHub presentation: README rewrite, AGENTS.md, repo description/homepage/topics | 2026-06-12 | 01e87b6 | [260612-o1h-optimize-github-presentation-rewrite-rea](./quick/260612-o1h-optimize-github-presentation-rewrite-rea/) |
 
 ## Deferred Items
 
@@ -331,6 +332,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-06-01T16:18:13.401Z
-Stopped at: context exhaustion at 75% (2026-06-01)
+Last session: 2026-06-02T11:50:58.699Z
+Stopped at: context exhaustion at 75% (2026-06-02)
 Resume file: None
