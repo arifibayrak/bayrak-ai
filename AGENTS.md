@@ -43,7 +43,7 @@ bayrak.ai is a single-tenant B2B field-to-office operations platform for pipelin
 
 ## Safety notes
 
-**CRITICAL — Database:** The `DATABASE_URL` configured in `.env.local` points at the **PRODUCTION** Neon database. Be extremely careful running seeds or migrations locally — they hit prod directly. Never commit `.env.local`.
+**CRITICAL — Database:** Treat the `DATABASE_URL` configured in `.env.local` as **production**. Be extremely careful running seeds or migrations locally — assume they hit live data. Never commit `.env.local`.
 
 **Deploys:** Production deploys go through `vercel --prod --yes` CLI. Git push does **not** trigger a deploy. Production URL: https://www.bayrak.ai. Telegram webhook: `https://www.bayrak.ai/api/telegram/webhook`.
 

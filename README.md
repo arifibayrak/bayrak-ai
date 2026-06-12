@@ -88,7 +88,7 @@ Worker submits (Telegram bot)
 | `src/hooks/` | React hooks |
 | `src/types/` | Shared TypeScript types |
 | `messages/` | i18n message catalogs: `en.json` and `tr.json` (Turkish-first) |
-| `tests/` | vitest test suite (416 passing) |
+| `tests/` | vitest test suite |
 | `scripts/` | One-off scripts: seed data, CDP console-capture tooling |
 | `.planning/` | GSD planning artifacts: `ROADMAP.md`, `STATE.md`, `REQUIREMENTS.md`, `phases/` |
 
